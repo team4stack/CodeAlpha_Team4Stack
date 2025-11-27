@@ -26,7 +26,6 @@ const Navbar: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [oauthError, setOauthError] = useState<string | null>(null);
   const [navbarLinks, setNavbarLinks] = useState<NavbarLink[]>([
-    { name: 'Team', href: '#about' },
     { name: 'Services', href: '#services' },
     { name: 'Projects', href: '#projects' },
     { name: 'Courses', href: '/courses' },
@@ -335,7 +334,26 @@ const Navbar: React.FC = () => {
 
             {/* Desktop Navigation (center) */}
             <div className="hidden md:flex items-center space-x-1 lg:space-x-2">
-              {navbarLinks.map((link) => {
+              {/* Team as regular nav item - moved to first position */}
+              <a
+                href="/team"
+                className={`${isScrolled
+                  ? (isDarkMode ? 'text-white/90 hover:text-white transition-colors px-3 py-2' : 'text-gray-800 hover:text-blue-600 transition-colors px-3 py-2')
+                  : 'text-white hover:text-blue-300 font-medium px-4 py-2 transition-all duration-300'
+                } relative focus:outline-none group inline-block`}
+                aria-label="Team"
+                title="Team — Meet Our Team"
+                onClick={(e) => {
+                  e.preventDefault()
+                  navigate('/team')
+                }}
+              >
+                Team
+                <span className="pointer-events-none absolute left-1/2 -bottom-0.5 w-0 h-0.5 bg-gradient-to-r from-blue-400 to-cyan-500 rounded-full transition-all duration-300 group-hover:left-0 group-hover:w-full"></span>
+              </a>
+              {navbarLinks
+                .filter((link) => link.name?.toLowerCase() !== 'team') // Filter out Team from navbarLinks since we show it separately
+                .map((link) => {
                 const isCoursesLink =
                   link.href === '/courses' ||
                   link.name?.toLowerCase?.() === 'courses';
@@ -396,23 +414,6 @@ const Navbar: React.FC = () => {
               >
                 StackStore
                 <span className="pointer-events-none absolute left-1/2 -bottom-0.5 w-0 h-0.5 bg-gradient-to-r from-cyan-400 to-purple-500 rounded-full transition-all duration-300 group-hover:left-0 group-hover:w-full"></span>
-              </a>
-              {/* Team as regular nav item */}
-              <a
-                href="/team"
-                className={`${isScrolled
-                  ? (isDarkMode ? 'text-white/90 hover:text-white transition-colors px-3 py-2' : 'text-gray-800 hover:text-blue-600 transition-colors px-3 py-2')
-                  : 'text-white hover:text-blue-300 font-medium px-4 py-2 transition-all duration-300'
-                } relative focus:outline-none group inline-block`}
-                aria-label="Team"
-                title="Team — Meet Our Team"
-                onClick={(e) => {
-                  e.preventDefault()
-                  navigate('/team')
-                }}
-              >
-                Team
-                <span className="pointer-events-none absolute left-1/2 -bottom-0.5 w-0 h-0.5 bg-gradient-to-r from-blue-400 to-cyan-500 rounded-full transition-all duration-300 group-hover:left-0 group-hover:w-full"></span>
               </a>
             </div>
 
