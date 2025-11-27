@@ -3,9 +3,9 @@
 
 // Contact Information
 export const CONTACT_PHONE_NUMBERS = {
-  primary: import.meta.env.VITE_PRIMARY_PHONE || '+923083266634',
+  primary: import.meta.env.VITE_PRIMARY_PHONE || '+923405499734',
   teamMembers: [
-    import.meta.env.VITE_TEAM_MEMBER_1_PHONE || '+923083266634', // Muhammad Sami Ullah
+    import.meta.env.VITE_TEAM_MEMBER_1_PHONE || '+923405499734', // Muhammad Sami Ullah
     import.meta.env.VITE_TEAM_MEMBER_2_PHONE || '+923126430166', // Muhammad Hasnain
     import.meta.env.VITE_TEAM_MEMBER_3_PHONE || '+923293948099', // Fiaz Ahmad
     import.meta.env.VITE_TEAM_MEMBER_4_PHONE || '+923097376067'  // M. Aftab Akram
