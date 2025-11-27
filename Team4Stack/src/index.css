@@ -136,24 +136,10 @@
   transition: all 0.3s ease;
 }
 
-.t4s-card .banner { 
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: cover;
-  height: 7rem;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  box-sizing: border-box;
-  position: relative;
-  border-radius: 1.5rem 1.5rem 0 0;
-  flex-shrink: 0; /* Prevent banner from shrinking */
-}
-
 /* Large card for Sir Abdullah Wali */
 .t4s-card.large {
-  max-width: 100%;
-  min-height: 250px; /* Reduced from 300px */
+  max-width: 600px;
+  min-height: 500px;
   margin: 0 auto;
   width: 100%;
 }
@@ -161,13 +147,13 @@
 @media (max-width: 640px) {
   .t4s-card.large {
     max-width: 95vw;
-    min-height: 250px; /* Reduced from 300px */
+    min-height: 450px;
   }
   .t4s-card.large .banner {
-    height: 6rem; /* Reduced from 8rem */
+    height: 12rem;
   }
   .t4s-card.large .banner .dp {
-    width: 6rem; /* Increased from 5rem */
+    width: 6rem;
     transform: translateY(30%);
   }
   .t4s-card.large .banner .dp:hover {
@@ -175,10 +161,10 @@
   }
 }
 .t4s-card.large .banner {
-  height: 6rem; /* Reduced from 8rem */
+  height: 14rem;
 }
 .t4s-card.large .banner .dp {
-  width: 7rem; /* Increased from 6rem */
+  width: 8rem;
   transform: translateY(35%);
   margin: 0 auto;
 }
@@ -198,69 +184,7 @@
   z-index: 0;
 }
 
-/* Horizontal layout for large cards on desktop */
-@media (min-width: 768px) {
-  .t4s-card.large.horizontal {
-    display: flex;
-    flex-direction: row;
-    align-items: stretch;
-    max-width: 100%;
-    height: auto;
-    min-height: 250px; /* Reduced from 300px */
-  }
-  
-  .t4s-card.large.horizontal .banner {
-    width: 33.333%;
-    height: auto;
-    min-height: 250px; /* Reduced from 300px */
-    border-radius: 1.5rem 0 0 1.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-  }
-  
-  .t4s-card.large.horizontal .banner .dp {
-    transform: none;
-    margin: 0 auto;
-    position: relative;
-    top: auto;
-    left: auto;
-    width: 8rem; /* Increased from 7rem */
-  }
-  
-  .t4s-card.large.horizontal .content {
-    width: 33.333%;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding: 0.5rem; /* Reduced from 0.75rem */
-  }
-  
-  .t4s-card.large.horizontal .actions {
-    width: 33.333%;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding: 0; /* Remove padding */
-    align-items: center; /* Center buttons horizontally */
-  }
-
-  .t4s-card.large.horizontal .actions .w-full {
-    max-width: 160px;
-    margin-left: auto;
-    margin-right: auto;
-    margin-bottom: 0.5rem;
-  }
-  
-  .t4s-card.large.horizontal .menu {
-    position: absolute;
-    right: 1rem;
-    top: 1rem;
-  }
-}
-
-@media (max-width: 767px) {
+@media (max-width: 640px) {
   .t4s-card.large .banner .dp::before {
     inset: -6px;
     filter: blur(10px);
