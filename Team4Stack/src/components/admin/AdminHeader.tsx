@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import ProfileAvatar from '../../shared/components/ProfileAvatar';
+import ProfileAvatar from '../ProfileAvatar'
 import { supabase } from '../../utils/supabaseClient'
 import { useLocation, useNavigate } from 'react-router-dom'
 

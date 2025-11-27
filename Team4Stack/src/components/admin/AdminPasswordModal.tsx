@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../../utils/supabaseClient';
-import { verifyAdminPassword, setAdminToken, clearAdminToken } from '../../auth/utils/adminAuth';
+import { verifyAdminPassword, setAdminToken, clearAdminToken } from '../../utils/adminAuth';
 
 interface AdminPasswordModalProps {
   isOpen: boolean;
