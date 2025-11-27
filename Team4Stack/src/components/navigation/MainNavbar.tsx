@@ -26,7 +26,6 @@ const Navbar: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [oauthError, setOauthError] = useState<string | null>(null);
   const [navbarLinks, setNavbarLinks] = useState<NavbarLink[]>([
-    { name: 'Team', href: '#about' },
     { name: 'Services', href: '#services' },
     { name: 'Projects', href: '#projects' },
     { name: 'Courses', href: '/courses' },
@@ -64,9 +63,10 @@ const Navbar: React.FC = () => {
             if (Array.isArray(parsed) && parsed.length > 0) {
               // Remove any "Home" style entries coming from database,
               // because logo + text handle the Home scroll behavior now.
+              // Also remove "Team" as it's now a separate button at the start.
               const filtered = parsed.filter((link: NavbarLink) => {
                 const name = link?.name?.toLowerCase?.() || '';
-                return name !== 'home' && name !== 'start' && name !== 'main';
+                return name !== 'home' && name !== 'start' && name !== 'main' && name !== 'team';
               });
               if (filtered.length > 0) {
                 setNavbarLinks(filtered);
@@ -335,6 +335,23 @@ const Navbar: React.FC = () => {
 
             {/* Desktop Navigation (center) */}
             <div className="hidden md:flex items-center space-x-1 lg:space-x-2">
+              {/* Team as first nav item */}
+              <a
+                href="/team"
+                className={`${isScrolled
+                  ? (isDarkMode ? 'text-white/90 hover:text-white transition-colors px-3 py-2' : 'text-gray-800 hover:text-blue-600 transition-colors px-3 py-2')
+                  : 'text-white hover:text-blue-300 font-medium px-4 py-2 transition-all duration-300'
+                } relative focus:outline-none group inline-block`}
+                aria-label="Team"
+                title="Team — Meet Our Team"
+                onClick={(e) => {
+                  e.preventDefault()
+                  navigate('/team')
+                }}
+              >
+                Team
+                <span className="pointer-events-none absolute left-1/2 -bottom-0.5 w-0 h-0.5 bg-gradient-to-r from-blue-400 to-cyan-500 rounded-full transition-all duration-300 group-hover:left-0 group-hover:w-full"></span>
+              </a>
               {navbarLinks.map((link) => {
                 const isCoursesLink =
                   link.href === '/courses' ||
@@ -396,23 +413,6 @@ const Navbar: React.FC = () => {
               >
                 StackStore
                 <span className="pointer-events-none absolute left-1/2 -bottom-0.5 w-0 h-0.5 bg-gradient-to-r from-cyan-400 to-purple-500 rounded-full transition-all duration-300 group-hover:left-0 group-hover:w-full"></span>
-              </a>
-              {/* Team as regular nav item */}
-              <a
-                href="/team"
-                className={`${isScrolled
-                  ? (isDarkMode ? 'text-white/90 hover:text-white transition-colors px-3 py-2' : 'text-gray-800 hover:text-blue-600 transition-colors px-3 py-2')
-                  : 'text-white hover:text-blue-300 font-medium px-4 py-2 transition-all duration-300'
-                } relative focus:outline-none group inline-block`}
-                aria-label="Team"
-                title="Team — Meet Our Team"
-                onClick={(e) => {
-                  e.preventDefault()
-                  navigate('/team')
-                }}
-              >
-                Team
-                <span className="pointer-events-none absolute left-1/2 -bottom-0.5 w-0 h-0.5 bg-gradient-to-r from-blue-400 to-cyan-500 rounded-full transition-all duration-300 group-hover:left-0 group-hover:w-full"></span>
               </a>
             </div>
 
