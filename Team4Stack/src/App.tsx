@@ -29,25 +29,26 @@ const ContentPage = React.lazy(() => import('./modules/landing/admin/pages/Conte
 const SettingsPage = React.lazy(() => import('./modules/landing/admin/pages/SettingsPage'));
 const UsersPage = React.lazy(() => import('./modules/landing/admin/pages/UsersPage'));
 const FormsPage = React.lazy(() => import('./modules/landing/admin/pages/FormsPage'));
-const AdminLoginPage = React.lazy(() => import('./auth/pages/LoginPage'));
+// Unified Admin Login Page - used for all admin panels
+const UnifiedAdminLoginPage = React.lazy(() => import('./pages/admin/LoginPage'));
 
 // Courses Admin (/admincourset4s)
+const CoursesAdminLayout = React.lazy(() => import('./modules/courses/admin/components/CoursesAdminLayout'));
+const CoursesAdminDashboard = React.lazy(() => import('./modules/courses/admin/pages/CoursesAdminDashboard'));
 const CoursesAdminPanel = React.lazy(() => import('./modules/courses/admin/pages/CoursesAdminDashboard'));
 
 // StackStore Admin (/adminstackt4s)
 const StackStoreAdminLayout = React.lazy(() => import('./modules/stackstore/admin/components/StackStoreAdminLayout'));
 const StackStoreAdminDashboard = React.lazy(() => import('./modules/stackstore/admin/pages/StackStoreAdminDashboard'));
-const StackStoreAdminLoginPage = React.lazy(() => import('./auth/pages/StackStoreAdminLoginPage'));
 
 // Team Admin (/adminteamt4s)
 const TeamAdminLayout = React.lazy(() => import('./modules/team/admin/components/TeamAdminLayout'));
 const TeamAdminDashboard = React.lazy(() => import('./modules/team/admin/pages/TeamAdminDashboard'));
-const TeamAdminLoginPage = React.lazy(() => import('./auth/pages/TeamAdminLoginPage'));
 
 // Super Admin (/supadmin)
 const SuperAdminLayout = React.lazy(() => import('./modules/superadmin/components/SuperAdminLayout'));
 const SuperAdminDashboard = React.lazy(() => import('./modules/superadmin/pages/SuperAdminDashboard'));
-const SuperAdminLoginPage = React.lazy(() => import('./auth/pages/SuperAdminLoginPage'));
+const RoleManagementPage = React.lazy(() => import('./modules/superadmin/pages/RoleManagementPage'));
 const CourseListPage = React.lazy(() => import('./modules/courses/pages/CourseListPage'));
 const CourseViewPage = React.lazy(() => import('./modules/courses/pages/CourseViewPage'));
 
@@ -102,17 +103,52 @@ const AppContentWithRouter: React.FC = () => {
             </CoursesLayout>
           } />
 
-          {/* Courses Admin Panel Route (Separate) */}
-          <Route path="/admincourset4s" element={
+          {/* Courses Admin Panel Routes */}
+          <Route path="/admincourset4s/login" element={
             <Suspense fallback={<div className="h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div></div>}>
-              <CoursesAdminPanel />
+              <UnifiedAdminLoginPage />
             </Suspense>
           } />
+
+          <Route path="/admincourset4s" element={
+            <Suspense fallback={<div className="h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div></div>}>
+              <CoursesAdminLayout />
+            </Suspense>
+          }>
+            <Route index element={
+              <Suspense fallback={<div className="h-96 flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div></div>}>
+                <CoursesAdminDashboard />
+              </Suspense>
+            } />
+            <Route path="manage" element={
+              <Suspense fallback={<div className="h-96 flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div></div>}>
+                <CoursesAdminDashboard />
+              </Suspense>
+            } />
+            <Route path="videos" element={
+              <div className="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
+                <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-white">Videos Management</h2>
+                <p className="text-gray-600 dark:text-gray-400">Video management feature coming soon...</p>
+              </div>
+            } />
+            <Route path="progress" element={
+              <div className="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
+                <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-white">Student Progress</h2>
+                <p className="text-gray-600 dark:text-gray-400">Student progress tracking feature coming soon...</p>
+              </div>
+            } />
+            <Route path="settings" element={
+              <div className="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
+                <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-white">Course Settings</h2>
+                <p className="text-gray-600 dark:text-gray-400">Course settings feature coming soon...</p>
+              </div>
+            } />
+          </Route>
 
           {/* StackStore Admin Panel Routes */}
           <Route path="/adminstackt4s/login" element={
             <Suspense fallback={<div className="h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div></div>}>
-              <StackStoreAdminLoginPage />
+              <UnifiedAdminLoginPage />
             </Suspense>
           } />
 
@@ -162,7 +198,7 @@ const AppContentWithRouter: React.FC = () => {
           {/* Team Admin Panel Routes */}
           <Route path="/adminteamt4s/login" element={
             <Suspense fallback={<div className="h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div></div>}>
-              <TeamAdminLoginPage />
+              <UnifiedAdminLoginPage />
             </Suspense>
           } />
 
@@ -206,7 +242,7 @@ const AppContentWithRouter: React.FC = () => {
           {/* Super Admin Panel Routes */}
           <Route path="/supadmin/login" element={
             <Suspense fallback={<div className="h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div></div>}>
-              <SuperAdminLoginPage />
+              <UnifiedAdminLoginPage />
             </Suspense>
           } />
 
@@ -220,12 +256,11 @@ const AppContentWithRouter: React.FC = () => {
                 <SuperAdminDashboard />
               </Suspense>
             } />
-            {/* Placeholder routes for future implementation */}
+            {/* Role Management */}
             <Route path="roles" element={
-              <div className="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
-                <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-white">Role Management</h2>
-                <p className="text-gray-600 dark:text-gray-400">Role management feature coming soon...</p>
-              </div>
+              <Suspense fallback={<div className="h-96 flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-500"></div></div>}>
+                <RoleManagementPage />
+              </Suspense>
             } />
             <Route path="users" element={
               <div className="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
@@ -256,7 +291,7 @@ const AppContentWithRouter: React.FC = () => {
           {/* Landing Page Admin Panel Routes */}
           <Route path="/adminlandingt4s/login" element={
             <Suspense fallback={<div className="h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div></div>}>
-              <AdminLoginPage />
+              <UnifiedAdminLoginPage />
             </Suspense>
           } />
 
@@ -287,7 +322,7 @@ const AppContentWithRouter: React.FC = () => {
             } />
             <Route path="courses" element={
               <Suspense fallback={<div className="h-96 flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div></div>}>
-                <CoursesAdminPanel />
+                <CoursesAdminDashboard />
               </Suspense>
             } />
             <Route path=":contentType" element={

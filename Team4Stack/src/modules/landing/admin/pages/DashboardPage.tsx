@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import StatCard from '../../components/admin/shared/StatCard'
-import QuickActions from '../../components/admin/shared/QuickActions'
+import StatCard from '../../../../components/admin/shared/StatCard'
+import QuickActions from '../../../../components/admin/shared/QuickActions'
 import { supabase } from '../../../../utils/supabaseClient'
 
 type Activity = {

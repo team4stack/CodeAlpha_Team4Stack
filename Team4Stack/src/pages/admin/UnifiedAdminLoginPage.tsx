@@ -3,13 +3,37 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../utils/supabaseClient'
 import { isEmailAllowedForAdmin } from '../../utils/adminSecurity'
 
-const LoginPage: React.FC = () => {
+const UnifiedAdminLoginPage: React.FC = () => {
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const checkSession = async () => {
+      // Check custom admin session (NOT Supabase Auth session)
+      const adminSessionStr = sessionStorage.getItem('admin_session')
+      if (adminSessionStr) {
+        try {
+          const adminSession = JSON.parse(adminSessionStr)
+          // Check if session is still valid
+          if (adminSession.expiresAt && Date.now() < adminSession.expiresAt) {
+            // Redirect based on role
+            redirectBasedOnRole(adminSession.role)
+          } else {
+            // Session expired, remove it
+            sessionStorage.removeItem('admin_session')
+          }
+        } catch (error) {
+          // Invalid session, remove it
+          sessionStorage.removeItem('admin_session')
+        }
+      }
+    }
+    checkSession()
+  }, [navigate])
 
   // Function to redirect based on role
   const redirectBasedOnRole = (role: string) => {
@@ -36,30 +60,6 @@ const LoginPage: React.FC = () => {
     }
   }
 
-  useEffect(() => {
-    const checkSession = async () => {
-      // Check custom admin session (NOT Supabase Auth session)
-      const adminSessionStr = sessionStorage.getItem('admin_session')
-      if (adminSessionStr) {
-        try {
-          const adminSession = JSON.parse(adminSessionStr)
-          // Check if session is still valid
-          if (adminSession.expiresAt && Date.now() < adminSession.expiresAt) {
-            // Redirect based on role
-            redirectBasedOnRole(adminSession.role)
-          } else {
-            // Session expired, remove it
-            sessionStorage.removeItem('admin_session')
-          }
-        } catch (error) {
-          // Invalid session, remove it
-          sessionStorage.removeItem('admin_session')
-        }
-      }
-    }
-    checkSession()
-  }, [navigate])
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -84,12 +84,12 @@ const LoginPage: React.FC = () => {
         return
       }
 
-      // Step 1: ENVIRONMENT VARIABLE CHECK (Only for Super Admin)
-      // Super admin MUST be in environment variable for extra security
-      // Other admins can login via Supabase check only
-      const isSuperAdmin = loginEmail === 'superadmin@gmail.com'
-      if (isSuperAdmin && !isEmailAllowedForAdmin(loginEmail)) {
-        // Super admin not in environment variable - deny immediately
+      // Step 1: ENVIRONMENT VARIABLE CHECK (FIRST - Most Secure Layer)
+      // Even if Supabase is hacked, this check will prevent unauthorized access
+      // This is the PRIMARY security layer - cannot be bypassed via Supabase
+      if (!isEmailAllowedForAdmin(loginEmail)) {
+        // Email not in environment variable whitelist - deny immediately
+        // This prevents access even if someone adds email to Supabase admin_users table
         setError('Invalid email or password.')
         setLoading(false)
         return
@@ -97,19 +97,15 @@ const LoginPage: React.FC = () => {
 
       // Step 2: SUPABASE TABLE CHECK (SECOND - Can be compromised, but still checked)
       // Multi-layer security: Both environment variable AND Supabase table must pass
-      // First try to select all columns to avoid column name issues
       const { data: adminCheck, error: adminCheckError } = await supabase
         .from('admin_users')
-        .select('*')
+        .select('email, role')
         .eq('email', loginEmail)
         .maybeSingle()
 
       // If there's an error checking admin_users, deny access
       if (adminCheckError) {
-        // Log error for debugging (only in development)
-        if (import.meta.env.DEV) {
-          console.error('Admin users query error:', adminCheckError)
-        }
+        // No sensitive info in logs
         setError('Invalid email or password.')
         setLoading(false)
         return
@@ -126,7 +122,7 @@ const LoginPage: React.FC = () => {
         return
       }
 
-      // Step 2: Verify password using admin_users table (NOT Supabase Auth)
+      // Step 3: Verify password using admin_users table (NOT Supabase Auth)
       // Admin login is completely separate from normal website login
       const { data: verifyResult, error: verifyError } = await supabase.rpc('verify_admin_password', {
         p_email: loginEmail,
@@ -150,28 +146,26 @@ const LoginPage: React.FC = () => {
         return
       }
 
-      // Step 3: Create custom admin session (NOT Supabase Auth session)
+      // Step 4: Create custom admin session (NOT Supabase Auth session)
       // Admin login is completely separate from normal website login
-      // Store the role from database in session (use 'admin' as default if role column doesn't exist)
-      const userRole = (adminCheck as any)?.role || 'admin'
+      // Store the role from database in session
       const adminSession = {
         email: loginEmail,
-        role: userRole,
+        role: adminCheck.role || 'admin', // Use role from database
         expiresAt: Date.now() + (24 * 60 * 60 * 1000) // 24 hours
       }
 
       // Store admin session in sessionStorage
       sessionStorage.setItem('admin_session', JSON.stringify(adminSession))
 
-      // Step 4: Redirect based on role
-      redirectBasedOnRole(userRole)
+      // Step 5: Redirect based on role
+      redirectBasedOnRole(adminCheck.role || 'admin')
     } catch (error: any) {
       // Generic error message - no sensitive info
       setError('An error occurred. Please try again.')
       setLoading(false)
     }
   }
-
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-black flex items-center justify-center p-6">
@@ -180,7 +174,7 @@ const LoginPage: React.FC = () => {
         <div className="relative bg-gray-900/80 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl">
           <div className="mb-6 text-center">
             <h1 className="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400">Team4Stack Admin</h1>
-            <p className="text-sm text-gray-300 mt-1">Sign in to manage your site</p>
+            <p className="text-sm text-gray-300 mt-1">Sign in to access your admin panel</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
@@ -218,7 +212,6 @@ const LoginPage: React.FC = () => {
               </div>
             </div>
 
-
             {error && (
               <div className="text-sm text-red-400 bg-red-400/10 border border-red-500/30 rounded-lg px-3 py-2">{error}</div>
             )}
@@ -241,6 +234,5 @@ const LoginPage: React.FC = () => {
   )
 }
 
-export default LoginPage
-
+export default UnifiedAdminLoginPage
 

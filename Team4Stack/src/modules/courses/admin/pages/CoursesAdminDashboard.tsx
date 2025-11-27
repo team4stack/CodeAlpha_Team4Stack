@@ -1,404 +1,189 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTheme } from '../../../../context/ThemeContext';
-import { supabase } from '../../../../utils/supabaseClient';
+import React, { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import StatCard from '../../../../components/admin/shared/StatCard'
+import { supabase } from '../../../../utils/supabaseClient'
 
-interface Course {
-  id: string;
-  name: string;
-  description?: string;
-}
-
-interface Video {
-  id: string;
-  course_id: string;
-  title: string;
-  description?: string;
-  video_url?: string;
-  order: number;
-}
-
-interface ProgressRecord {
-  id: string;
-  completed: boolean;
-  score?: number;
-  course_id: string;
-  video_id: string;
-  user_id: string;
-  users?: { name: string; email: string };
-  courses?: { name: string };
-  videos?: { title: string };
-}
-
-const defaultVideoForm = {
-  course_id: '',
-  title: '',
-  description: '',
-  video_url: '',
-  order: 1,
-};
-
-const CoursesAdminPanel: React.FC = () => {
-  const { isDarkMode } = useTheme();
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [videos, setVideos] = useState<Video[]>([]);
-  const [videoForm, setVideoForm] = useState(defaultVideoForm);
-  const [progressRecords, setProgressRecords] = useState<ProgressRecord[]>([]);
-  const [status, setStatus] = useState<{ message: string | null; variant: string }>({ message: null, variant: 'success' });
-
-  const showStatus = useCallback((message: string, variant: string = 'success') => {
-    setStatus({ message, variant });
-    setTimeout(() => setStatus({ message: null, variant: 'success' }), 4000);
-  }, []);
-
-  const fetchCourses = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .from('courses')
-        .select('*');
-        
-      if (error) throw error;
-      return data || [];
-    } catch (error: any) {
-      console.error('[CoursesAdminPanel] Failed to fetch courses', error);
-      return [];
-    }
-  }, []);
-
-  const fetchVideos = useCallback(async (courseId: string) => {
-    if (!courseId) {
-      return [];
-    }
-    
-    try {
-      const { data, error } = await supabase
-        .from('videos')
-        .select('*')
-        .eq('course_id', courseId)
-        .order('order');
-        
-      if (error) throw error;
-      return data || [];
-    } catch (error: any) {
-      console.error('[CoursesAdminPanel] Failed to fetch videos', error);
-      return [];
-    }
-  }, []);
-
-  const fetchProgressRecords = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .from('progress_records')
-        .select(`
-          *,
-          users:user_id (name, email),
-          courses:course_id (name),
-          videos:video_id (title)
-        `);
-        
-      if (error) throw error;
-      return data || [];
-    } catch (error: any) {
-      console.error('[CoursesAdminPanel] Failed to fetch progress records', error);
-      return [];
-    }
-  }, []);
+const CoursesAdminDashboard: React.FC = () => {
+  const navigate = useNavigate()
+  const [stats, setStats] = useState({
+    totalCourses: 0,
+    totalVideos: 0,
+    totalStudents: 0,
+    activeCourses: 0,
+    completedCourses: 0,
+    totalProgress: 0,
+  })
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    let isMounted = true;
-    const initialise = async () => {
+    const loadStats = async () => {
       try {
-        const fetchedCourses = await fetchCourses();
-        setCourses(fetchedCourses);
-        
-        if (fetchedCourses.length > 0) {
-          setVideoForm(prev => ({ ...prev, course_id: fetchedCourses[0].id }));
-          const fetchedVideos = await fetchVideos(fetchedCourses[0].id);
-          if (fetchedVideos.length > 0) {
-            setVideos(fetchedVideos);
-          }
-        }
-        
-        // Fetch progress records
-        const fetchedProgress = await fetchProgressRecords();
-        setProgressRecords(fetchedProgress);
-        
-        showStatus('Admin panel loaded successfully.');
-      } catch (error: any) {
-        console.error('[CoursesAdminPanel] Initial load failed', error);
-        if (isMounted) {
-          showStatus(`Unable to load admin data: ${error.message}`, 'danger');
-        }
-      }
-    };
-    initialise();
-    return () => {
-      isMounted = false;
-    };
-  }, [fetchCourses, fetchVideos, fetchProgressRecords, showStatus]);
+        // Fetch courses count
+        const { count: coursesCount } = await supabase
+          .from('courses')
+          .select('*', { count: 'exact', head: true })
 
-  const handleVideoChange = (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = event.target;
-    setVideoForm((prev) => ({ ...prev, [name]: value }));
-  };
+        // Fetch videos count
+        const { count: videosCount } = await supabase
+          .from('videos')
+          .select('*', { count: 'exact', head: true })
 
-  const handleAddVideo = async (event: React.FormEvent) => {
-    event.preventDefault();
-    
-    try {
-      if (!videoForm.course_id) {
-        showStatus('No valid course found. Please refresh the page.', 'danger');
-        return;
-      }
-      
-      const { data, error } = await supabase
-        .from('videos')
-        .insert([
-          {
-            ...videoForm,
-            course_id: videoForm.course_id,
-            order: Number(videoForm.order) || 1,
-          }
-        ])
-        .select()
-        .single();
+        // Fetch progress records count
+        const { count: progressCount } = await supabase
+          .from('progress_records')
+          .select('*', { count: 'exact', head: true })
+
+        // Fetch unique students (users with progress)
+        const { data: progressData } = await supabase
+          .from('progress_records')
+          .select('user_id')
         
-      if (error) {
-        console.error('[CoursesAdminPanel] Supabase error details:', error);
-        if (error.message.includes('permission') || error.message.includes('authorized') || error.message.includes('denied')) {
-          showStatus('Permission denied. Videos can only be added by administrators in production.', 'warning');
-        } else {
-          showStatus(`Failed to add video: ${error.message}`, 'danger');
-        }
-        return;
+        const uniqueStudents = new Set(progressData?.map(p => p.user_id) || []).size
+
+        // Fetch completed courses (progress with completed = true)
+        const { count: completedCount } = await supabase
+          .from('progress_records')
+          .select('*', { count: 'exact', head: true })
+          .eq('completed', true)
+
+        setStats({
+          totalCourses: coursesCount || 0,
+          totalVideos: videosCount || 0,
+          totalStudents: uniqueStudents,
+          activeCourses: coursesCount || 0, // TODO: Add active flag
+          completedCourses: completedCount || 0,
+          totalProgress: progressCount || 0,
+        })
+      } catch (error) {
+        console.error('Error loading Courses stats:', error)
+      } finally {
+        setLoading(false)
       }
-      
-      setVideos([...videos, data]);
-      showStatus('Video added successfully.');
-      setVideoForm({ ...defaultVideoForm, course_id: videoForm.course_id });
-    } catch (error: any) {
-      console.error('[CoursesAdminPanel] Failed to add video', error);
-      showStatus(`Failed to add video: ${error.message || 'Please try again.'}`, 'danger');
     }
-  };
 
-  const handleApproveProgress = async (record: ProgressRecord) => {
-    try {
-      const { error } = await supabase
-        .from('progress_records')
-        .update({ completed: true })
-        .eq('id', record.id);
-        
-      if (error) throw error;
-      
-      setProgressRecords(prev => 
-        prev.map(item => 
-          item.id === record.id ? { ...item, completed: true } : item
-        )
-      );
-      showStatus('Progress approved.');
-    } catch (error: any) {
-      console.error('[CoursesAdminPanel] Failed to approve progress', error);
-      showStatus(`Failed to approve: ${error.message}`, 'danger');
-    }
-  };
+    loadStats()
+  }, [])
 
-  const pendingProgress = useMemo(
-    () => progressRecords.filter((record) => record.completed === false),
-    [progressRecords]
-  );
+  if (loading) {
+    return (
+      <div className="h-96 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen transition-colors duration-300">
-      <div className="container-custom py-12">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className={`text-3xl md:text-4xl font-bold ${
-            isDarkMode ? 'text-white' : 'text-gray-900'
-          }`}>
-            Courses Admin Panel
-          </h1>
-        </div>
-
-        {status.message && (
-          <div className={`rounded-lg p-4 mb-6 ${
-            status.variant === 'danger'
-              ? isDarkMode
-                ? 'bg-red-900/30 text-red-300 border border-red-700'
-                : 'bg-red-100 text-red-700 border border-red-300'
-              : status.variant === 'warning'
-              ? isDarkMode
-                ? 'bg-yellow-900/30 text-yellow-300 border border-yellow-700'
-                : 'bg-yellow-100 text-yellow-700 border border-yellow-300'
-              : isDarkMode
-              ? 'bg-green-900/30 text-green-300 border border-green-700'
-              : 'bg-green-100 text-green-700 border border-green-300'
-          }`}>
-            {status.message}
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className={`rounded-xl shadow-lg p-6 ${
-            isDarkMode 
-              ? 'bg-gray-800 border border-gray-700' 
-              : 'bg-white border border-gray-200'
-          }`}>
-            <h2 className={`text-xl font-semibold mb-4 ${
-              isDarkMode ? 'text-white' : 'text-gray-900'
-            }`}>
-              Add Course Video
-            </h2>
-            <form onSubmit={handleAddVideo} className="space-y-4">
-              <div>
-                <label className={`block text-sm font-medium mb-1 ${
-                  isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                }`}>
-                  Video Title
-                </label>
-                <input
-                  name="title"
-                  className={`w-full px-3 py-2 rounded-lg border ${
-                    isDarkMode
-                      ? 'bg-gray-700 text-white border-gray-600'
-                      : 'bg-gray-50 text-gray-900 border-gray-300'
-                  }`}
-                  value={videoForm.title}
-                  onChange={handleVideoChange}
-                  required
-                />
-              </div>
-              <div>
-                <label className={`block text-sm font-medium mb-1 ${
-                  isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                }`}>
-                  Description
-                </label>
-                <textarea
-                  name="description"
-                  className={`w-full px-3 py-2 rounded-lg border ${
-                    isDarkMode
-                      ? 'bg-gray-700 text-white border-gray-600'
-                      : 'bg-gray-50 text-gray-900 border-gray-300'
-                  }`}
-                  rows={2}
-                  value={videoForm.description}
-                  onChange={handleVideoChange}
-                  required
-                />
-              </div>
-              <div>
-                <label className={`block text-sm font-medium mb-1 ${
-                  isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                }`}>
-                  Video URL
-                </label>
-                <input
-                  name="video_url"
-                  type="url"
-                  className={`w-full px-3 py-2 rounded-lg border ${
-                    isDarkMode
-                      ? 'bg-gray-700 text-white border-gray-600'
-                      : 'bg-gray-50 text-gray-900 border-gray-300'
-                  }`}
-                  placeholder="https://youtube.com/embed/..."
-                  value={videoForm.video_url}
-                  onChange={handleVideoChange}
-                  required
-                />
-              </div>
-              <div>
-                <label className={`block text-sm font-medium mb-1 ${
-                  isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                }`}>
-                  Order
-                </label>
-                <input
-                  name="order"
-                  type="number"
-                  min="1"
-                  className={`w-full px-3 py-2 rounded-lg border ${
-                    isDarkMode
-                      ? 'bg-gray-700 text-white border-gray-600'
-                      : 'bg-gray-50 text-gray-900 border-gray-300'
-                  }`}
-                  value={videoForm.order}
-                  onChange={handleVideoChange}
-                  required
-                />
-              </div>
-              <button 
-                type="submit"
-                className="w-full px-4 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300"
-              >
-                Save Video
-              </button>
-            </form>
-          </div>
-
-          <div className={`rounded-xl shadow-lg p-6 ${
-            isDarkMode 
-              ? 'bg-gray-800 border border-gray-700' 
-              : 'bg-white border border-gray-200'
-          }`}>
-            <h2 className={`text-xl font-semibold mb-4 ${
-              isDarkMode ? 'text-white' : 'text-gray-900'
-            }`}>
-              Pending Approvals
-            </h2>
-            <div className="overflow-x-auto">
-              <table className={`w-full ${
-                isDarkMode ? 'text-gray-300' : 'text-gray-700'
-              }`}>
-                <thead>
-                  <tr className={`border-b ${
-                    isDarkMode ? 'border-gray-700' : 'border-gray-200'
-                  }`}>
-                    <th className="text-left py-2 px-2">Student</th>
-                    <th className="text-left py-2 px-2">Course</th>
-                    <th className="text-left py-2 px-2">Video</th>
-                    <th className="text-left py-2 px-2">Score</th>
-                    <th className="text-right py-2 px-2">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pendingProgress.map((record) => (
-                    <tr key={record.id} className={`border-b ${
-                      isDarkMode ? 'border-gray-700' : 'border-gray-200'
-                    }`}>
-                      <td className="py-2 px-2">
-                        <div className="font-semibold">{record.users?.name || 'N/A'}</div>
-                        <div className="text-sm opacity-75">{record.users?.email || ''}</div>
-                      </td>
-                      <td className="py-2 px-2">{record.courses?.name || 'N/A'}</td>
-                      <td className="py-2 px-2">{record.videos?.title || 'N/A'}</td>
-                      <td className="py-2 px-2">{record.score ?? 'N/A'}</td>
-                      <td className="py-2 px-2 text-right">
-                        <button
-                          className="px-3 py-1 rounded-lg bg-green-600 text-white text-sm hover:bg-green-700 transition-colors"
-                          onClick={() => handleApproveProgress(record)}
-                        >
-                          Approve
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {pendingProgress.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className={`text-center py-4 ${
-                        isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                      }`}>
-                        No pending approvals.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-500 rounded-xl p-8 text-white shadow-2xl relative overflow-hidden">
+        <div className="absolute inset-0 bg-black/10"></div>
+        <div className="relative z-10">
+          <div className="flex items-center gap-4 mb-3">
+            <div className="text-5xl">🎓</div>
+            <div>
+              <h1 className="text-4xl font-bold mb-2">Courses Admin Dashboard</h1>
+              <p className="text-white/90 text-lg">Manage courses, videos, and student progress</p>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <StatCard
+          title="Total Courses"
+          value={stats.totalCourses}
+          icon="📚"
+          gradient="from-indigo-500 to-purple-500"
+          onClick={() => navigate('/admincourset4s/manage')}
+        />
+        <StatCard
+          title="Total Videos"
+          value={stats.totalVideos}
+          icon="🎥"
+          gradient="from-purple-500 to-pink-500"
+          onClick={() => navigate('/admincourset4s/videos')}
+        />
+        <StatCard
+          title="Total Students"
+          value={stats.totalStudents}
+          icon="👥"
+          gradient="from-pink-500 to-rose-500"
+          onClick={() => navigate('/admincourset4s/progress')}
+        />
+        <StatCard
+          title="Active Courses"
+          value={stats.activeCourses}
+          icon="✅"
+          gradient="from-green-500 to-emerald-500"
+        />
+        <StatCard
+          title="Completed Courses"
+          value={stats.completedCourses}
+          icon="🎯"
+          gradient="from-blue-500 to-cyan-500"
+          onClick={() => navigate('/admincourset4s/progress')}
+        />
+        <StatCard
+          title="Total Progress"
+          value={stats.totalProgress}
+          icon="📊"
+          gradient="from-cyan-500 to-teal-500"
+          onClick={() => navigate('/admincourset4s/progress')}
+        />
+      </div>
+
+      {/* Quick Actions */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
+        <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-white flex items-center gap-2">
+          <span>⚡</span> Quick Actions
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <button
+            onClick={() => navigate('/admincourset4s/manage')}
+            className="p-5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:from-indigo-600 hover:to-purple-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left"
+          >
+            <div className="text-3xl mb-2">📚</div>
+            <div className="font-bold text-lg mb-1">Manage Courses</div>
+            <div className="text-sm opacity-90">Create and edit courses</div>
+          </button>
+          <button
+            onClick={() => navigate('/admincourset4s/videos')}
+            className="p-5 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left"
+          >
+            <div className="text-3xl mb-2">🎥</div>
+            <div className="font-bold text-lg mb-1">Manage Videos</div>
+            <div className="text-sm opacity-90">Add and organize videos</div>
+          </button>
+          <button
+            onClick={() => navigate('/admincourset4s/progress')}
+            className="p-5 rounded-xl bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:from-pink-600 hover:to-rose-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left"
+          >
+            <div className="text-3xl mb-2">📊</div>
+            <div className="font-bold text-lg mb-1">View Progress</div>
+            <div className="text-sm opacity-90">Monitor student progress</div>
+          </button>
+          <button
+            onClick={() => navigate('/admincourset4s/settings')}
+            className="p-5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-600 hover:to-blue-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left"
+          >
+            <div className="text-3xl mb-2">⚙️</div>
+            <div className="font-bold text-lg mb-1">Settings</div>
+            <div className="text-sm opacity-90">Configure course settings</div>
+          </button>
+        </div>
+      </div>
+
+      {/* Info Section */}
+      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-xl p-6 border border-indigo-200 dark:border-indigo-800">
+        <h3 className="text-lg font-bold mb-2 text-gray-800 dark:text-white">📝 Course Management</h3>
+        <p className="text-gray-700 dark:text-gray-300">
+          Manage all aspects of your courses including course creation, video management, and student progress tracking.
+          All changes are logged for audit purposes.
+        </p>
+      </div>
     </div>
-  );
-};
+  )
+}
 
-export default CoursesAdminPanel;
-
+export default CoursesAdminDashboard

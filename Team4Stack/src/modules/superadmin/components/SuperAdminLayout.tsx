@@ -40,7 +40,8 @@ const SuperAdminLayout: React.FC = () => {
           return
         }
 
-        // Environment variable check
+        // Environment variable check (MUST for super admin)
+        // Super admin MUST be in .env file for security
         if (!isEmailAllowedForAdmin(userEmail)) {
           sessionStorage.removeItem('admin_session')
           navigate('/supadmin/login', { replace: true })
@@ -51,7 +52,7 @@ const SuperAdminLayout: React.FC = () => {
         // Check if user is super admin in admin_users table
         const { data: adminData, error: adminError } = await supabase
           .from('admin_users')
-          .select('email, role')
+          .select('*')
           .eq('email', userEmail)
           .maybeSingle()
 
@@ -63,9 +64,26 @@ const SuperAdminLayout: React.FC = () => {
         }
 
         // Check if user has super_admin role
-        if (adminData.role !== 'super_admin') {
-          // Not a super admin, redirect to regular admin panel
-          navigate('/adminlandingt4s', { replace: true })
+        const userRole = (adminData as any)?.role || 'admin'
+        if (userRole !== 'super_admin') {
+          // Not a super admin, redirect to their appropriate admin panel based on role
+          switch (userRole) {
+            case 'landing_admin':
+            case 'admin':
+              navigate('/adminlandingt4s', { replace: true })
+              break
+            case 'stackstore_admin':
+              navigate('/adminstackt4s', { replace: true })
+              break
+            case 'courses_admin':
+              navigate('/admincourset4s', { replace: true })
+              break
+            case 'team_admin':
+              navigate('/adminteamt4s', { replace: true })
+              break
+            default:
+              navigate('/adminlandingt4s/login', { replace: true })
+          }
           setLoading(false)
           return
         }
