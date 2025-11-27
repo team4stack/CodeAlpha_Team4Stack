@@ -1,4 +1,3 @@
-export * as core from './core';
 export * as modals from './modals';
 export * as utilities from './utilities';
 

@@ -1,7 +1,7 @@
 import React from 'react';
-import { core, utilities, modals } from '../components';
-
-const { Navbar, Footer } = core;
+import { utilities, modals } from '../components';
+import MainNavbar from '../components/navigation/MainNavbar';
+import { MainFooter } from '../shared/components/Footer';
 const { WhatsAppButton } = utilities;
 const { PWAInstallPrompt } = modals;
 
@@ -12,9 +12,11 @@ interface MainLayoutProps {
 const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   return (
     <>
-      <Navbar />
-      {children}
-      <Footer />
+      <MainNavbar />
+      <main>
+        {children}
+      </main>
+      <MainFooter />
       <WhatsAppButton />
       <PWAInstallPrompt />
     </>

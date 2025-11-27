@@ -118,7 +118,7 @@ const AuthGuard: React.FC<Props> = ({ children }) => {
   }
 
   if (!isAdmin || !allowed) {
-    return <Navigate to="/adminsami/login" replace />
+    return <Navigate to="/adminlandingt4s/login" replace />
   }
 
   return <>{children}</>

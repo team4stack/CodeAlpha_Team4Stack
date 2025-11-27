@@ -71,13 +71,40 @@ export const LightThemeClean: React.FC = () => {
         transition: background 0.3s ease !important;
       }
 
-      .light #services,
-      .light #about,
-      .light #projects,
-      .light #courses,
-      .light #contact,
-      .light #reviews {
+      /* Give each main section a slightly different off‑white so layout feels layered */
+      .light #about {
+        /* Main intro section – clean white */
         background: #ffffff !important;
+        transition: background 0.3s ease !important;
+      }
+
+      .light #services {
+        /* Cool light gray */
+        background: #f3f4f6 !important;
+        transition: background 0.3s ease !important;
+      }
+
+      .light #projects {
+        /* Soft blue tint so projects block clearly alag lage */
+        background: #eff6ff !important;
+        transition: background 0.3s ease !important;
+      }
+
+      .light #courses {
+        /* Courses ko thora warm highlight */
+        background: linear-gradient(180deg, #fff7ed 0%, #fffbeb 40%, #fef3c7 100%) !important;
+        transition: background 0.3s ease !important;
+      }
+
+      .light #contact {
+        /* Very light pink tint for contact area */
+        background: #fef2f2 !important;
+        transition: background 0.3s ease !important;
+      }
+
+      .light #reviews {
+        /* Back to neutral off‑white for testimonials */
+        background: #f9fafb !important;
         transition: background 0.3s ease !important;
       }
 
