@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
 import TeamAdminSidebar from './TeamAdminSidebar'
 import AdminHeader from '../../../../components/admin/shared/AdminHeader'
-import { supabase } from '../../../utils/supabaseClient'
-import { isEmailAllowedForAdmin } from '../../../auth/utils/adminSecurity'
+import { supabase } from '../../../../utils/supabaseClient'
+import { isEmailAllowedForAdmin } from '../../../../auth/utils/adminSecurity'
 
 const TeamAdminLayout: React.FC = () => {
   const navigate = useNavigate()
@@ -40,8 +40,10 @@ const TeamAdminLayout: React.FC = () => {
           return
         }
 
-        // Environment variable check
-        if (!isEmailAllowedForAdmin(userEmail)) {
+        // Environment variable check (only for super admin)
+        // Other admins can access via Supabase check only
+        const isSuperAdmin = userEmail === 'superadmin@gmail.com'
+        if (isSuperAdmin && !isEmailAllowedForAdmin(userEmail)) {
           sessionStorage.removeItem('admin_session')
           navigate('/adminteamt4s/login', { replace: true })
           setLoading(false)
@@ -51,7 +53,7 @@ const TeamAdminLayout: React.FC = () => {
         // Check if user is admin in admin_users table
         const { data: adminData, error: adminError } = await supabase
           .from('admin_users')
-          .select('email, role')
+          .select('*')
           .eq('email', userEmail)
           .maybeSingle()
 
@@ -62,7 +64,21 @@ const TeamAdminLayout: React.FC = () => {
           return
         }
 
-        // User is authenticated and is admin - allow access
+        // Step 3: ROLE-BASED ACCESS CONTROL
+        // Check if user has permission to access team admin panel
+        // Only super_admin or team_admin role can access
+        const userRole = (adminData as any)?.role || 'admin'
+        const allowedRoles = ['super_admin', 'team_admin']
+        if (!allowedRoles.includes(userRole)) {
+          // User doesn't have permission for this admin panel
+          // Redirect to login
+          sessionStorage.removeItem('admin_session')
+          navigate('/adminteamt4s/login', { replace: true })
+          setLoading(false)
+          return
+        }
+
+        // User is authenticated and has correct role - allow access
         setLoading(false)
       } catch (error) {
         sessionStorage.removeItem('admin_session')

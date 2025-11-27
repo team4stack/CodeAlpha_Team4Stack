@@ -1,22 +1,21 @@
 import React, { useEffect, useState } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
-import AdminSidebar from './LandingAdminSidebar'
+import CoursesAdminSidebar from './CoursesAdminSidebar'
 import AdminHeader from '../../../../components/admin/shared/AdminHeader'
 import { supabase } from '../../../../utils/supabaseClient'
 import { isEmailAllowedForAdmin } from '../../../../auth/utils/adminSecurity'
 
-const AdminLayout: React.FC = () => {
+const CoursesAdminLayout: React.FC = () => {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const checkSession = async () => {
-      // Check custom admin session (NOT Supabase Auth session)
-      // Admin login is completely separate from normal website login
+      // Check custom admin session
       const adminSessionStr = sessionStorage.getItem('admin_session')
       
       if (!adminSessionStr) {
-        navigate('/adminlandingt4s/login', { replace: true })
+        navigate('/admincourset4s/login', { replace: true })
         setLoading(false)
         return
       }
@@ -26,20 +25,17 @@ const AdminLayout: React.FC = () => {
         
         // Check if session is expired
         if (!adminSession.expiresAt || Date.now() >= adminSession.expiresAt) {
-          // Session expired, remove it
           sessionStorage.removeItem('admin_session')
-          navigate('/adminlandingt4s/login', { replace: true })
+          navigate('/admincourset4s/login', { replace: true })
           setLoading(false)
           return
         }
 
-        // Step 1: ENVIRONMENT VARIABLE CHECK (FIRST - Most Secure Layer)
-        // Even if Supabase is hacked, this check will prevent unauthorized access
         const userEmail = adminSession.email?.toLowerCase().trim()
         
         if (!userEmail) {
           sessionStorage.removeItem('admin_session')
-          navigate('/adminlandingt4s/login', { replace: true })
+          navigate('/admincourset4s/login', { replace: true })
           setLoading(false)
           return
         }
@@ -49,59 +45,42 @@ const AdminLayout: React.FC = () => {
         const isSuperAdmin = userEmail === 'superadmin@gmail.com'
         if (isSuperAdmin && !isEmailAllowedForAdmin(userEmail)) {
           sessionStorage.removeItem('admin_session')
-          navigate('/adminlandingt4s/login', { replace: true })
+          navigate('/admincourset4s/login', { replace: true })
           setLoading(false)
           return
         }
         
-        // Step 2: SUPABASE TABLE CHECK (SECOND - Can be compromised, but still checked)
-        // Multi-layer security: Both environment variable AND Supabase table must pass
+        // Check if user is admin in admin_users table
         const { data: adminData, error: adminError } = await supabase
           .from('admin_users')
           .select('*')
           .eq('email', userEmail)
           .maybeSingle()
 
-        if (adminError) {
-          // No sensitive info in logs
+        if (adminError || !adminData || !adminData.email) {
           sessionStorage.removeItem('admin_session')
-          navigate('/adminlandingt4s/login', { replace: true })
-          setLoading(false)
-          return
-        }
-
-        // CRITICAL: If user email is NOT in admin_users table, deny access
-        // Normal users ka email admin_users mein nahi hoga
-        // Only manually added admins will be in admin_users table
-        if (!adminData || !adminData.email) {
-          // This is a normal user trying to access admin panel
-          // Remove session and redirect to login
-          sessionStorage.removeItem('admin_session')
-          navigate('/adminlandingt4s/login', { replace: true })
+          navigate('/admincourset4s/login', { replace: true })
           setLoading(false)
           return
         }
 
         // Step 3: ROLE-BASED ACCESS CONTROL
-        // Check if user has permission to access landing admin panel
-        // Only super_admin, landing_admin, or legacy 'admin' role can access
+        // Check if user has permission to access courses admin panel
+        // Only super_admin or courses_admin role can access
         const userRole = (adminData as any)?.role || 'admin'
-        const allowedRoles = ['super_admin', 'landing_admin', 'admin']
+        const allowedRoles = ['super_admin', 'courses_admin']
         if (!allowedRoles.includes(userRole)) {
-          // User doesn't have permission for this admin panel
-          // Redirect to their appropriate admin panel or login
           sessionStorage.removeItem('admin_session')
-          navigate('/adminlandingt4s/login', { replace: true })
+          navigate('/admin/login', { replace: true }) // Redirect to unified login
           setLoading(false)
           return
         }
 
-        // User is authenticated and is admin - allow access
+        // User is authenticated and has correct role - allow access
         setLoading(false)
       } catch (error) {
-        // Invalid session, remove it
         sessionStorage.removeItem('admin_session')
-        navigate('/adminlandingt4s/login', { replace: true })
+        navigate('/admincourset4s/login', { replace: true })
         setLoading(false)
       }
     }
@@ -126,8 +105,8 @@ const AdminLayout: React.FC = () => {
     <div className="min-h-screen flex relative overflow-hidden bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-gray-950 dark:via-gray-900 dark:to-black">
       {/* Neon grid background accents */}
       <div className="pointer-events-none absolute inset-0 opacity-10 [background:radial-gradient(circle_at_20%_20%,#7c3aed_0,transparent_35%),radial-gradient(circle_at_80%_30%,#06b6d4_0,transparent_35%),radial-gradient(circle_at_30%_80%,#22c55e_0,transparent_35%)]"></div>
-      <div className="pointer-events-none absolute -inset-24 blur-3xl opacity-[0.15] bg-gradient-to-br from-fuchsia-500 via-cyan-400 to-emerald-400"></div>
-      <AdminSidebar />
+      <div className="pointer-events-none absolute -inset-24 blur-3xl opacity-[0.15] bg-gradient-to-br from-indigo-500 via-purple-400 to-pink-400"></div>
+      <CoursesAdminSidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <AdminHeader />
         <main className="flex-1 p-6">
@@ -138,6 +117,5 @@ const AdminLayout: React.FC = () => {
   )
 }
 
-export default AdminLayout
-
+export default CoursesAdminLayout
 

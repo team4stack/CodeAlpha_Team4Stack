@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import StatCard from '../../../components/admin/shared/StatCard'
-import { supabase } from '../../../utils/supabaseClient'
+import StatCard from '../../../../components/admin/shared/StatCard'
+import { supabase } from '../../../../utils/supabaseClient'
 
 const TeamAdminDashboard: React.FC = () => {
   const navigate = useNavigate()
@@ -63,9 +63,17 @@ const TeamAdminDashboard: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-500 via-cyan-600 to-teal-500 rounded-xl p-6 text-white shadow-lg">
-        <h1 className="text-3xl font-bold mb-2">👥 Team Admin Dashboard</h1>
-        <p className="text-white/90">Manage team members, mentor profiles, and roles</p>
+      <div className="bg-gradient-to-r from-blue-500 via-cyan-600 to-teal-500 rounded-xl p-8 text-white shadow-2xl relative overflow-hidden">
+        <div className="absolute inset-0 bg-black/10"></div>
+        <div className="relative z-10">
+          <div className="flex items-center gap-4 mb-3">
+            <div className="text-5xl">👥</div>
+            <div>
+              <h1 className="text-4xl font-bold mb-2">Team Admin Dashboard</h1>
+              <p className="text-white/90 text-lg">Manage team members, mentor profiles, and roles</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Stats Grid */}
@@ -114,38 +122,40 @@ const TeamAdminDashboard: React.FC = () => {
 
       {/* Quick Actions */}
       <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
-        <h2 className="text-xl font-bold mb-4 text-gray-800 dark:text-white">Quick Actions</h2>
+        <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-white flex items-center gap-2">
+          <span>⚡</span> Quick Actions
+        </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <button
             onClick={() => navigate('/adminteamt4s/members')}
-            className="p-4 rounded-lg bg-gradient-to-r from-blue-500 to-cyan-500 text-white hover:from-blue-600 hover:to-cyan-600 transition-all shadow-md hover:shadow-lg"
+            className="p-5 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 text-white hover:from-blue-600 hover:to-cyan-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left"
           >
-            <div className="text-2xl mb-2">👤</div>
-            <div className="font-semibold">Add Team Member</div>
+            <div className="text-3xl mb-2">👤</div>
+            <div className="font-bold text-lg mb-1">Add Team Member</div>
             <div className="text-sm opacity-90">Create new team member profile</div>
           </button>
           <button
             onClick={() => navigate('/adminteamt4s/mentor')}
-            className="p-4 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 transition-all shadow-md hover:shadow-lg"
+            className="p-5 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left"
           >
-            <div className="text-2xl mb-2">🎓</div>
-            <div className="font-semibold">Manage Mentor</div>
+            <div className="text-3xl mb-2">🎓</div>
+            <div className="font-bold text-lg mb-1">Manage Mentor</div>
             <div className="text-sm opacity-90">Update mentor profile</div>
           </button>
           <button
             onClick={() => navigate('/adminteamt4s/roles')}
-            className="p-4 rounded-lg bg-gradient-to-r from-indigo-500 to-blue-500 text-white hover:from-indigo-600 hover:to-blue-600 transition-all shadow-md hover:shadow-lg"
+            className="p-5 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-500 text-white hover:from-indigo-600 hover:to-blue-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left"
           >
-            <div className="text-2xl mb-2">💼</div>
-            <div className="font-semibold">Manage Roles</div>
+            <div className="text-3xl mb-2">💼</div>
+            <div className="font-bold text-lg mb-1">Manage Roles</div>
             <div className="text-sm opacity-90">Configure team roles</div>
           </button>
           <button
             onClick={() => navigate('/adminteamt4s/settings')}
-            className="p-4 rounded-lg bg-gradient-to-r from-teal-500 to-cyan-500 text-white hover:from-teal-600 hover:to-cyan-600 transition-all shadow-md hover:shadow-lg"
+            className="p-5 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 text-white hover:from-teal-600 hover:to-cyan-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left"
           >
-            <div className="text-2xl mb-2">⚙️</div>
-            <div className="font-semibold">Settings</div>
+            <div className="text-3xl mb-2">⚙️</div>
+            <div className="font-bold text-lg mb-1">Settings</div>
             <div className="text-sm opacity-90">Configure team settings</div>
           </button>
         </div>
