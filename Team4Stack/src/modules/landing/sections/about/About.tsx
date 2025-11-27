@@ -54,6 +54,7 @@ const About: React.FC = () => {
     github?: string;
     tags: string[];
   } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const sanitizeImageUrl = (u?: string): string => {
@@ -64,6 +65,7 @@ const About: React.FC = () => {
       return u;
     };
     (async () => {
+      setIsLoading(true);
       const { data } = await supabase
         .from('team_members')
         .select('name,role,description,primary_tag,image_url,profile_image_url,banner_image_url,portfolio_url,github_url,is_head,active,order_index,id')
@@ -108,6 +110,7 @@ const About: React.FC = () => {
       } else {
         setMentor(null);
       }
+      setIsLoading(false);
     })();
   }, []);
 
@@ -180,9 +183,37 @@ const About: React.FC = () => {
 
       <div className="container-custom relative" style={{ zIndex: 1 }}>
         {/* Mentor Section (from Supabase) */}
-        {mentor && (
-          <div className="flex items-center justify-center min-h-screen py-16 px-4 mb-16">
-            <div className="max-w-5xl w-full">
+        <div className="flex items-center justify-center px-4">
+          <div className="max-w-5xl w-full">
+            {isLoading ? (
+              // Skeleton loading card for mentor
+              <div className={`t4s-card large mentor-neon ${isDarkMode ? 'bg-white/10 border-white/25' : 'bg-gray-50 border-gray-200'}`}>
+                <div className={`banner ${isDarkMode ? 'bg-gray-800' : 'bg-gray-200'} animate-pulse`} style={{ height: '14rem' }}>
+                  <div className="dp bg-gray-600 animate-pulse" style={{ width: '8rem', height: '8rem', borderRadius: '50%', transform: 'translateY(35%)', margin: '0 auto' }}></div>
+                </div>
+                <div className="menu">
+                  <div className="opener"><span></span><span></span><span></span></div>
+                </div>
+                <div className="flex flex-col flex-grow pt-4">
+                  <div className={`h-8 md:h-10 w-64 mx-auto mb-3 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'} rounded animate-pulse`}></div>
+                  <div className={`h-6 w-48 mx-auto mb-4 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'} rounded animate-pulse`}></div>
+                  <div className="flex flex-wrap gap-2 justify-center mb-6">
+                    <div className={`h-6 w-20 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'} rounded-full animate-pulse`}></div>
+                    <div className={`h-6 w-24 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'} rounded-full animate-pulse`}></div>
+                    <div className={`h-6 w-16 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'} rounded-full animate-pulse`}></div>
+                  </div>
+                  <div className="actions mt-auto">
+                    <div className="cta-row">
+                      <div className={`flex-1 h-12 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'} rounded-full animate-pulse`}></div>
+                      <div className={`flex-1 h-12 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'} rounded-lg animate-pulse`}></div>
+                    </div>
+                    <div className="cta-row">
+                      <div className={`w-full h-12 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'} rounded-lg animate-pulse`}></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : mentor ? (
               <div className={`t4s-card large mentor-neon ${isDarkMode ? 'bg-white/10 border-white/25' : 'bg-gray-50 border-gray-200'}`}>
                 <div className="banner" style={{ backgroundImage: `url(${mentor.bannerImage || 'https://images.unsplash.com/photo-1517433456452-f9633a875f6f?q=80&w=1600&auto=format&fit=crop'})` }}>
                   <button className="dp" onClick={() => setSelectedImage(mentor.image)} aria-label={`Open ${mentor.name} image`}>
@@ -249,9 +280,9 @@ const About: React.FC = () => {
                   </div>
                 </div>
               </div>
-            </div>
+            ) : null}
           </div>
-        )}
+        </div>
 
         {/* Meet Team4Stack Section */}
         <div className="text-center mb-16">
@@ -265,79 +296,115 @@ const About: React.FC = () => {
 
         {/* Team Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16" style={{ alignItems: 'stretch' }}>
-          {teamMembers.map((member, index) => (
-            <div key={index} className="relative group flex flex-col" style={{ height: '100%' }}>
-              <article className="t4s-card team-neon">
-                <div className="banner" style={{ backgroundImage: `url(${member.bannerImage || bannerImages[index % bannerImages.length]})` }}>
-                  <button className="dp" onClick={() => { setSelectedImage(member.image); setSelectedMemberIndex(index); }} aria-label={`Open ${member.name} image`}>
-                    <img src={member.image} alt={member.name} />
-                  </button>
-                </div>
-                <div className="menu">
-                  <div className="opener"><span></span><span></span><span></span></div>
-                </div>
-                <div className="flex flex-col flex-grow" style={{ justifyContent: 'space-between' }}>
-                  <div className="flex flex-col items-center justify-center flex-grow" style={{ paddingTop: '1rem', minHeight: '120px' }}>
-                    <h2 className={`name ${isDarkMode ? 'text-white' : 'text-gray-800'}`} style={{marginTop: '0', paddingTop: '0'}}>{member.name}</h2>
-                    <div className="title">{member.role}</div>
+          {isLoading ? (
+            // Skeleton loading cards
+            Array.from({ length: 4 }).map((_, index) => (
+              <div key={`skeleton-${index}`} className="relative group flex flex-col" style={{ height: '100%' }}>
+                <article className="t4s-card team-neon">
+                  <div className={`banner ${isDarkMode ? 'bg-gray-800' : 'bg-gray-200'} animate-pulse`}>
+                    <div className="dp bg-gray-600 animate-pulse" style={{ width: '6.5rem', height: '6.5rem', borderRadius: '50%', transform: 'translateY(40%)', margin: '0 auto' }}></div>
                   </div>
-                  <div style={{ marginTop: 'auto', width: '100%' }}>
-                    <div className="flex flex-wrap gap-2 justify-center px-4 mb-3 min-h-[32px]">
-                      {member.primaryTag ? (() => {
-                        const tags = String(member.primaryTag)
-                          .split(',')
-                          .map(t => t.trim())
-                          .filter(Boolean);
-                        if (tags.length === 0) return null;
-                        return tags.map((t, i) => (
-                          <span
-                            key={i}
-                            className={`text-xs font-medium px-3 py-1 rounded-full border ${isDarkMode ? 'bg-white/20 text-white border-white/30' : 'bg-gray-100 text-gray-800 border-gray-300'}`}
+                  <div className="menu">
+                    <div className="opener"><span></span><span></span><span></span></div>
+                  </div>
+                  <div className="flex flex-col flex-grow" style={{ justifyContent: 'space-between' }}>
+                    <div className="flex flex-col items-center justify-center flex-grow" style={{ paddingTop: '1rem', minHeight: '120px' }}>
+                      <div className={`h-6 w-32 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'} rounded animate-pulse mb-2`}></div>
+                      <div className={`h-4 w-24 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'} rounded animate-pulse`}></div>
+                    </div>
+                    <div style={{ marginTop: 'auto', width: '100%' }}>
+                      <div className="flex flex-wrap gap-2 justify-center px-4 mb-3 min-h-[32px]">
+                        <div className={`h-6 w-16 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'} rounded-full animate-pulse`}></div>
+                      </div>
+                      <div className="actions">
+                        <div className="cta-row">
+                          <div className={`flex-1 h-12 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'} rounded-full animate-pulse`}></div>
+                          <div className={`flex-1 h-12 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'} rounded-lg animate-pulse`}></div>
+                        </div>
+                        <div className="cta-row">
+                          <div className={`w-full h-12 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'} rounded-lg animate-pulse`}></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              </div>
+            ))
+          ) : (
+            teamMembers.map((member, index) => (
+              <div key={index} className="relative group flex flex-col" style={{ height: '100%' }}>
+                <article className="t4s-card team-neon">
+                  <div className="banner" style={{ backgroundImage: `url(${member.bannerImage || bannerImages[index % bannerImages.length]})` }}>
+                    <button className="dp" onClick={() => { setSelectedImage(member.image); setSelectedMemberIndex(index); }} aria-label={`Open ${member.name} image`}>
+                      <img src={member.image} alt={member.name} />
+                    </button>
+                  </div>
+                  <div className="menu">
+                    <div className="opener"><span></span><span></span><span></span></div>
+                  </div>
+                  <div className="flex flex-col flex-grow" style={{ justifyContent: 'space-between' }}>
+                    <div className="flex flex-col items-center justify-center flex-grow" style={{ paddingTop: '1rem', minHeight: '120px' }}>
+                      <h2 className={`name ${isDarkMode ? 'text-white' : 'text-gray-800'}`} style={{marginTop: '0', paddingTop: '0'}}>{member.name}</h2>
+                      <div className="title">{member.role}</div>
+                    </div>
+                    <div style={{ marginTop: 'auto', width: '100%' }}>
+                      <div className="flex flex-wrap gap-2 justify-center px-4 mb-3 min-h-[32px]">
+                        {member.primaryTag ? (() => {
+                          const tags = String(member.primaryTag)
+                            .split(',')
+                            .map(t => t.trim())
+                            .filter(Boolean);
+                          if (tags.length === 0) return null;
+                          return tags.map((t, i) => (
+                            <span
+                              key={i}
+                              className={`text-xs font-medium px-3 py-1 rounded-full border ${isDarkMode ? 'bg-white/20 text-white border-white/30' : 'bg-gray-100 text-gray-800 border-gray-300'}`}
+                            >
+                              {t}
+                            </span>
+                          ));
+                        })() : <div style={{ height: '8px' }}></div>}
+                      </div>
+                      <div className="actions">
+                        <div className="cta-row">
+                          <a 
+                            className="portfolio-btn-new flex-1 no-underline inline-flex items-center justify-center font-medium transition-all rounded-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 px-4 py-3 relative"
+                            href={member.portfolio} 
+                            onClick={(e) => handlePortfolioClick(e, index, member.portfolio)}
+                            style={{ 
+                              textDecoration: 'none', 
+                              borderRadius: '50px',
+                              width: '100%',
+                              minWidth: '0',
+                              position: 'relative',
+                              zIndex: 1,
+                              color: '#ffffff'
+                            }}
                           >
-                            {t}
-                          </span>
-                        ));
-                      })() : <div style={{ height: '8px' }}></div>}
-                    </div>
-                    <div className="actions">
-                      <div className="cta-row">
-                        <a 
-                          className="portfolio-btn-new flex-1 no-underline inline-flex items-center justify-center font-medium transition-all rounded-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 px-4 py-3 relative"
-                          href={member.portfolio} 
-                          onClick={(e) => handlePortfolioClick(e, index, member.portfolio)}
-                          style={{ 
-                            textDecoration: 'none', 
-                            borderRadius: '50px',
-                            width: '100%',
-                            minWidth: '0',
-                            position: 'relative',
-                            zIndex: 1,
-                            color: '#ffffff'
-                          }}
-                        >
-                          <span style={{ position: 'relative', zIndex: 2, color: '#ffffff' }}>Portfolio</span>
-                        </a>
-                        <a 
-                          className="github-btn-navbar-style flex-1 no-underline inline-flex items-center justify-center font-medium border transition-colors rounded-lg"
-                          href={member.github} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                        >
-                          <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                            <path fillRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clipRule="evenodd" />
-                          </svg>
-                          <span>Github</span>
-                        </a>
-                      </div>
-                      <div className="cta-row">
-                        <button className="preview-btn w-full" onClick={() => { setSelectedImage(member.image); setSelectedMemberIndex(index); }}>Preview</button>
+                            <span style={{ position: 'relative', zIndex: 2, color: '#ffffff' }}>Portfolio</span>
+                          </a>
+                          <a 
+                            className="github-btn-navbar-style flex-1 no-underline inline-flex items-center justify-center font-medium border transition-colors rounded-lg"
+                            href={member.github} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                          >
+                            <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                              <path fillRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clipRule="evenodd" />
+                            </svg>
+                            <span>Github</span>
+                          </a>
+                        </div>
+                        <div className="cta-row">
+                          <button className="preview-btn w-full" onClick={() => { setSelectedImage(member.image); setSelectedMemberIndex(index); }}>Preview</button>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </article>
-            </div>
-          ))}
+                </article>
+              </div>
+            ))
+          )}
         </div>
 
         {/* Mission & Values */}
