@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { supabase } from '../../../utils/supabaseClient'
+import { supabase } from '../../../../utils/supabaseClient'
 
 const AdminSidebar: React.FC = () => {
   const [labels, setLabels] = useState<Record<string,string>>({})
