@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
-import AdminSidebar from './AdminSidebar'
+import AdminSidebar from './LandingAdminSidebar'
 import AdminHeader from '../../../../components/admin/shared/AdminHeader'
 import { supabase } from '../../../../utils/supabaseClient'
 import { isEmailAllowedForAdmin } from '../../../../auth/utils/adminSecurity'

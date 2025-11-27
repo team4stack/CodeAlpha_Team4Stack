@@ -54,6 +54,7 @@ const About: React.FC = () => {
     github?: string;
     tags: string[];
   } | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const sanitizeImageUrl = (u?: string): string => {
@@ -64,49 +65,54 @@ const About: React.FC = () => {
       return u;
     };
     (async () => {
-      const { data } = await supabase
-        .from('team_members')
-        .select('name,role,description,primary_tag,image_url,profile_image_url,banner_image_url,portfolio_url,github_url,is_head,active,order_index,id')
-        .eq('active', true)
-        .order('is_head', { ascending: false })
-        .order('order_index', { ascending: true, nullsFirst: false })
-        .order('id', { ascending: true });
-      const mapped = (data || []).map((r: any) => ({
-        name: r.name,
-        role: r.role,
-        image: sanitizeImageUrl(r.profile_image_url || r.image_url || ''),
-        portfolio: r.portfolio_url || '#',
-        github: r.github_url || '#',
-        description: r.description || '',
-        primaryTag: r.primary_tag || undefined,
-        bannerImage: sanitizeImageUrl(r.banner_image_url || '' ) || undefined,
-      }));
-      setTeamMembers(mapped);
+      setLoading(true);
+      try {
+        const { data } = await supabase
+          .from('team_members')
+          .select('name,role,description,primary_tag,image_url,profile_image_url,banner_image_url,portfolio_url,github_url,is_head,active,order_index,id')
+          .eq('active', true)
+          .order('is_head', { ascending: false })
+          .order('order_index', { ascending: true, nullsFirst: false })
+          .order('id', { ascending: true });
+        const mapped = (data || []).map((r: any) => ({
+          name: r.name,
+          role: r.role,
+          image: sanitizeImageUrl(r.profile_image_url || r.image_url || ''),
+          portfolio: r.portfolio_url || '#',
+          github: r.github_url || '#',
+          description: r.description || '',
+          primaryTag: r.primary_tag || undefined,
+          bannerImage: sanitizeImageUrl(r.banner_image_url || '' ) || undefined,
+        }));
+        setTeamMembers(mapped);
 
-      // Fetch mentor profile (first active)
-      const { data: mentorRows } = await supabase
-        .from('mentor_profile')
-        .select('name,role,description,primary_tag,profile_image_url,banner_image_url,portfolio_url,github_url,active')
-        .eq('active', true)
-        .order('order_index', { ascending: true })
-        .limit(1);
-      if (mentorRows && mentorRows.length > 0) {
-        const m = mentorRows[0] as any;
-        setMentor({
-          name: m.name,
-          role: m.role,
-          description: m.description || '',
-          image: sanitizeImageUrl(m.profile_image_url || ''),
-          bannerImage: sanitizeImageUrl(m.banner_image_url || ''),
-          portfolio: m.portfolio_url || '#',
-          github: m.github_url || '#',
-          tags: String(m.primary_tag || '')
-            .split(',')
-            .map((t: string) => t.trim())
-            .filter(Boolean),
-        });
-      } else {
-        setMentor(null);
+        // Fetch mentor profile (first active)
+        const { data: mentorRows } = await supabase
+          .from('mentor_profile')
+          .select('name,role,description,primary_tag,profile_image_url,banner_image_url,portfolio_url,github_url,active')
+          .eq('active', true)
+          .order('order_index', { ascending: true })
+          .limit(1);
+        if (mentorRows && mentorRows.length > 0) {
+          const m = mentorRows[0] as any;
+          setMentor({
+            name: m.name,
+            role: m.role,
+            description: m.description || '',
+            image: sanitizeImageUrl(m.profile_image_url || ''),
+            bannerImage: sanitizeImageUrl(m.banner_image_url || ''),
+            portfolio: m.portfolio_url || '#',
+            github: m.github_url || '#',
+            tags: String(m.primary_tag || '')
+              .split(',')
+              .map((t: string) => t.trim())
+              .filter(Boolean),
+          });
+        } else {
+          setMentor(null);
+        }
+      } finally {
+        setLoading(false);
       }
     })();
   }, []);
@@ -180,8 +186,47 @@ const About: React.FC = () => {
 
       <div className="container-custom relative" style={{ zIndex: 1 }}>
         {/* Mentor Section (from Supabase) */}
-        {mentor && (
-          <div className="flex items-center justify-center min-h-screen py-16 px-4 mb-16">
+        {loading ? (
+          <div className="flex items-center justify-center py-4 px-4 mb-8">
+            <div className="max-w-5xl w-full">
+              <div className={`t4s-card large mentor-neon ${isDarkMode ? 'bg-white/10 border-white/25' : 'bg-gray-50 border-gray-200'}`}>
+                <div className="banner animate-pulse" style={{ background: isDarkMode ? 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)' : 'linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%)' }}>
+                  <div className="dp" style={{ 
+                    background: isDarkMode ? '#374151' : '#d1d5db', 
+                    borderRadius: '50%', 
+                    width: '7rem',
+                    aspectRatio: '1 / 1',
+                    border: '3px solid rgba(255,255,255,0.9)',
+                    boxShadow: '0 0.5rem 1rem rgba(0,0,0,0.2)',
+                    transform: 'translateY(35%)'
+                  }}></div>
+                </div>
+                <div className="menu">
+                  <div className="opener"><span></span><span></span><span></span></div>
+                </div>
+                <div className="flex flex-col flex-grow pt-4">
+                  <div className={`h-8 w-48 mx-auto mb-3 rounded ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'} animate-pulse`}></div>
+                  <div className={`h-6 w-64 mx-auto mb-4 rounded ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'} animate-pulse`}></div>
+                  <div className="flex flex-wrap gap-2 justify-center mb-6">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div key={i} className={`h-6 w-20 rounded-full ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'} animate-pulse`}></div>
+                    ))}
+                  </div>
+                  <div className="actions mt-auto">
+                    <div className="cta-row">
+                      <div className={`flex-1 h-12 rounded-full ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'} animate-pulse`}></div>
+                      <div className={`flex-1 h-12 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'} animate-pulse`}></div>
+                    </div>
+                    <div className="cta-row">
+                      <div className={`w-full h-12 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'} animate-pulse`}></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : mentor && (
+          <div className="flex items-center justify-center py-4 px-4 mb-8">
             <div className="max-w-5xl w-full">
               <div className={`t4s-card large mentor-neon ${isDarkMode ? 'bg-white/10 border-white/25' : 'bg-gray-50 border-gray-200'}`}>
                 <div className="banner" style={{ backgroundImage: `url(${mentor.bannerImage || 'https://images.unsplash.com/photo-1517433456452-f9633a875f6f?q=80&w=1600&auto=format&fit=crop'})` }}>
@@ -265,7 +310,51 @@ const About: React.FC = () => {
 
         {/* Team Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16" style={{ alignItems: 'stretch' }}>
-          {teamMembers.map((member, index) => (
+          {loading ? (
+            // Loading skeletons for team members
+            Array.from({ length: 4 }).map((_, index) => (
+              <div key={index} className="relative group flex flex-col" style={{ height: '100%' }}>
+                <article className="t4s-card team-neon">
+                  <div className="banner animate-pulse" style={{ background: isDarkMode ? 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)' : 'linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%)' }}>
+                    <div className="dp" style={{ 
+                      background: isDarkMode ? '#374151' : '#d1d5db', 
+                      borderRadius: '50%', 
+                      width: '6.5rem',
+                      aspectRatio: '1 / 1',
+                      border: '3px solid rgba(255,255,255,0.9)',
+                      boxShadow: '0 0.5rem 1rem rgba(0,0,0,0.2)',
+                      transform: 'translateY(40%)'
+                    }}></div>
+                  </div>
+                  <div className="menu">
+                    <div className="opener"><span></span><span></span><span></span></div>
+                  </div>
+                  <div className="flex flex-col flex-grow" style={{ justifyContent: 'space-between' }}>
+                    <div className="flex flex-col items-center justify-center flex-grow" style={{ paddingTop: '1rem', minHeight: '120px' }}>
+                      <div className={`h-6 w-32 mb-2 rounded ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'} animate-pulse`}></div>
+                      <div className={`h-4 w-24 rounded ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'} animate-pulse`}></div>
+                    </div>
+                    <div style={{ marginTop: 'auto', width: '100%' }}>
+                      <div className="flex flex-wrap gap-2 justify-center px-4 mb-3 min-h-[32px]">
+                        <div className={`h-6 w-16 rounded-full ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'} animate-pulse`}></div>
+                        <div className={`h-6 w-20 rounded-full ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'} animate-pulse`}></div>
+                      </div>
+                      <div className="actions">
+                        <div className="cta-row">
+                          <div className={`flex-1 h-12 rounded-full ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'} animate-pulse`}></div>
+                          <div className={`flex-1 h-12 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'} animate-pulse`}></div>
+                        </div>
+                        <div className="cta-row">
+                          <div className={`w-full h-12 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'} animate-pulse`}></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              </div>
+            ))
+          ) : (
+            teamMembers.map((member, index) => (
             <div key={index} className="relative group flex flex-col" style={{ height: '100%' }}>
               <article className="t4s-card team-neon">
                 <div className="banner" style={{ backgroundImage: `url(${member.bannerImage || bannerImages[index % bannerImages.length]})` }}>
@@ -337,7 +426,8 @@ const About: React.FC = () => {
                 </div>
               </article>
             </div>
-          ))}
+          ))
+          )}
         </div>
 
         {/* Mission & Values */}
