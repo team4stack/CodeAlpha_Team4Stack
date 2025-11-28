@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../../utils/supabaseClient'
 import { isEmailAllowedForAdmin } from '../../utils/adminSecurity'
 
@@ -232,9 +232,17 @@ const LoginPage: React.FC = () => {
             </button>
           </form>
 
-          <p className="mt-4 text-center text-xs text-gray-400">
-            Only authorized users can access the admin panel.
-          </p>
+          <div className="mt-4 text-center">
+            <Link
+              to="/admin/reset-password"
+              className="text-xs text-purple-400 hover:text-purple-300 transition-colors"
+            >
+              Forgot Password?
+            </Link>
+            <p className="mt-2 text-xs text-gray-400">
+              Only authorized users can access the admin panel.
+            </p>
+          </div>
         </div>
       </div>
     </div>

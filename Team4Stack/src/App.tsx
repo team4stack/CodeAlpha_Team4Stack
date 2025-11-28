@@ -31,15 +31,20 @@ const UsersPage = React.lazy(() => import('./modules/landing/admin/pages/UsersPa
 const FormsPage = React.lazy(() => import('./modules/landing/admin/pages/FormsPage'));
 // Unified Admin Login Page - used for all admin panels
 const UnifiedAdminLoginPage = React.lazy(() => import('./pages/admin/LoginPage'));
+const PasswordResetPage = React.lazy(() => import('./pages/admin/PasswordResetPage'));
 
 // Courses Admin (/admincourset4s)
 const CoursesAdminLayout = React.lazy(() => import('./modules/courses/admin/components/CoursesAdminLayout'));
 const CoursesAdminDashboard = React.lazy(() => import('./modules/courses/admin/pages/CoursesAdminDashboard'));
-const CoursesAdminPanel = React.lazy(() => import('./modules/courses/admin/pages/CoursesAdminDashboard'));
+const VideosManagementPage = React.lazy(() => import('./modules/courses/admin/pages/VideosManagementPage'));
+const StudentProgressPage = React.lazy(() => import('./modules/courses/admin/pages/StudentProgressPage'));
+const CoursesSettingsPage = React.lazy(() => import('./modules/courses/admin/pages/CoursesSettingsPage'));
 
 // StackStore Admin (/adminstackt4s)
 const StackStoreAdminLayout = React.lazy(() => import('./modules/stackstore/admin/components/StackStoreAdminLayout'));
 const StackStoreAdminDashboard = React.lazy(() => import('./modules/stackstore/admin/pages/StackStoreAdminDashboard'));
+const ProductsManagementPage = React.lazy(() => import('./modules/stackstore/admin/pages/ProductsManagementPage'));
+const OrdersManagementPage = React.lazy(() => import('./modules/stackstore/admin/pages/OrdersManagementPage'));
 
 // Team Admin (/adminteamt4s)
 const TeamAdminLayout = React.lazy(() => import('./modules/team/admin/components/TeamAdminLayout'));
@@ -49,6 +54,9 @@ const TeamAdminDashboard = React.lazy(() => import('./modules/team/admin/pages/T
 const SuperAdminLayout = React.lazy(() => import('./modules/superadmin/components/SuperAdminLayout'));
 const SuperAdminDashboard = React.lazy(() => import('./modules/superadmin/pages/SuperAdminDashboard'));
 const RoleManagementPage = React.lazy(() => import('./modules/superadmin/pages/RoleManagementPage'));
+const UsersManagementPage = React.lazy(() => import('./modules/superadmin/pages/UsersManagementPage'));
+const SystemSettingsPage = React.lazy(() => import('./modules/superadmin/pages/SystemSettingsPage'));
+const AuditLogsPage = React.lazy(() => import('./modules/superadmin/pages/AuditLogsPage'));
 const CourseListPage = React.lazy(() => import('./modules/courses/pages/CourseListPage'));
 const CourseViewPage = React.lazy(() => import('./modules/courses/pages/CourseViewPage'));
 
@@ -126,22 +134,19 @@ const AppContentWithRouter: React.FC = () => {
               </Suspense>
             } />
             <Route path="videos" element={
-              <div className="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
-                <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-white">Videos Management</h2>
-                <p className="text-gray-600 dark:text-gray-400">Video management feature coming soon...</p>
-              </div>
+              <Suspense fallback={<div className="h-96 flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div></div>}>
+                <VideosManagementPage />
+              </Suspense>
             } />
             <Route path="progress" element={
-              <div className="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
-                <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-white">Student Progress</h2>
-                <p className="text-gray-600 dark:text-gray-400">Student progress tracking feature coming soon...</p>
-              </div>
+              <Suspense fallback={<div className="h-96 flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div></div>}>
+                <StudentProgressPage />
+              </Suspense>
             } />
             <Route path="settings" element={
-              <div className="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
-                <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-white">Course Settings</h2>
-                <p className="text-gray-600 dark:text-gray-400">Course settings feature coming soon...</p>
-              </div>
+              <Suspense fallback={<div className="h-96 flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div></div>}>
+                <CoursesSettingsPage />
+              </Suspense>
             } />
           </Route>
 
@@ -162,12 +167,10 @@ const AppContentWithRouter: React.FC = () => {
                 <StackStoreAdminDashboard />
               </Suspense>
             } />
-            {/* Placeholder routes for future implementation */}
             <Route path="products" element={
-              <div className="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
-                <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-white">Products Management</h2>
-                <p className="text-gray-600 dark:text-gray-400">Product management feature coming soon...</p>
-              </div>
+              <Suspense fallback={<div className="h-96 flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div></div>}>
+                <ProductsManagementPage />
+              </Suspense>
             } />
             <Route path="categories" element={
               <div className="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
@@ -176,10 +179,9 @@ const AppContentWithRouter: React.FC = () => {
               </div>
             } />
             <Route path="orders" element={
-              <div className="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
-                <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-white">Orders Management</h2>
-                <p className="text-gray-600 dark:text-gray-400">Order management feature coming soon...</p>
-              </div>
+              <Suspense fallback={<div className="h-96 flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div></div>}>
+                <OrdersManagementPage />
+              </Suspense>
             } />
             <Route path="sellers" element={
               <div className="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
@@ -245,6 +247,11 @@ const AppContentWithRouter: React.FC = () => {
               <UnifiedAdminLoginPage />
             </Suspense>
           } />
+          <Route path="/admin/reset-password" element={
+            <Suspense fallback={<div className="h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div></div>}>
+              <PasswordResetPage />
+            </Suspense>
+          } />
 
           <Route path="/supadmin" element={
             <Suspense fallback={<div className="h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div></div>}>
@@ -263,28 +270,24 @@ const AppContentWithRouter: React.FC = () => {
               </Suspense>
             } />
             <Route path="users" element={
-              <div className="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
-                <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-white">All Users</h2>
-                <p className="text-gray-600 dark:text-gray-400">User management feature coming soon...</p>
-              </div>
+              <Suspense fallback={<div className="h-96 flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-500"></div></div>}>
+                <UsersManagementPage />
+              </Suspense>
             } />
             <Route path="admins" element={
-              <div className="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
-                <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-white">Admin Management</h2>
-                <p className="text-gray-600 dark:text-gray-400">Admin management feature coming soon...</p>
-              </div>
+              <Suspense fallback={<div className="h-96 flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-500"></div></div>}>
+                <RoleManagementPage />
+              </Suspense>
             } />
             <Route path="system" element={
-              <div className="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
-                <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-white">System Settings</h2>
-                <p className="text-gray-600 dark:text-gray-400">System settings feature coming soon...</p>
-              </div>
+              <Suspense fallback={<div className="h-96 flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-500"></div></div>}>
+                <SystemSettingsPage />
+              </Suspense>
             } />
             <Route path="audit" element={
-              <div className="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
-                <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-white">Audit Logs</h2>
-                <p className="text-gray-600 dark:text-gray-400">Audit logs feature coming soon...</p>
-              </div>
+              <Suspense fallback={<div className="h-96 flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-500"></div></div>}>
+                <AuditLogsPage />
+              </Suspense>
             } />
           </Route>
 

@@ -365,23 +365,95 @@ const Navbar: React.FC = () => {
                       : 'text-gray-800 hover:text-purple-600 transition-colors px-3 py-2')
                   : 'text-white hover:text-purple-300 font-medium px-4 py-2 transition-all duration-300';
 
-                // Courses tab: simple link that always opens Courses page
+                // Courses tab: dropdown menu
                 if (isCoursesLink) {
                   return (
-                    <a
+                    <div
                       key={link.href}
-                      href="/courses"
-                      className={`${baseClasses} focus:outline-none relative group inline-block`}
-                      aria-label={link.name}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setIsMenuOpen(false);
-                        navigate('/courses');
-                      }}
+                      className="relative group"
+                      onMouseEnter={() => setIsCoursesMenuOpen(true)}
+                      onMouseLeave={() => setIsCoursesMenuOpen(false)}
                     >
-                      {link.name}
-                      <span className="pointer-events-none absolute left-1/2 -bottom-0.5 w-0 h-px bg-gradient-to-r from-cyan-400 to-purple-500 rounded-full transition-all duration-300 group-hover:left-0 group-hover:w-full"></span>
-                    </a>
+                      <button
+                        className={`${baseClasses} btn-plain focus:outline-none relative inline-flex items-center gap-1`}
+                        aria-label={link.name}
+                        aria-expanded={isCoursesMenuOpen}
+                      >
+                        {link.name}
+                        <svg className="w-4 h-4 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                        <span className="pointer-events-none absolute left-1/2 -bottom-0.5 w-0 h-px bg-gradient-to-r from-cyan-400 to-purple-500 rounded-full transition-all duration-300 group-hover:left-0 group-hover:w-full"></span>
+                      </button>
+                      {/* Dropdown Menu */}
+                      {isCoursesMenuOpen && (
+                        <div className={`absolute top-full left-0 mt-2 w-56 rounded-xl shadow-2xl border z-50 ${
+                          isDarkMode
+                            ? 'bg-gray-800 border-gray-700'
+                            : 'bg-white border-gray-200'
+                        }`}>
+                          <div className="py-2">
+                            <a
+                              href="/courses"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                setIsCoursesMenuOpen(false);
+                                setIsMenuOpen(false);
+                                navigate('/courses');
+                              }}
+                              className={`block px-4 py-3 transition-colors ${
+                                isDarkMode
+                                  ? 'text-white hover:bg-gray-700'
+                                  : 'text-gray-900 hover:bg-gray-100'
+                              }`}
+                            >
+                              <div className="font-semibold">📚 All Courses</div>
+                              <div className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                Browse all training programs
+                              </div>
+                            </a>
+                            <a
+                              href="/courses/apply"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                setIsCoursesMenuOpen(false);
+                                setIsMenuOpen(false);
+                                navigate('/courses/apply');
+                              }}
+                              className={`block px-4 py-3 transition-colors border-t ${
+                                isDarkMode
+                                  ? 'text-white hover:bg-gray-700 border-gray-700'
+                                  : 'text-gray-900 hover:bg-gray-100 border-gray-200'
+                              }`}
+                            >
+                              <div className="font-semibold">📝 Apply Now</div>
+                              <div className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                Enroll in a course
+                              </div>
+                            </a>
+                            <a
+                              href="/student"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                setIsCoursesMenuOpen(false);
+                                setIsMenuOpen(false);
+                                navigate('/student');
+                              }}
+                              className={`block px-4 py-3 transition-colors border-t ${
+                                isDarkMode
+                                  ? 'text-white hover:bg-gray-700 border-gray-700'
+                                  : 'text-gray-900 hover:bg-gray-100 border-gray-200'
+                              }`}
+                            >
+                              <div className="font-semibold">🎓 Student Portal</div>
+                              <div className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                Access your courses
+                              </div>
+                            </a>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   );
                 }
 

@@ -583,7 +583,7 @@ nav.scrolled .theme-toggle-mobile {
 .btn-primary,
 .btn-secondary,
 .btn-ghost,
-button {
+button:not(.btn-plain) {
   position: relative;
   border-radius: 9999px; /* pill look aligns with glass effect */
   backdrop-filter: blur(8px) saturate(120%);
@@ -594,7 +594,7 @@ button {
 .btn-primary::after,
 .btn-secondary::after,
 .btn-ghost::after,
-button::after {
+button:not(.btn-plain)::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -621,7 +621,7 @@ button::after {
 .btn-primary:hover::after,
 .btn-secondary:hover::after,
 .btn-ghost:hover::after,
-button:hover::after {
+button:not(.btn-plain):hover::after {
   filter: url(#turbulence-displacement);
 }
 

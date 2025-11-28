@@ -20,17 +20,63 @@ const StackStoreAdminDashboard: React.FC = () => {
   useEffect(() => {
     const loadStats = async () => {
       try {
-        // TODO: Fetch actual stats from Supabase when tables are created
-        // For now, using placeholder data
+        setLoading(true)
+
+        // Fetch all stats in parallel with error handling
+        const fetchCount = async (table: string, filter?: { column: string; value: any }) => {
+          try {
+            let query = supabase.from(table).select('*', { count: 'exact', head: true })
+            if (filter) {
+              query = query.eq(filter.column, filter.value)
+            }
+            const { count, error } = await query
+            if (error) {
+              // Table might not exist, return 0
+              if (error.code === 'PGRST116' || error.message.includes('does not exist')) {
+                return 0
+              }
+              throw error
+            }
+            return count || 0
+          } catch (err: any) {
+            // If table doesn't exist, return 0
+            if (err.code === 'PGRST116' || err.message?.includes('does not exist')) {
+              return 0
+            }
+            console.warn(`Error fetching ${table}:`, err)
+            return 0
+          }
+        }
+
+        const [
+          totalProducts,
+          totalCategories,
+          totalOrders,
+          totalSellers,
+          pendingOrders,
+          completedOrders,
+          activeProducts,
+          inactiveProducts,
+        ] = await Promise.all([
+          fetchCount('products'),
+          fetchCount('categories'),
+          fetchCount('orders'),
+          fetchCount('sellers'),
+          fetchCount('orders', { column: 'status', value: 'pending' }),
+          fetchCount('orders', { column: 'status', value: 'completed' }),
+          fetchCount('products', { column: 'active', value: true }),
+          fetchCount('products', { column: 'active', value: false }),
+        ])
+
         setStats({
-          totalProducts: 0,
-          totalCategories: 0,
-          totalOrders: 0,
-          totalSellers: 0,
-          pendingOrders: 0,
-          completedOrders: 0,
-          activeProducts: 0,
-          inactiveProducts: 0,
+          totalProducts,
+          totalCategories,
+          totalOrders,
+          totalSellers,
+          pendingOrders,
+          completedOrders,
+          activeProducts,
+          inactiveProducts,
         })
       } catch (error) {
         console.error('Error loading StackStore stats:', error)

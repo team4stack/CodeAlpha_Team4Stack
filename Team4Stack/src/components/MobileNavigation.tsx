@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../utils/supabaseClient';
@@ -19,10 +20,12 @@ interface MobileNavigationProps {
 const MobileNavigation: React.FC<MobileNavigationProps> = ({ isOpen, onClose, onOpenStackStore, onOpenSettings, onOpenAuth }) => {
   const { isDarkMode, toggleDarkMode } = useTheme();
   const { user, loading, signOut } = useAuth();
+  const navigate = useNavigate();
   const navRef = useRef<HTMLDivElement>(null);
   const [logoLoaded, setLogoLoaded] = useState(false);
   const [logoKey, setLogoKey] = useState(0);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isCoursesMenuOpen, setIsCoursesMenuOpen] = useState(false);
   const [navbarLinks, setNavbarLinks] = useState<NavbarLink[]>([
     { name: 'Home', href: '#home' },
     { name: 'Team', href: '#about' },
@@ -321,6 +324,77 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({ isOpen, onClose, on
                     </button>
                   );
                 }
+
+                // Handle Courses with dropdown
+                const isCoursesLink = link.href === '/courses' || link.name?.toLowerCase() === 'courses';
+                if (isCoursesLink) {
+                  return (
+                    <div key={link.href} className="space-y-1">
+                      <button
+                        onClick={() => setIsCoursesMenuOpen(!isCoursesMenuOpen)}
+                        className={`w-full text-left px-4 py-3 rounded-lg transition-all duration-200 flex items-center justify-between ${
+                          isDarkMode ? 'text-white hover:bg-white/10' : 'text-gray-800 hover:bg-gray-100'
+                        } focus:outline-none focus:ring-2 focus:ring-purple-500`}
+                        aria-label="Courses menu"
+                        aria-expanded={isCoursesMenuOpen}
+                        role="menuitem"
+                      >
+                        <span className="font-medium">{link.name}</span>
+                        <svg 
+                          className={`w-5 h-5 transition-transform duration-300 ${isCoursesMenuOpen ? 'rotate-180' : ''}`}
+                          fill="none" 
+                          stroke="currentColor" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                      {isCoursesMenuOpen && (
+                        <div className={`ml-4 space-y-1 border-l-2 ${
+                          isDarkMode ? 'border-purple-700' : 'border-purple-200'
+                        }`}>
+                          <button
+                            onClick={() => {
+                              onClose();
+                              setIsCoursesMenuOpen(false);
+                              setTimeout(() => navigate('/courses'), 200);
+                            }}
+                            className={`w-full text-left px-4 py-2 rounded-lg transition-all duration-200 ${
+                              isDarkMode ? 'text-gray-300 hover:bg-white/10' : 'text-gray-600 hover:bg-gray-100'
+                            } focus:outline-none focus:ring-2 focus:ring-purple-500`}
+                          >
+                            <span className="text-sm">📚 All Courses</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              onClose();
+                              setIsCoursesMenuOpen(false);
+                              setTimeout(() => navigate('/courses/apply'), 200);
+                            }}
+                            className={`w-full text-left px-4 py-2 rounded-lg transition-all duration-200 ${
+                              isDarkMode ? 'text-gray-300 hover:bg-white/10' : 'text-gray-600 hover:bg-gray-100'
+                            } focus:outline-none focus:ring-2 focus:ring-purple-500`}
+                          >
+                            <span className="text-sm">📝 Apply Now</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              onClose();
+                              setIsCoursesMenuOpen(false);
+                              setTimeout(() => navigate('/student'), 200);
+                            }}
+                            className={`w-full text-left px-4 py-2 rounded-lg transition-all duration-200 ${
+                              isDarkMode ? 'text-gray-300 hover:bg-white/10' : 'text-gray-600 hover:bg-gray-100'
+                            } focus:outline-none focus:ring-2 focus:ring-purple-500`}
+                          >
+                            <span className="text-sm">🎓 Student Portal</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
                 return (
                   <button
                     key={link.href}
