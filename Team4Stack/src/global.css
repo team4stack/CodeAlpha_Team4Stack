@@ -3045,4 +3045,65 @@ div.relative > span[class*="absolute"][class*="right"]:not(button):not([class*="
   z-index: 10 !important;
 }
 
+/* Preview Modal Close Button (X) - Fix positioning relative to popup content */
+.preview-modal-close-btn {
+  position: absolute !important;
+  top: 0 !important;
+  right: 0 !important;
+  z-index: 50 !important;
+  width: 2.5rem !important;
+  height: 2.5rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transform: translate(50%, -50%) !important;
+  margin-top: 0 !important;
+  margin-right: 0 !important;
+}
+
+@media (min-width: 768px) {
+  .preview-modal-close-btn {
+    width: 3rem !important;
+    height: 3rem !important;
+  }
+}
+
+/* Services Modal Close Button (X) - Fix positioning relative to popup content */
+.services-modal-close-btn {
+  position: absolute !important;
+  top: -0.75rem !important;
+  right: -0.75rem !important;
+  z-index: 50 !important;
+  width: 2rem !important;
+  height: 2rem !important;
+  min-width: 2rem !important;
+  min-height: 2rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.services-modal-close-btn svg {
+  width: 1.25rem !important;
+  height: 1.25rem !important;
+}
+
+@media (min-width: 768px) {
+  .services-modal-close-btn {
+    top: -1rem !important;
+    right: -1rem !important;
+    width: 2.5rem !important;
+    height: 2.5rem !important;
+    min-width: 2.5rem !important;
+    min-height: 2.5rem !important;
+  }
+  
+  .services-modal-close-btn svg {
+    width: 1.5rem !important;
+    height: 1.5rem !important;
+  }
+}
+
 
