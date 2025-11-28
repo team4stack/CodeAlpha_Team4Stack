@@ -20,7 +20,7 @@ const StackStoreAdminDashboard: React.FC = () => {
   useEffect(() => {
     const loadStats = async () => {
       try {
-        setLoading(true)
+       setLoading(true)
 
         // Fetch all stats in parallel with error handling
         const fetchCount = async (table: string, filter?: { column: string; value: any }) => {

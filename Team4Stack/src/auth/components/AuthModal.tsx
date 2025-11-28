@@ -848,11 +848,12 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
         <div ref={panelRef} className="w-full max-w-md mx-4 rounded-2xl border border-white/10 bg-[#0c1224]/95 text-white backdrop-blur-xl p-6 shadow-[0_40px_120px_rgba(56,189,248,0.25)] relative">
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/15 border border-white/20 transition-all cursor-pointer"
+            className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-red-500/90 hover:bg-red-600 border border-white/30 hover:border-white/50 transition-all cursor-pointer z-[100] shadow-md hover:shadow-lg hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-1"
             aria-label="Close"
+            type="button"
           >
-            <svg className="w-5 h-5 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
           <div className="text-center mb-4">
@@ -973,7 +974,7 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
                   <button
                     type="button"
                     onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white/80 focus:outline-none"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/70 hover:text-white focus:outline-none z-10 p-1 rounded hover:bg-white/10 transition-colors"
                     aria-label={showConfirmNewPassword ? "Hide password" : "Show password"}
                   >
                     {showConfirmNewPassword ? (
@@ -1084,7 +1085,7 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white/80 focus:outline-none"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/70 hover:text-white focus:outline-none z-10 p-1 rounded hover:bg-white/10 transition-colors"
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? (
@@ -1106,7 +1107,7 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
                         setError(null)
                         setSuccess(null)
                       }} 
-                      className="absolute right-12 top-1/2 -translate-y-1/2 text-sm text-white/60 hover:text-white/80 underline cursor-pointer"
+                      className="absolute right-14 top-1/2 -translate-y-1/2 text-sm text-white/60 hover:text-white/80 underline cursor-pointer z-10"
                     >
                       Forgot?
                     </span>
@@ -1138,7 +1139,7 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
                     <button
                       type="button"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white/80 focus:outline-none"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/70 hover:text-white focus:outline-none z-10 p-1 rounded hover:bg-white/10 transition-colors"
                       aria-label={showConfirmPassword ? "Hide password" : "Show password"}
                     >
                       {showConfirmPassword ? (

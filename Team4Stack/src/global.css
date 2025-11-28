@@ -2850,4 +2850,43 @@ footer .footer-version {
   will-change: scroll-position;
 }
 
+/* Auth Modal Button Positioning Fixes */
+/* Close button (X) positioning - ensure it's in top-right corner */
+div[class*="rounded-2xl"][class*="backdrop-blur-xl"][class*="relative"] > button[aria-label="Close"] {
+  position: absolute !important;
+  top: 1rem !important;
+  right: 1rem !important;
+  z-index: 100 !important;
+  width: 2rem !important;
+  height: 2rem !important;
+}
+
+/* Password toggle buttons - ensure proper positioning inside input fields */
+div.relative > input[type="password"] ~ button[type="button"][aria-label*="password"],
+div.relative > input[placeholder*="Password"] ~ button[type="button"][aria-label*="password"],
+div.relative > input[placeholder*="password"] ~ button[type="button"][aria-label*="password"] {
+  position: absolute !important;
+  right: 0.75rem !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  z-index: 10 !important;
+  padding: 0.25rem !important;
+  border-radius: 0.25rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Password toggle button hover effect */
+div.relative > input[type="password"] ~ button[type="button"]:hover,
+div.relative > input[placeholder*="Password"] ~ button[type="button"]:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Forgot password link - adjust position to not overlap with toggle button */
+div.relative > span[class*="absolute"][class*="right"]:not(button):not([class*="button"]) {
+  right: 3.5rem !important;
+  z-index: 10 !important;
+}
+
 
