@@ -204,7 +204,7 @@
   filter: blur(12px);
   opacity: 0;
   transition: opacity .3s ease, transform .3s ease;
-  z-index: 0;
+  z-index: -1 !important; /* Glass effect below the picture */
 }
 
 /* Horizontal layout for large cards on desktop */
@@ -273,6 +273,7 @@
   .t4s-card.large .banner .dp::before {
     inset: -6px;
     filter: blur(10px);
+    z-index: -1 !important; /* Glass effect below the picture */
   }
 }
 
@@ -375,17 +376,172 @@
   filter: blur(10px);
   opacity: 0;
   transition: opacity .3s ease, transform .3s ease;
-  z-index: 0;
+  z-index: -1 !important; /* Glass effect below the picture */
 }
 .t4s-card .banner .dp:hover {
   transform: translateY(40%) scale(1.06);
   box-shadow: 0 1rem 2rem rgba(0,0,0,0.4);
 }
 .t4s-card .banner .dp:hover::before { opacity: .55; }
-.t4s-card .banner .dp img { width: 100%; height: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 50% !important; z-index: 1; display: block; }
+.t4s-card .banner .dp img { 
+  width: 100%; 
+  height: 100%; 
+  aspect-ratio: 1 / 1; 
+  object-fit: cover; 
+  border-radius: 50% !important; 
+  z-index: 2 !important; /* Image on top */
+  display: block; 
+  position: relative; /* Ensure z-index works */
+}
 
 /* Force perfect circle regardless of inherited styles */
 .t4s-card .banner .dp, .t4s-card .banner .dp::before, .t4s-card .banner .dp img { border-radius: 50% !important; }
+
+/* Ensure profile picture is always on top of glass effect */
+.t4s-card .banner .dp {
+  position: relative;
+  z-index: 1;
+}
+.t4s-card .banner .dp img {
+  position: relative;
+  z-index: 2 !important;
+}
+
+/* About section mentor profile picture - ensure image is on top */
+.about-section button[aria-label*="Open"] img,
+.about-section button[aria-label*="image"] img {
+  position: relative !important;
+  z-index: 10 !important;
+}
+
+.about-section button[aria-label*="Open"] > div[class*="blur"],
+.about-section button[aria-label*="image"] > div[class*="blur"] {
+  z-index: -1 !important;
+}
+
+/* ============================================
+   MENTOR PROFILE PICTURE CSS (Abdullah Wali)
+   ============================================ */
+/* Force mentor profile button to be perfectly circular - remove all box styling */
+button.mentor-profile-btn {
+  border-radius: 50% !important;
+  -webkit-border-radius: 50% !important;
+  -moz-border-radius: 50% !important;
+  aspect-ratio: 1 / 1 !important;
+  width: 200px !important;
+  height: 200px !important;
+  min-width: 200px !important;
+  min-height: 200px !important;
+  max-width: 200px !important;
+  max-height: 200px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: block !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.3) !important;
+  position: relative !important;
+  cursor: pointer !important;
+  transition: all 0.3s ease !important;
+  clip-path: circle(50% at 50% 50%) !important;
+  -webkit-clip-path: circle(50% at 50% 50%) !important;
+  shape-outside: circle(50%) !important;
+}
+
+button.mentor-profile-btn:hover {
+  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.5), 0 20px 40px rgba(0, 0, 0, 0.3) !important;
+  transform: scale(1.05) !important;
+}
+
+/* Remove any default button styling */
+button.mentor-profile-btn::before,
+button.mentor-profile-btn::after {
+  display: none !important;
+  content: none !important;
+}
+
+/* Glass effect div - circular and below picture */
+button.mentor-profile-btn .mentor-glass-effect {
+  position: absolute !important;
+  top: -12px !important;
+  left: -12px !important;
+  width: calc(100% + 24px) !important;
+  height: calc(100% + 24px) !important;
+  border-radius: 50% !important;
+  -webkit-border-radius: 50% !important;
+  -moz-border-radius: 50% !important;
+  filter: blur(20px) !important;
+  opacity: 0 !important;
+  transition: opacity 0.3s ease !important;
+  z-index: -1 !important;
+  pointer-events: none !important;
+  clip-path: circle(50% at 50% 50%) !important;
+  -webkit-clip-path: circle(50% at 50% 50%) !important;
+}
+
+button.mentor-profile-btn:hover .mentor-glass-effect {
+  opacity: 0.6 !important;
+}
+
+/* Mentor profile image - direct child, on top */
+button.mentor-profile-btn .mentor-profile-img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  border-radius: 50% !important;
+  -webkit-border-radius: 50% !important;
+  -moz-border-radius: 50% !important;
+  display: block !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  position: relative !important;
+  z-index: 10 !important;
+  clip-path: circle(50% at 50% 50%) !important;
+  -webkit-clip-path: circle(50% at 50% 50%) !important;
+}
+
+/* Mentor skeleton loading - perfectly circular */
+.mentor-skeleton-profile {
+  border-radius: 50% !important;
+  -webkit-border-radius: 50% !important;
+  -moz-border-radius: 50% !important;
+  aspect-ratio: 1 / 1 !important;
+  width: 200px !important;
+  height: 200px !important;
+  min-width: 200px !important;
+  min-height: 200px !important;
+  max-width: 200px !important;
+  max-height: 200px !important;
+  clip-path: circle(50% at 50% 50%) !important;
+  -webkit-clip-path: circle(50% at 50% 50%) !important;
+}
+
+/* ============================================
+   TEAM MEMBERS PROFILE PICTURE CSS (.dp)
+   ============================================ */
+/* Ensure team members' profile pictures (.dp) keep their original size */
+.t4s-card .banner .dp {
+  width: 6.5rem !important;
+  height: 6.5rem !important;
+  max-width: 6.5rem !important;
+  max-height: 6.5rem !important;
+  min-width: 6.5rem !important;
+  min-height: 6.5rem !important;
+}
+
+/* Team members' profile picture image */
+.t4s-card .banner .dp img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
 
 .t4s-card .menu { width: 100%; height: 1.5rem; padding: 0.5rem 1rem; display: flex; align-items: flex-start; justify-content: flex-end; position: relative; box-sizing: border-box; flex-shrink: 0; }
 .t4s-card .menu .opener { width: 2.5rem; height: 2.5rem; position: relative; border-radius: 50%; transition: background-color 100ms ease-in-out; }
@@ -2848,6 +3004,45 @@ footer .footer-version {
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
   will-change: scroll-position;
+}
+
+/* Auth Modal Button Positioning Fixes */
+/* Close button (X) positioning - ensure it's in top-right corner */
+div[class*="rounded-2xl"][class*="backdrop-blur-xl"][class*="relative"] > button[aria-label="Close"] {
+  position: absolute !important;
+  top: 1rem !important;
+  right: 1rem !important;
+  z-index: 100 !important;
+  width: 2rem !important;
+  height: 2rem !important;
+}
+
+/* Password toggle buttons - ensure proper positioning inside input fields */
+div.relative > input[type="password"] ~ button[type="button"][aria-label*="password"],
+div.relative > input[placeholder*="Password"] ~ button[type="button"][aria-label*="password"],
+div.relative > input[placeholder*="password"] ~ button[type="button"][aria-label*="password"] {
+  position: absolute !important;
+  right: 0.75rem !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  z-index: 10 !important;
+  padding: 0.25rem !important;
+  border-radius: 0.25rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Password toggle button hover effect */
+div.relative > input[type="password"] ~ button[type="button"]:hover,
+div.relative > input[placeholder*="Password"] ~ button[type="button"]:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Forgot password link - adjust position to not overlap with toggle button */
+div.relative > span[class*="absolute"][class*="right"]:not(button):not([class*="button"]) {
+  right: 3.5rem !important;
+  z-index: 10 !important;
 }
 
 

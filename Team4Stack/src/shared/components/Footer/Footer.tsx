@@ -19,7 +19,7 @@ const Footer: React.FC = () => {
     { name: 'Privacy Policy', url: '/privacy' },
     { name: 'Cookies Policy', url: '/cookies' },
     { name: 'Contact Support', url: '/contact' },
-    { name: 'Developers', url: 'https://www.team4stack.com', external: true },
+    { name: 'Developers', url: '/' },
     { name: 'Help Center', url: '/help' },
     { name: 'Terms & Conditions', url: '/terms' }
   ]);

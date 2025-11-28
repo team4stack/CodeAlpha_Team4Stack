@@ -20,7 +20,7 @@ const StackStoreAdminDashboard: React.FC = () => {
   useEffect(() => {
     const loadStats = async () => {
       try {
-        setLoading(true)
+       setLoading(true)
 
         // Fetch all stats in parallel with error handling
         const fetchCount = async (table: string, filter?: { column: string; value: any }) => {
@@ -118,21 +118,18 @@ const StackStoreAdminDashboard: React.FC = () => {
           title="Total Products"
           value={stats.totalProducts}
           icon="📦"
-          gradient="from-purple-500 to-pink-500"
           onClick={() => navigate('/adminstackt4s/products')}
         />
         <StatCard
           title="Categories"
           value={stats.totalCategories}
           icon="🏷️"
-          gradient="from-emerald-500 to-cyan-500"
           onClick={() => navigate('/adminstackt4s/categories')}
         />
         <StatCard
           title="Total Orders"
           value={stats.totalOrders}
           icon="🛒"
-          gradient="from-cyan-500 to-blue-500"
           onClick={() => navigate('/adminstackt4s/orders')}
           badges={[
             { label: 'Pending', value: stats.pendingOrders, color: 'yellow' },
@@ -143,20 +140,17 @@ const StackStoreAdminDashboard: React.FC = () => {
           title="Sellers"
           value={stats.totalSellers}
           icon="👤"
-          gradient="from-pink-500 to-rose-500"
           onClick={() => navigate('/adminstackt4s/sellers')}
         />
         <StatCard
           title="Active Products"
           value={stats.activeProducts}
           icon="✅"
-          gradient="from-green-500 to-emerald-500"
         />
         <StatCard
           title="Inactive Products"
           value={stats.inactiveProducts}
           icon="⏸️"
-          gradient="from-gray-500 to-slate-500"
         />
       </div>
 

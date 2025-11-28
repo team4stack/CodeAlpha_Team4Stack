@@ -219,10 +219,10 @@ const SuperAdminDashboard: React.FC = () => {
           <div className="text-3xl">⚠️</div>
           <div>
             <h3 className="text-lg font-bold mb-2 text-gray-800 dark:text-white">Super Admin Access</h3>
-            <p className="text-gray-700 dark:text-gray-300">
-              You have complete access to all system features. Use this power responsibly. 
-              All actions are logged for security and audit purposes.
-            </p>
+        <p className="text-gray-700 dark:text-gray-300">
+          You have complete access to all system features. Use this power responsibly. 
+          All actions are logged for security and audit purposes.
+        </p>
           </div>
         </div>
       </div>
