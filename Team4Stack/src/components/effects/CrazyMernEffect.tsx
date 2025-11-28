@@ -59,20 +59,116 @@ const CrazyMernEffect: React.FC<CrazyMernEffectProps> = ({ isDarkMode = false })
     const particles = new THREE.Points(pGeometry, pMaterial);
     scene.add(particles);
 
+    // Center spheres removed - only corner half spheres now
+
     // --------------------------
-    // 3D WIRE BOX (React vibes) - smaller size, centered
+    // FLOATING RINGS (Enhanced decorative elements)
     // --------------------------
-    const boxGeo = new THREE.BoxGeometry(40, 40, 40);
-    const boxMat = new THREE.MeshBasicMaterial({
-      color: isDarkMode ? "#00eaff" : "#1a1a1a", // Cyan for dark mode, dark gray for light mode
-      wireframe: true,
-      transparent: true,
-      opacity: isDarkMode ? 0.4 : 0.3,
+    const rings: THREE.Mesh[] = [];
+    const ringBasePositions = [
+      { x: -60, y: 20, z: -30 },
+      { x: 60, y: -20, z: -30 },
+      { x: 0, y: 40, z: 20 },
+    ];
+
+    ringBasePositions.forEach((pos, index) => {
+      // Varied ring sizes and thickness for visual interest
+      const ringSizes = [18, 20, 16]; // Different radii
+      const ringThickness = [2, 2.5, 1.8]; // Different tube radii
+      
+      const ringGeo = new THREE.TorusGeometry(
+        ringSizes[index],      // radius (varied)
+        ringThickness[index],   // tube radius (varied)
+        16,                     // radial segments (increased for smoother rings)
+        32                      // tubular segments (increased for better quality)
+      );
+      
+      // Different colors for each ring
+      const ringColors = isDarkMode 
+        ? ["#00eaff", "#8b5cf6", "#00eaff"] // Cyan and Purple
+        : ["#6366f1", "#818cf8", "#6366f1"]; // Indigo shades
+      
+      const ringMat = new THREE.MeshBasicMaterial({
+        color: ringColors[index],
+        wireframe: true,
+        transparent: true,
+        opacity: isDarkMode ? 0.25 : 0.2, // More visible
+        side: THREE.DoubleSide,
+      });
+
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.position.set(pos.x, pos.y, pos.z);
+      
+      // Varied initial rotations for each ring
+      const initialRotations = [
+        { x: Math.PI / 4, y: 0, z: Math.PI / 6 },
+        { x: Math.PI / 3, y: Math.PI / 4, z: 0 },
+        { x: 0, y: Math.PI / 4, z: Math.PI / 3 },
+      ];
+      ring.rotation.x = initialRotations[index].x;
+      ring.rotation.y = initialRotations[index].y;
+      ring.rotation.z = initialRotations[index].z;
+      
+      rings.push(ring);
+      scene.add(ring);
     });
 
-    const box = new THREE.Mesh(boxGeo, boxMat);
-    box.position.set(0, 0, 0); // Center position
-    scene.add(box);
+    // --------------------------
+    // HALF SPHERES IN CORNERS (Cut balls - top, left, right corners)
+    // --------------------------
+    const halfSpheres: THREE.Mesh[] = [];
+    const halfSphereBasePositions = [
+      { x: -70, y: 50, z: -15 }, // Top-left (closer and bigger)
+      { x: 70, y: 50, z: -15 },  // Top-right
+      { x: -70, y: -50, z: -15 }, // Bottom-left
+      { x: 70, y: -50, z: -15 },  // Bottom-right
+    ];
+
+    halfSphereBasePositions.forEach((pos, index) => {
+      // Create full sphere with varied designs
+      // Different segment counts for each corner for visual variety
+      const segmentCounts = [24, 28, 32, 28]; // Varying detail levels
+      const halfSphereGeo = new THREE.SphereGeometry(
+        30,      // radius
+        segmentCounts[index],  // widthSegments (varied)
+        segmentCounts[index],   // heightSegments (varied, matching width)
+        0,       // phiStart
+        Math.PI * 2,  // phiLength (full circle)
+        0,       // thetaStart
+        Math.PI   // thetaLength (full sphere - changed from Math.PI/2)
+      );
+      
+      // Different colors for each corner for variety
+      const cornerColors = isDarkMode 
+        ? ["#00eaff", "#8b5cf6", "#00eaff", "#8b5cf6"] // Cyan and Purple alternating
+        : ["#6366f1", "#818cf8", "#6366f1", "#818cf8"]; // Indigo shades alternating
+      
+      const halfSphereMat = new THREE.MeshBasicMaterial({
+        color: cornerColors[index],
+        wireframe: true,
+        transparent: true,
+        opacity: isDarkMode ? 0.3 : 0.25, // More visible
+        side: THREE.DoubleSide,
+        linewidth: 1.5, // Slightly thicker lines
+      });
+
+      const halfSphere = new THREE.Mesh(halfSphereGeo, halfSphereMat);
+      halfSphere.position.set(pos.x, pos.y, pos.z);
+      
+      // Rotate to face outward from corners with varied angles for visual interest
+      const rotations = [
+        { x: Math.PI / 3, y: Math.PI / 3, z: Math.PI / 6 },      // Top-left
+        { x: Math.PI / 3, y: -Math.PI / 3, z: -Math.PI / 6 },     // Top-right
+        { x: -Math.PI / 3, y: Math.PI / 3, z: -Math.PI / 5 },    // Bottom-left (slightly different)
+        { x: -Math.PI / 3, y: -Math.PI / 3, z: Math.PI / 5 },   // Bottom-right (slightly different)
+      ];
+      halfSphere.rotation.x = rotations[index].x;
+      halfSphere.rotation.y = rotations[index].y;
+      halfSphere.rotation.z = rotations[index].z;
+      
+      halfSpheres.push(halfSphere);
+      scene.add(halfSphere);
+    });
 
     // --------------------------
     // LIGHTS
@@ -110,22 +206,72 @@ const CrazyMernEffect: React.FC<CrazyMernEffectProps> = ({ isDarkMode = false })
       // Update colors based on theme (dynamic update)
       pMaterial.color.set(isDarkMode ? "#00eaff" : "#000000");
       pMaterial.opacity = isDarkMode ? 0.6 : 0.4;
-      boxMat.color.set(isDarkMode ? "#00eaff" : "#1a1a1a");
-      boxMat.opacity = isDarkMode ? 0.4 : 0.3;
       rectLight.color.set(isDarkMode ? "#00eaff" : "#4a4a4a");
 
-      // Rotate 3D box with floating effect
-      box.rotation.x += 0.003;
-      box.rotation.y += 0.004;
-      box.rotation.z += 0.002;
-      
-      // Floating box animation - centered in middle
-      const floatY = Math.sin(time * 0.8) * 5;
-      box.position.y = floatY; // Float around center (0)
-      
-      // Slight scale pulsing
-      const scale = 1 + Math.sin(time * 1.2) * 0.05;
-      box.scale.set(scale, scale, scale);
+      // Animate floating rings with enhanced, varied animations
+      rings.forEach((ring, index) => {
+        // Varied rotation speeds on all axes for dynamic movement
+        const rotSpeeds = [
+          { x: 0.002, y: 0.006, z: 0.003 },
+          { x: 0.003, y: 0.004, z: 0.005 },
+          { x: 0.001, y: 0.007, z: 0.002 },
+        ];
+        
+        ring.rotation.x += rotSpeeds[index].x;
+        ring.rotation.y += rotSpeeds[index].y;
+        ring.rotation.z += rotSpeeds[index].z;
+        
+        // Enhanced floating animation with 3D movement
+        const basePos = ringBasePositions[index];
+        const floatX = Math.sin(time * (0.4 + index * 0.1) + index * 0.5) * 6;
+        const floatY = Math.cos(time * (0.5 + index * 0.15) + index * 0.7) * 8;
+        const floatZ = Math.sin(time * (0.3 + index * 0.1) + index * 0.3) * 4;
+        
+        ring.position.x = basePos.x + floatX;
+        ring.position.y = basePos.y + floatY;
+        ring.position.z = basePos.z + floatZ;
+        
+        // Gentle pulsing effect
+        const pulse = 1 + Math.sin(time * 0.6 + index * 0.5) * 0.12;
+        ring.scale.set(pulse, pulse, pulse);
+        
+        // Breathing opacity effect
+        const mat = ring.material as THREE.MeshBasicMaterial;
+        mat.opacity = isDarkMode
+          ? (0.25 + Math.sin(time * 1.0 + index * 0.6) * 0.08)
+          : (0.2 + Math.sin(time * 1.0 + index * 0.6) * 0.08);
+      });
+
+      // Animate half spheres in corners - enhanced rotation, float, and pulse with varied speeds
+      halfSpheres.forEach((halfSphere, index) => {
+        // Varied rotation speeds for each corner (more dynamic)
+        const rotSpeeds = [0.004, 0.005, 0.0035, 0.0045]; // Different speeds
+        halfSphere.rotation.x += rotSpeeds[index] + index * 0.0005;
+        halfSphere.rotation.y += rotSpeeds[index] * 1.2 - index * 0.0005;
+        halfSphere.rotation.z += rotSpeeds[index] * 0.8 + index * 0.0003;
+        
+        // Smooth floating animation with varied patterns
+        const floatX = Math.sin(time * (0.4 + index * 0.1) + index * 0.5) * (5 + index);
+        const floatY = Math.cos(time * (0.5 + index * 0.15) + index * 0.6) * (5 + index);
+        const basePos = halfSphereBasePositions[index];
+        halfSphere.position.x = basePos.x + floatX;
+        halfSphere.position.y = basePos.y + floatY;
+        
+        // Enhanced pulsing with varied intensity
+        const pulseIntensity = [0.15, 0.12, 0.18, 0.14]; // Different pulse amounts
+        const pulse = 1 + Math.sin(time * (0.7 + index * 0.1) + index * 0.7) * pulseIntensity[index];
+        halfSphere.scale.set(pulse, pulse, pulse);
+        
+        // Update colors and opacity for breathing effect with varied colors
+        const mat = halfSphere.material as THREE.MeshBasicMaterial;
+        const cornerColors = isDarkMode 
+          ? ["#00eaff", "#8b5cf6", "#00eaff", "#8b5cf6"]
+          : ["#6366f1", "#818cf8", "#6366f1", "#818cf8"];
+        mat.color.set(cornerColors[index]);
+        mat.opacity = isDarkMode
+          ? (0.3 + Math.sin(time * (1.2 + index * 0.2) + index * 0.8) * 0.1)
+          : (0.25 + Math.sin(time * (1.2 + index * 0.2) + index * 0.8) * 0.1);
+      });
 
       renderer.render(scene, camera);
     };
@@ -159,8 +305,16 @@ const CrazyMernEffect: React.FC<CrazyMernEffectProps> = ({ isDarkMode = false })
       }
       pGeometry.dispose();
       pMaterial.dispose();
-      boxGeo.dispose();
-      boxMat.dispose();
+      
+      // Dispose rings and half spheres
+      rings.forEach(ring => {
+        ring.geometry.dispose();
+        (ring.material as THREE.Material).dispose();
+      });
+      halfSpheres.forEach(halfSphere => {
+        halfSphere.geometry.dispose();
+        (halfSphere.material as THREE.Material).dispose();
+      });
     };
   }, [isDarkMode]);
 
