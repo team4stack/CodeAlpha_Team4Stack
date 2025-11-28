@@ -149,15 +149,39 @@ const CourseViewPage: React.FC = () => {
 
   return (
     <div className="min-h-screen transition-colors duration-300">
-      <div className="container-custom py-12">
-        <div className="flex flex-col md:flex-row justify-between items-center mb-8">
-          <h1 className={`text-3xl md:text-4xl font-bold mb-4 md:mb-0 ${
-            isDarkMode ? 'text-white' : 'text-gray-900'
-          }`}>
-            {course.name}
-          </h1>
-          {courseCompleted && <Certificate courseName={course.name} />}
+      {/* Header Section */}
+      <div className={`pt-24 md:pt-28 pb-8 ${isDarkMode ? 'bg-gradient-to-b from-black via-gray-900 to-black' : 'bg-gradient-to-b from-gray-50 to-white'}`}>
+        <div className="container-custom">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+            <div className="flex-1">
+              <div className="inline-block mb-3">
+                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                  isDarkMode
+                    ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                    : 'bg-purple-100 text-purple-700 border border-purple-200'
+                }`}>
+                  Course
+                </span>
+              </div>
+              <h1 className={`text-4xl md:text-5xl font-bold mb-2 ${
+                isDarkMode ? 'text-white' : 'text-gray-900'
+              }`}>
+                {course.name}
+              </h1>
+              {course.description && (
+                <p className={`text-lg max-w-3xl ${
+                  isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                }`}>
+                  {course.description}
+                </p>
+              )}
+            </div>
+            {courseCompleted && <Certificate courseName={course.name} />}
+          </div>
         </div>
+      </div>
+
+      <div className="container-custom py-12">
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
@@ -251,62 +275,89 @@ const CourseViewPage: React.FC = () => {
           </div>
 
           <div className="lg:col-span-1">
-            <div className={`rounded-xl shadow-lg p-6 ${
+            <div className={`rounded-xl shadow-lg p-6 sticky top-24 ${
               isDarkMode 
                 ? 'bg-gray-800 border border-gray-700' 
                 : 'bg-white border border-gray-200'
             }`}>
-              <h2 className={`text-xl font-semibold mb-4 ${
-                isDarkMode ? 'text-white' : 'text-gray-900'
-              }`}>
-                Course Content
-              </h2>
-              <div className="flex justify-between items-center mb-3">
-                <span className={`text-sm ${
-                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                }`}>
-                  Progress
-                </span>
-                <span className={`text-sm font-semibold ${
+              <div className="flex items-center justify-between mb-6">
+                <h2 className={`text-xl font-bold ${
                   isDarkMode ? 'text-white' : 'text-gray-900'
                 }`}>
-                  {completedCount} of {totalVideos} videos completed
+                  Course Content
+                </h2>
+                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                  isDarkMode
+                    ? 'bg-purple-500/20 text-purple-300'
+                    : 'bg-purple-100 text-purple-700'
+                }`}>
+                  {totalVideos} Videos
                 </span>
               </div>
-              <ProgressBar completed={completedCount} total={totalVideos} />
-              <div className="mt-6">
-                <ul className="space-y-2">
-                  {videos.map((video) => {
-                    const progress = progressByVideo.get(video.id);
-                    const unlocked = unlockedVideoIds.has(video.id) || video === videos[0];
-                    const isSelected = video.id === selectedVideoId;
+              <div className={`rounded-lg p-4 mb-6 ${
+                isDarkMode
+                  ? 'bg-gray-700/50 border border-gray-600'
+                  : 'bg-gray-50 border border-gray-200'
+              }`}>
+                <div className="flex justify-between items-center mb-2">
+                  <span className={`text-sm font-semibold ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                  }`}>
+                    Your Progress
+                  </span>
+                  <span className={`text-sm font-bold ${
+                    isDarkMode ? 'text-purple-400' : 'text-purple-600'
+                  }`}>
+                    {completedCount} / {totalVideos}
+                  </span>
+                </div>
+                <ProgressBar completed={completedCount} total={totalVideos} />
+                <p className={`text-xs mt-2 text-center ${
+                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                }`}>
+                  {totalVideos > 0 ? Math.round((completedCount / totalVideos) * 100) : 0}% Complete
+                </p>
+              </div>
+              <div className="space-y-2 max-h-[600px] overflow-y-auto">
+                {videos.map((video, index) => {
+                  const progress = progressByVideo.get(video.id);
+                  const unlocked = unlockedVideoIds.has(video.id) || video === videos[0];
+                  const isSelected = video.id === selectedVideoId;
 
-                    return (
-                      <li
-                        key={video.id}
-                        onClick={() => handleSelectVideo(video.id, unlocked)}
-                        className={`p-3 rounded-lg cursor-pointer transition-colors ${
-                          isSelected
-                            ? isDarkMode
-                              ? 'bg-purple-900/30 border border-purple-700'
-                              : 'bg-purple-50 border border-purple-200'
-                            : isDarkMode
-                            ? 'bg-gray-700/50 hover:bg-gray-700'
-                            : 'bg-gray-50 hover:bg-gray-100'
-                        } ${!unlocked ? 'opacity-60' : ''}`}
-                      >
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center gap-2">
-                            {!unlocked ? (
-                              <span className="text-lg">🔒</span>
-                            ) : progress?.completed ? (
-                              <span className="text-green-500">✓</span>
-                            ) : progress ? (
-                              <span className="text-yellow-500">●</span>
-                            ) : (
-                              <span className="text-gray-400">○</span>
-                            )}
-                            <span className={`${
+                  return (
+                    <div
+                      key={video.id}
+                      onClick={() => handleSelectVideo(video.id, unlocked)}
+                      className={`p-4 rounded-lg cursor-pointer transition-all duration-300 ${
+                        isSelected
+                          ? isDarkMode
+                            ? 'bg-gradient-to-r from-purple-900/40 to-blue-900/40 border-2 border-purple-500 shadow-lg'
+                            : 'bg-gradient-to-r from-purple-50 to-blue-50 border-2 border-purple-300 shadow-lg'
+                          : isDarkMode
+                          ? 'bg-gray-700/30 hover:bg-gray-700/50 border border-gray-600'
+                          : 'bg-gray-50 hover:bg-gray-100 border border-gray-200'
+                      } ${!unlocked ? 'opacity-60 cursor-not-allowed' : 'hover:scale-[1.02]'}`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 mt-1">
+                          {!unlocked ? (
+                            <span className="text-xl">🔒</span>
+                          ) : progress?.completed ? (
+                            <span className="text-2xl">✅</span>
+                          ) : progress ? (
+                            <span className="text-2xl">⏸️</span>
+                          ) : (
+                            <span className={`text-xl ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>⭕</span>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={`text-xs font-semibold ${
+                              isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                            }`}>
+                              {index + 1}.
+                            </span>
+                            <span className={`font-semibold truncate ${
                               unlocked 
                                 ? isDarkMode ? 'text-white' : 'text-gray-900'
                                 : isDarkMode ? 'text-gray-500' : 'text-gray-400'
@@ -314,18 +365,25 @@ const CourseViewPage: React.FC = () => {
                               {video.title}
                             </span>
                           </div>
-                          {video.thumbnail_url && (
-                            <img
-                              src={video.thumbnail_url}
-                              alt={video.title}
-                              className="rounded w-10 h-6 object-cover"
-                            />
+                          {video.description && (
+                            <p className={`text-xs line-clamp-2 ${
+                              isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                            }`}>
+                              {video.description}
+                            </p>
                           )}
                         </div>
-                      </li>
-                    );
-                  })}
-                </ul>
+                        {video.thumbnail_url && (
+                          <img
+                            src={video.thumbnail_url}
+                            alt={video.title}
+                            className="rounded-lg w-16 h-10 object-cover flex-shrink-0"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
