@@ -468,6 +468,13 @@ const About: React.FC = () => {
       {selectedImage && (
         <div className={`fixed inset-0 bg-black/90 backdrop-blur-lg z-[9999] flex items-center justify-center p-4 pt-10 md:pt-14 transition-all duration-300 ${isModalOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={() => { setSelectedImage(null); setSelectedMemberIndex(null); }}>
           <div className={`relative transition-all duration-300 ease-out ${isModalOpen ? 'scale-100 opacity-100' : 'scale-90 opacity-0'}`} onClick={(e) => e.stopPropagation()}>
+            <button 
+              onClick={(e) => { e.stopPropagation(); setSelectedImage(null); setSelectedMemberIndex(null); }} 
+              className="preview-modal-close-btn absolute top-0 right-0 w-10 h-10 md:w-12 md:h-12 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-all duration-300 text-xl md:text-2xl font-bold shadow-lg hover:scale-110 z-50"
+              aria-label="Close preview"
+            >
+              ×
+            </button>
             <div className="flex flex-col items-center gap-4 max-w-xl">
               <div className="rounded-full overflow-hidden ring-4 ring-white/30 shadow-2xl shadow-white/20" style={{ width: 'clamp(220px, 45vmin, 380px)', height: 'clamp(220px, 45vmin, 380px)' }}>
                 <img src={selectedImage} alt="Profile" className="w-full h-full object-cover object-center" />
@@ -490,9 +497,6 @@ const About: React.FC = () => {
                 </div>
               )}
             </div>
-            <button onClick={() => { setSelectedImage(null); setSelectedMemberIndex(null); }} className="absolute top-2 right-2 w-10 h-10 md:w-12 md:h-12 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-all duration-300 text-xl md:text-2xl font-bold shadow-lg hover:scale-110">
-              ×
-            </button>
           </div>
         </div>
       )}
