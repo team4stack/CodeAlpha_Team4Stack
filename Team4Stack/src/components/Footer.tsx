@@ -303,9 +303,6 @@ const Footer: React.FC = () => {
             <p className="footer-copyright text-gray-400 text-sm mb-2">
               © Team4Stack {currentYear}. All rights reserved.
             </p>
-            <p className="footer-owners text-gray-500 text-xs mb-1">
-              Website Owners: M.Sami khan, Aftab Akram, M.Hasnain, Faiz Ahmad
-            </p>
             {footerSettings.version && (
               <p className="footer-version text-gray-600 text-xs">
                 Version {footerSettings.version}
@@ -318,7 +315,7 @@ const Footer: React.FC = () => {
       {/* Support Modal */}
       {showSupportModal && (
         <div 
-          className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" 
+          className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 pt-20 md:pt-24" 
           onClick={() => setShowSupportModal(false)}
           onWheel={(e) => e.stopPropagation()}
           onTouchMove={(e) => e.stopPropagation()}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import MobileNavigation from './MobileNavigation';
-import StackStoreModal from './stackstore/StackStoreModal';
+// import StackStoreModal from './stackstore/StackStoreModal';
 import { useAuth } from '../context/AuthContext';
 import AuthModal from './AuthModal';
 import UserSettingsModal from './UserSettingsModal';
@@ -14,7 +14,7 @@ type NavbarLink = {
 
 const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isStackStoreOpen, setIsStackStoreOpen] = useState(false);
+  // const [isStackStoreOpen, setIsStackStoreOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const { isDarkMode, toggleDarkMode } = useTheme();
   const { user, loading, signOut } = useAuth();
@@ -315,8 +315,8 @@ const Navbar: React.FC = () => {
                 <span className="pointer-events-none absolute left-1/2 -bottom-0.5 w-0 h-px bg-gradient-to-r from-cyan-400 to-purple-500 rounded-full transition-all duration-300 group-hover:left-0 group-hover:w-full"></span>
               </a>
               ))}
-              {/* StackStore as regular nav item with tiny badge (same style/animation) */}
-              <a
+              {/* StackStore as regular nav item with tiny badge (same style/animation) - COMMENTED OUT */}
+              {/* <a
                 href="#"
                 onClick={(e) => { e.preventDefault(); setIsStackStoreOpen(true); }}
                 className={`${isScrolled
@@ -330,7 +330,7 @@ const Navbar: React.FC = () => {
                 StackStore
                 <span className="pointer-events-none absolute left-1/2 -bottom-0.5 w-0 h-0.5 bg-gradient-to-r from-cyan-400 to-purple-500 rounded-full transition-all duration-300 group-hover:left-0 group-hover:w-full"></span>
                 <span className={`${isDarkMode ? 'bg-white/20 text-white/90 border-white/30' : 'bg-gray-200 text-gray-700 border-gray-300'} absolute -top-2 right-1 z-10 text-[10px] px-2 py-0.5 rounded-full uppercase tracking-widest border shadow-sm`}>SOON</span>
-              </a>
+              </a> */}
             </div>
 
             {/* Right-side actions: Dark Mode + Auth */}
@@ -512,16 +512,16 @@ const Navbar: React.FC = () => {
       <MobileNavigation 
         isOpen={isMenuOpen} 
         onClose={() => setIsMenuOpen(false)} 
-        onOpenStackStore={() => setIsStackStoreOpen(true)}
+        // onOpenStackStore={() => setIsStackStoreOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenAuth={() => setIsAuthOpen(true)}
       />
 
-      {/* StackStore Modal */}
-      <StackStoreModal 
+      {/* StackStore Modal - COMMENTED OUT */}
+      {/* <StackStoreModal 
         isOpen={isStackStoreOpen}
         onClose={() => setIsStackStoreOpen(false)}
-      />
+      /> */}
 
       {/* User Settings Modal */}
       <UserSettingsModal

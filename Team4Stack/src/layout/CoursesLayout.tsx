@@ -13,7 +13,7 @@ const CoursesLayout: React.FC<CoursesLayoutProps> = ({ children }) => {
   return (
     <>
       <CoursesNavbar />
-      <main>
+      <main className="responsive-main pt-16 md:pt-20">
         {children}
       </main>
       <MainFooter />

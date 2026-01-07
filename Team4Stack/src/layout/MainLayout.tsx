@@ -13,7 +13,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   return (
     <>
       <MainNavbar />
-      <main>
+      <main className="responsive-main">
         {children}
       </main>
       <MainFooter />
