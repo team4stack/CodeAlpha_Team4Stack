@@ -2,6 +2,7 @@
   min-height: 100vh;
   background-color: #f8fafc;
   padding: 2rem;
+  padding-top: 6rem; /* Add top padding to account for fixed navbar (64px navbar + 2rem spacing) */
 }
 
 .section-page.dark {
@@ -234,6 +235,7 @@
 @media (max-width: 768px) {
   .section-page {
     padding: 1rem;
+    padding-top: 5.5rem; /* Adjust for mobile navbar */
   }
   
   .section-container {

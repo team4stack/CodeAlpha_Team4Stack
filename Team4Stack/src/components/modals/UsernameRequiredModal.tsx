@@ -75,7 +75,7 @@ const UsernameRequiredModal: React.FC<UsernameRequiredModalProps> = ({ isOpen })
         }`}
         style={{ pointerEvents: 'auto' }}
       />
-      <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 pt-20 md:pt-24">
         <div 
           className={`rounded-2xl border shadow-2xl max-w-md w-full p-6 relative ${
             isDarkMode

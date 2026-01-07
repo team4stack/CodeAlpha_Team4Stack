@@ -10,7 +10,7 @@ import useAccessibilityAudit from './hooks/useAccessibilityAudit';
 import HomePage from './modules/landing/pages/HomePage';
 import CoursesPage from './modules/courses/pages/CoursesPage';
 import AdmissionPage from './modules/courses/pages/AdmissionPage';
-import StackStorePage from './modules/stackstore/pages/StackStorePage';
+// import StackStorePage from './modules/stackstore/pages/StackStorePage';
 import TeamPage from './modules/team/pages/TeamPage';
 import StudentPage from './modules/courses/pages/StudentPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
@@ -40,11 +40,11 @@ const VideosManagementPage = React.lazy(() => import('./modules/courses/admin/pa
 const StudentProgressPage = React.lazy(() => import('./modules/courses/admin/pages/StudentProgressPage'));
 const CoursesSettingsPage = React.lazy(() => import('./modules/courses/admin/pages/CoursesSettingsPage'));
 
-// StackStore Admin (/adminstackt4s)
-const StackStoreAdminLayout = React.lazy(() => import('./modules/stackstore/admin/components/StackStoreAdminLayout'));
-const StackStoreAdminDashboard = React.lazy(() => import('./modules/stackstore/admin/pages/StackStoreAdminDashboard'));
-const ProductsManagementPage = React.lazy(() => import('./modules/stackstore/admin/pages/ProductsManagementPage'));
-const OrdersManagementPage = React.lazy(() => import('./modules/stackstore/admin/pages/OrdersManagementPage'));
+// StackStore Admin (/adminstackt4s) - COMMENTED OUT
+// const StackStoreAdminLayout = React.lazy(() => import('./modules/stackstore/admin/components/StackStoreAdminLayout'));
+// const StackStoreAdminDashboard = React.lazy(() => import('./modules/stackstore/admin/pages/StackStoreAdminDashboard'));
+// const ProductsManagementPage = React.lazy(() => import('./modules/stackstore/admin/pages/ProductsManagementPage'));
+// const OrdersManagementPage = React.lazy(() => import('./modules/stackstore/admin/pages/OrdersManagementPage'));
 
 // Team Admin (/adminteamt4s)
 const TeamAdminLayout = React.lazy(() => import('./modules/team/admin/components/TeamAdminLayout'));
@@ -68,7 +68,7 @@ const AppContentWithRouter: React.FC = () => {
   useAccessibilityAudit();
   
   // Check if current route is admin route
-  const isAdminRoute = location.pathname.startsWith('/adminlandingt4s') || location.pathname.startsWith('/admincourset4s') || location.pathname.startsWith('/adminstackt4s') || location.pathname.startsWith('/adminteamt4s') || location.pathname.startsWith('/supadmin');
+  const isAdminRoute = location.pathname.startsWith('/adminlandingt4s') || location.pathname.startsWith('/admincourset4s') || /* location.pathname.startsWith('/adminstackt4s') || */ location.pathname.startsWith('/adminteamt4s') || location.pathname.startsWith('/supadmin');
   
   return (
     <>
@@ -79,8 +79,8 @@ const AppContentWithRouter: React.FC = () => {
           {/* Main Website Routes */}
           <Route path="/" element={<MainLayout><HomePage /></MainLayout>} />
 
-          {/* StackStore Page Route */}
-          <Route path="/stackstore" element={<MainLayout><StackStorePage /></MainLayout>} />
+          {/* StackStore Page Route - COMMENTED OUT */}
+          {/* <Route path="/stackstore" element={<MainLayout><StackStorePage /></MainLayout>} /> */}
 
           {/* Team Page Route */}
           <Route path="/team" element={<MainLayout><TeamPage /></MainLayout>} />
@@ -150,8 +150,8 @@ const AppContentWithRouter: React.FC = () => {
             } />
           </Route>
 
-          {/* StackStore Admin Panel Routes */}
-          <Route path="/adminstackt4s/login" element={
+          {/* StackStore Admin Panel Routes - COMMENTED OUT */}
+          {/* <Route path="/adminstackt4s/login" element={
             <Suspense fallback={<div className="h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div></div>}>
               <UnifiedAdminLoginPage />
             </Suspense>
@@ -195,7 +195,7 @@ const AppContentWithRouter: React.FC = () => {
                 <p className="text-gray-600 dark:text-gray-400">Settings feature coming soon...</p>
               </div>
             } />
-          </Route>
+          </Route> */}
 
           {/* Team Admin Panel Routes */}
           <Route path="/adminteamt4s/login" element={

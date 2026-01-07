@@ -2133,6 +2133,27 @@ body.light {
       padding: 0 2rem;
     }
   }
+
+  /* Responsive main content area - applies to all pages (except admin panels) */
+  .responsive-main {
+    min-height: calc(100vh - 4rem);
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  @media (max-width: 767px) {
+    .responsive-main {
+      padding-left: 0.75rem;
+      padding-right: 0.75rem;
+    }
+  }
+
+  /* Ensure admin panels are not affected by responsive-main styles */
+  [class*="AdminLayout"] .responsive-main,
+  [class*="admin"] .responsive-main {
+    padding-left: 0;
+    padding-right: 0;
+  }
   
   /* Modern Spacing Utilities */
   .space-y-modern > * + * {

@@ -18,22 +18,22 @@ const CoursesNavbar: React.FC = () => {
           : 'bg-white/90 shadow-lg border-b border-gray-200'
       }`}
     >
-      <div className="container-custom">
-        <div className="flex items-center justify-between h-16">
+      <div className="container-custom px-4 sm:px-6">
+        <div className="flex items-center justify-between h-14 sm:h-16">
           {/* Logo / Brand */}
           <button
             type="button"
-            className="btn-plain flex items-center space-x-2 group focus:outline-none rounded-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-95"
+            className="btn-plain flex items-center space-x-1 sm:space-x-2 group focus:outline-none rounded-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-95"
             aria-label="Back to main website"
             onClick={() => navigate('/')}
           >
             <div
-              className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+              className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
                 isDarkMode ? 'bg-transparent' : 'bg-black'
               } transition-all duration-300`}
               style={{
-                minWidth: '40px',
-                minHeight: '40px',
+                minWidth: '32px',
+                minHeight: '32px',
                 padding: isDarkMode ? '0' : '4px',
               }}
             >
@@ -45,42 +45,43 @@ const CoursesNavbar: React.FC = () => {
                 }
                 alt="Team4Stack Logo"
                 className="rounded-lg shadow-sm group-hover:shadow-md transition-all duration-300 object-contain"
-                style={{ width: '32px', height: '32px', display: 'block' }}
+                style={{ width: '100%', height: '100%', display: 'block' }}
                 loading="eager"
               />
             </div>
             <span
-              className={`text-xl font-display font-bold ${
+              className={`text-base sm:text-xl font-display font-bold ${
                 isDarkMode ? 'text-white' : 'text-black'
-              } group-hover:text-purple-300 transition-all duration-300`}
+              } group-hover:text-purple-300 transition-all duration-300 hidden sm:inline`}
             >
               Team4Stack
             </span>
             </button>
 
           {/* Right-side actions for courses area */}
-          <div className="flex items-center gap-3">
-            {/* Simple text buttons */}
+          <div className="flex items-center gap-1.5 sm:gap-3">
+            {/* Simple text buttons - hide on very small screens */}
             <button
               type="button"
-              className="btn-plain px-3 py-2 text-sm font-medium rounded-md text-white/90 hover:text-white hover:bg-white/10 transition-colors"
+              className="btn-plain px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md text-white/90 hover:text-white hover:bg-white/10 transition-colors hidden sm:block"
               onClick={() => navigate('/courses')}
             >
               Courses
             </button>
             <button
               type="button"
-              className="btn-plain px-3 py-2 text-sm font-medium rounded-md text-white/90 hover:text-white hover:bg-white/10 transition-colors"
+              className="btn-plain px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md text-white/90 hover:text-white hover:bg-white/10 transition-colors hidden md:block"
               onClick={() => navigate('/student/courses')}
             >
               My Courses
             </button>
             <button
               type="button"
-              className="btn-plain px-3 py-2 text-sm font-medium rounded-md bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 transition-colors"
+              className="btn-plain px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 transition-colors"
               onClick={() => navigate('/courses/apply')}
             >
-              Apply
+              <span className="hidden sm:inline">Apply</span>
+              <span className="sm:hidden">Apply</span>
             </button>
 
             {/* Login button – same style as main site */}
@@ -88,11 +89,11 @@ const CoursesNavbar: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsAuthOpen(true)}
-                className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-indigo-500 text-white shadow-[0_10px_30px_rgba(168,85,247,0.35)] hover:shadow-[0_12px_36px_rgba(99,102,241,0.45)] transition-all hover:scale-110 flex items-center justify-center focus:outline-none"
+                className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-indigo-500 text-white shadow-[0_10px_30px_rgba(168,85,247,0.35)] hover:shadow-[0_12px_36px_rgba(99,102,241,0.45)] transition-all hover:scale-110 flex items-center justify-center focus:outline-none flex-shrink-0"
                 aria-label={user ? 'Account' : 'Sign In'}
               >
                 <svg
-                  className="w-5 h-5"
+                  className="w-4 h-4 sm:w-5 sm:h-5"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"

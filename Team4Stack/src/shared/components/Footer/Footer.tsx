@@ -265,9 +265,6 @@ const Footer: React.FC = () => {
             <p className="footer-copyright">
               © {new Date().getFullYear()} Team4Stack. All rights reserved.
             </p>
-            <p className="footer-owners">
-              Website Owners: M.Sami khan, Aftab Akram, M.Hasnain, Faiz Ahmad
-            </p>
           </div>
         </div>
       </div>
