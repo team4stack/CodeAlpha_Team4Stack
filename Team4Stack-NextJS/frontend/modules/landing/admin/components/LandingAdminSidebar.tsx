@@ -36,7 +36,6 @@ const AdminSidebar: React.FC = () => {
     { to: '/adminlandingt4s/mentor_profile', label: labels.tab_label_mentor || 'Mentor', icon: '🎓' },
     { to: '/adminlandingt4s/contact', label: labels.tab_label_contact || 'Contact', icon: '☎️' },
     { to: '/adminlandingt4s/footer', label: labels.tab_label_footer || 'Footer', icon: '🦶' },
-    { to: '/adminlandingt4s/forms', label: 'Admission Form', icon: '📧' },
     { to: '/adminlandingt4s/support', label: labels.tab_label_support || 'Support', icon: '💬' },
     { to: '/adminlandingt4s/stackstore', label: labels.tab_label_stackstore || 'StackStore', icon: '🧩' },
     { to: '/adminlandingt4s/settings', label: labels.tab_label_settings || 'Settings', icon: '⚙️' }

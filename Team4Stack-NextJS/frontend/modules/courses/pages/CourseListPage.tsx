@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useTheme } from '@/contexts/ThemeContext';
 import { ProgressBar } from '../components';
 import { supabase } from '@/lib/supabase/client';
+import StudentNavbar from '@/navigation/StudentNavbar';
 
 interface Course {
   id: string;
@@ -143,8 +144,11 @@ const CourseListPage: React.FC = () => {
 
   return (
     <div className="min-h-screen transition-colors duration-300">
+      {/* Navbar integrated into hero section */}
+      <StudentNavbar />
+      
       {/* Hero Section */}
-      <div className={`pt-24 md:pt-32 pb-12 ${isDarkMode ? 'bg-gradient-to-b from-black via-gray-900 to-black' : 'bg-gradient-to-b from-gray-50 to-white'}`}>
+      <div className={`pt-20 md:pt-28 pb-12 ${isDarkMode ? 'bg-gradient-to-b from-black via-gray-900 to-black' : 'bg-gradient-to-b from-gray-50 to-white'}`}>
         <div className="container-custom">
           <div className="text-center mb-8">
             <h1 className={`text-4xl md:text-5xl lg:text-6xl font-bold mb-4 ${

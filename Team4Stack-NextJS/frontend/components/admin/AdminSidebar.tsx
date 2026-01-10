@@ -32,7 +32,6 @@ const AdminSidebar: React.FC = () => {
     { to: '/adminsami/mentor_profile', label: labels.tab_label_mentor || 'Mentor', icon: '🎓' },
     { to: '/adminsami/contact', label: labels.tab_label_contact || 'Contact', icon: '☎️' },
     { to: '/adminsami/footer', label: labels.tab_label_footer || 'Footer', icon: '🦶' },
-    { to: '/adminsami/forms', label: 'Admission Form', icon: '📧' },
     { to: '/adminsami/support', label: labels.tab_label_support || 'Support', icon: '💬' },
     { to: '/adminsami/stackstore', label: labels.tab_label_stackstore || 'StackStore', icon: '🧩' },
     { to: '/adminsami/settings', label: labels.tab_label_settings || 'Settings', icon: '⚙️' }

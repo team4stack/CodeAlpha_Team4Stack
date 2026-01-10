@@ -79,25 +79,19 @@ const CoursesPage: React.FC = () => {
       <CoursesNavbar />
       
       {/* Hero Section */}
-      <section className={`relative min-h-[88vh] md:min-h-[92vh] flex items-center justify-center pt-20 md:pt-24 pb-20 overflow-hidden ${
+      <section className={`relative pt-20 md:pt-28 pb-20 overflow-hidden ${
         isDarkMode 
-          ? 'bg-gradient-to-br from-[#0a0f1f] via-[#0b1226] to-[#060b18]' 
-          : 'bg-gradient-to-br from-gray-50 via-white to-gray-100'
+          ? 'bg-gradient-to-b from-black via-gray-900 to-black' 
+          : 'bg-gradient-to-b from-gray-50 via-white to-gray-50'
       }`}>
-        {/* Background Effects - Courses Theme (Orange/Red) */}
+        {/* Background Effects */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {/* Orange gradient wash */}
-          <div className="absolute -top-24 -left-24 w-[55vw] h-[55vw] rounded-full opacity-30 blur-3xl" aria-hidden="true" style={{
-            background: 'radial-gradient(circle at 30% 30%, rgba(249,115,22,0.45), rgba(249,115,22,0) 60%)'
-          }}></div>
-          {/* Red gradient wash */}
-          <div className="absolute -bottom-28 -right-24 w-[60vw] h-[60vw] rounded-full opacity-25 blur-3xl" aria-hidden="true" style={{
-            background: 'radial-gradient(circle at 70% 70%, rgba(239,68,68,0.45), rgba(239,68,68,0) 60%)'
-          }}></div>
-          {/* Vignette with orange/red theme */}
-          <div className="pointer-events-none absolute inset-0 opacity-70" aria-hidden="true" style={{
-            background: 'radial-gradient(1200px 600px at 50% 120%, rgba(249,115,22,0.25), rgba(0,0,0,0) 70%)'
-          }}></div>
+          <div className={`absolute top-1/4 left-1/4 w-48 h-48 md:w-96 md:h-96 rounded-full blur-3xl opacity-20 ${
+            isDarkMode ? 'bg-purple-500' : 'bg-purple-200'
+          }`}></div>
+          <div className={`absolute bottom-1/4 right-1/4 w-48 h-48 md:w-96 md:h-96 rounded-full blur-3xl opacity-20 ${
+            isDarkMode ? 'bg-orange-500' : 'bg-orange-200'
+          }`}></div>
         </div>
 
         <div className="container-custom relative z-10">
@@ -125,23 +119,13 @@ const CoursesPage: React.FC = () => {
             </p>
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center px-4">
               <button
-                onClick={() => router.push('/courses/apply')}
+                onClick={() => router.push('/student')}
                 className="group w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 rounded-xl bg-gradient-to-r from-orange-500 to-red-500 text-white font-bold text-base sm:text-lg shadow-lg hover:shadow-2xl hover:shadow-orange-500/50 hover:scale-105 transition-all duration-300 flex items-center justify-center gap-2"
               >
-                <span>Apply Now</span>
+                <span>Student Portal</span>
                 <svg className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                 </svg>
-              </button>
-              <button
-                onClick={() => router.push('/student')}
-                className={`w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg border-2 transition-all duration-300 hover:scale-105 ${
-                  isDarkMode
-                    ? 'border-purple-500 text-purple-400 hover:bg-purple-500/20 hover:shadow-lg hover:shadow-purple-500/30'
-                    : 'border-purple-600 text-purple-600 hover:bg-purple-50 hover:shadow-lg'
-                }`}
-              >
-                Student Portal
               </button>
             </div>
           </div>
