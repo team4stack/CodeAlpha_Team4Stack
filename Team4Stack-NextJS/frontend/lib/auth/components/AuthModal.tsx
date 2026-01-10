@@ -844,8 +844,8 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
   return (
     <>
       <div className={`fixed inset-0 z-[9998] transition ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} style={{ background: 'rgba(0,0,0,0.6)' }} />
-      <div className={`fixed inset-0 z-[9999] flex items-center justify-center transition ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-        <div ref={panelRef} className="w-full max-w-md mx-4 rounded-2xl border border-white/10 bg-[#0c1224]/95 text-white backdrop-blur-xl p-6 shadow-[0_40px_120px_rgba(56,189,248,0.25)] relative">
+      <div className={`fixed inset-0 z-[9999] flex items-center justify-center transition ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'} overflow-y-auto p-4`}>
+        <div ref={panelRef} className="w-full max-w-md my-auto rounded-2xl border border-white/10 bg-[#0c1224]/95 text-white backdrop-blur-xl p-6 shadow-[0_40px_120px_rgba(56,189,248,0.25)] relative">
           <button
             onClick={onClose}
             className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-red-500/90 hover:bg-red-600 border border-white/30 hover:border-white/50 transition-all cursor-pointer z-[100] shadow-md hover:shadow-lg hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-1"

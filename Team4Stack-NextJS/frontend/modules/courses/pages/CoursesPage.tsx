@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/lib/supabase/client';
+import CoursesNavbar from '@/navigation/CoursesNavbar';
 
 const CoursesPage: React.FC = () => {
   const { isDarkMode } = useTheme();
@@ -74,20 +75,29 @@ const CoursesPage: React.FC = () => {
   
   return (
     <div className="min-h-screen transition-colors duration-300">
+      {/* Navbar integrated into hero section */}
+      <CoursesNavbar />
+      
       {/* Hero Section */}
-      <section className={`relative pt-20 md:pt-28 pb-20 overflow-hidden ${
+      <section className={`relative min-h-[88vh] md:min-h-[92vh] flex items-center justify-center pt-20 md:pt-24 pb-20 overflow-hidden ${
         isDarkMode 
-          ? 'bg-gradient-to-b from-black via-gray-900 to-black' 
-          : 'bg-gradient-to-b from-gray-50 via-white to-gray-50'
+          ? 'bg-gradient-to-br from-[#0a0f1f] via-[#0b1226] to-[#060b18]' 
+          : 'bg-gradient-to-br from-gray-50 via-white to-gray-100'
       }`}>
-        {/* Background Effects */}
+        {/* Background Effects - Courses Theme (Orange/Red) */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className={`absolute top-1/4 left-1/4 w-48 h-48 md:w-96 md:h-96 rounded-full blur-3xl opacity-20 ${
-            isDarkMode ? 'bg-purple-500' : 'bg-purple-200'
-          }`}></div>
-          <div className={`absolute bottom-1/4 right-1/4 w-48 h-48 md:w-96 md:h-96 rounded-full blur-3xl opacity-20 ${
-            isDarkMode ? 'bg-orange-500' : 'bg-orange-200'
-          }`}></div>
+          {/* Orange gradient wash */}
+          <div className="absolute -top-24 -left-24 w-[55vw] h-[55vw] rounded-full opacity-30 blur-3xl" aria-hidden="true" style={{
+            background: 'radial-gradient(circle at 30% 30%, rgba(249,115,22,0.45), rgba(249,115,22,0) 60%)'
+          }}></div>
+          {/* Red gradient wash */}
+          <div className="absolute -bottom-28 -right-24 w-[60vw] h-[60vw] rounded-full opacity-25 blur-3xl" aria-hidden="true" style={{
+            background: 'radial-gradient(circle at 70% 70%, rgba(239,68,68,0.45), rgba(239,68,68,0) 60%)'
+          }}></div>
+          {/* Vignette with orange/red theme */}
+          <div className="pointer-events-none absolute inset-0 opacity-70" aria-hidden="true" style={{
+            background: 'radial-gradient(1200px 600px at 50% 120%, rgba(249,115,22,0.25), rgba(0,0,0,0) 70%)'
+          }}></div>
         </div>
 
         <div className="container-custom relative z-10">

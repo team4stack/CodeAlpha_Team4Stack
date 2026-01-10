@@ -141,7 +141,7 @@ const Courses: React.FC = () => {
 
         {/* Payment Notice Modal */}
         {noticeOpen && (
-          <div className="fixed inset-0 z-[10000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 pt-20 md:pt-24">
+          <div className="fixed inset-0 z-[10000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
             <div className="w-full max-w-lg card text-white bg-gradient-to-br from-purple-600/20 to-cyan-600/20 border border-white/20 max-h-[90vh] overflow-y-auto p-4 sm:p-6">
               <h3 className="text-xl sm:text-2xl font-bold mb-2 sm:mb-3">Before You Book</h3>
               <p className="text-white/80 mb-3 sm:mb-4 text-sm sm:text-base">Please pay the first month fee via JazzCash and keep the screenshot. Next months: compromise possible.</p>

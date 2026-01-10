@@ -584,8 +584,8 @@ const AdmissionForm: React.FC = () => {
       
       {/* Custom Sign In Prompt Popup */}
       {showSignInPrompt && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center pointer-events-none pt-16 md:pt-20">
-          <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-4 rounded-lg shadow-2xl transform transition-all duration-300 animate-scale-in pointer-events-auto border border-white/20 backdrop-blur-sm mx-4">
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center pointer-events-none p-4">
+          <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-4 rounded-lg shadow-2xl transform transition-all duration-300 animate-scale-in pointer-events-auto border border-white/20 backdrop-blur-sm max-w-md w-full">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
