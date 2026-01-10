@@ -46,9 +46,9 @@ const CourseListPage: React.FC = () => {
         // First, get user's approved applications
         const { data: applications, error: appError } = await supabase
           .from('admission_form')
-          .select('course_name')
+          .select('course_name, course_name_2, approved, approved_1, approved_2')
           .eq('email', user.email.toLowerCase().trim())
-          .eq('approved', true);
+          .order('created_at', { ascending: false });
 
         if (appError) {
           console.error('Error fetching applications:', appError);
@@ -62,8 +62,51 @@ const CourseListPage: React.FC = () => {
           return;
         }
 
-        // Get unique course names from approved applications
-        const approvedCourseNames = [...new Set(applications.map(app => app.course_name?.trim()).filter(Boolean))];
+        // Filter applications where at least one course is approved
+        const appsWithAnyApproved = applications.filter(app => {
+          const hasNewApprovals = app.approved_1 !== undefined || app.approved_2 !== undefined
+          
+          if (hasNewApprovals) {
+            // New system: check if at least one selected course is approved
+            const hasCourse1 = Boolean(app.course_name)
+            const hasCourse2 = Boolean(app.course_name_2)
+            
+            if (hasCourse1 && hasCourse2) {
+              // At least one course must be approved
+              return app.approved_1 === true || app.approved_2 === true
+            } else if (hasCourse1) {
+              // Only course 1 selected - must be approved
+              return app.approved_1 === true
+            }
+            return false
+          } else {
+            // Old system: use the approved field directly
+            return app.approved === true
+          }
+        });
+
+        if (appsWithAnyApproved.length === 0) {
+          setCourses([]);
+          setProgressMap({});
+          setLoading(false);
+          return;
+        }
+
+        // Get unique course names from applications (only include courses that are actually approved)
+        const approvedCourseNames = new Set<string>();
+        appsWithAnyApproved.forEach(app => {
+          // Only add courses that are actually approved
+          if (app.course_name?.trim() && app.approved_1 === true) {
+            approvedCourseNames.add(app.course_name.trim());
+          }
+          if (app.course_name_2?.trim() && app.approved_2 === true) {
+            approvedCourseNames.add(app.course_name_2.trim());
+          }
+          // Backward compatibility: if using old system, add course_name if approved
+          if (!app.approved_1 && !app.approved_2 && app.approved === true && app.course_name?.trim()) {
+            approvedCourseNames.add(app.course_name.trim());
+          }
+        });
 
         // Fetch all courses from Supabase
         const { data: allCourses, error: courseError } = await supabase
@@ -77,7 +120,7 @@ const CourseListPage: React.FC = () => {
         // Filter courses: only show courses where title matches approved course_name
         const enrolledCourses = (allCourses || []).filter((course: any) => {
           const courseTitle = (course.title || course.name || '').trim();
-          return approvedCourseNames.some(approvedName => 
+          return Array.from(approvedCourseNames).some(approvedName => 
             courseTitle.toLowerCase() === approvedName.toLowerCase()
           );
         });
@@ -187,71 +230,14 @@ const CourseListPage: React.FC = () => {
 
   return (
     <div className="min-h-screen transition-colors duration-300">
-      {/* Navbar integrated into hero section */}
       <StudentNavbar />
       
-      {/* Hero Section */}
-      <section className={`relative pt-20 md:pt-28 pb-20 overflow-hidden ${
+      <div className={`pt-24 md:pt-32 pb-12 ${
         isDarkMode 
           ? 'bg-gradient-to-b from-black via-gray-900 to-black' 
           : 'bg-gradient-to-b from-gray-50 via-white to-gray-50'
       }`}>
-        {/* Background Effects */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className={`absolute top-1/4 left-1/4 w-48 h-48 md:w-96 md:h-96 rounded-full blur-3xl opacity-20 ${
-            isDarkMode ? 'bg-cyan-500' : 'bg-cyan-200'
-          }`}></div>
-          <div className={`absolute bottom-1/4 right-1/4 w-48 h-48 md:w-96 md:h-96 rounded-full blur-3xl opacity-20 ${
-            isDarkMode ? 'bg-blue-500' : 'bg-blue-200'
-          }`}></div>
-        </div>
-
-        <div className="container-custom relative z-10">
-          <div className="text-center mb-12 md:mb-16 px-4">
-            <div className="inline-block mb-4 md:mb-6 animate-fade-in">
-              <span className={`px-4 py-2 md:px-5 md:py-2.5 rounded-full text-xs md:text-sm font-semibold backdrop-blur-sm ${
-                isDarkMode 
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' 
-                  : 'bg-cyan-100 text-cyan-700 border border-cyan-200 shadow-sm'
-              }`}>
-                🎓 My Learning Journey
-              </span>
-            </div>
-            <h1 className={`text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold mb-4 md:mb-6 leading-tight px-4 ${
-              isDarkMode ? 'text-white' : 'text-gray-900'
-            }`}>
-              My <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500 animate-gradient">
-                Courses
-              </span>
-            </h1>
-            <p className={`text-base sm:text-lg md:text-xl lg:text-2xl max-w-3xl mx-auto mb-8 md:mb-10 leading-relaxed px-4 ${
-              isDarkMode ? 'text-gray-300' : 'text-gray-600'
-            }`}>
-              Continue your learning journey. Track your progress and access all your approved courses.
-            </p>
-            {courseStatus.length > 0 && (
-              <div className="flex items-center justify-center gap-4 px-4">
-                <div className={`px-6 py-3 rounded-xl backdrop-blur-sm ${
-                  isDarkMode 
-                    ? 'bg-cyan-500/20 border border-cyan-500/30' 
-                    : 'bg-cyan-100 border border-cyan-200 shadow-sm'
-                }`}>
-                  <div className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 bg-gradient-to-r from-cyan-500 to-blue-500 bg-clip-text text-transparent">
-                    {courseStatus.length}
-                  </div>
-                  <div className={`text-xs sm:text-sm md:text-base font-medium ${
-                    isDarkMode ? 'text-cyan-300' : 'text-cyan-700'
-                  }`}>
-                    {courseStatus.length === 1 ? 'Course' : 'Courses'} Enrolled
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
-
-      <div className="container-custom py-12">
+        <div className="container-custom py-12">
         <div className="flex flex-col md:flex-row justify-between items-center mb-8">
           <div>
             <h2 className={`text-2xl md:text-3xl font-bold mb-2 ${
@@ -379,6 +365,7 @@ const CourseListPage: React.FC = () => {
             </button>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

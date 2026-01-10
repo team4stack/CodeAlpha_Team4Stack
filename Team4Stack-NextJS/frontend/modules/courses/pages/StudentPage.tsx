@@ -56,14 +56,96 @@ const StudentPage: React.FC = () => {
           }
         }
 
-        // Fetch courses from Supabase
-        const { data: courseData, error: courseError } = await supabase
+        // First, get user's approved applications to get enrolled courses
+        if (!user.email) {
+          setCourses([]);
+          setProgressMap({});
+          setLoading(false);
+          return;
+        }
+
+        const { data: applications, error: appError } = await supabase
+          .from('admission_form')
+          .select('course_name, course_name_2, approved, approved_1, approved_2')
+          .eq('email', user.email.toLowerCase().trim())
+          .order('created_at', { ascending: false });
+
+        if (appError) {
+          console.error('Error fetching applications:', appError);
+          throw appError;
+        }
+
+        if (!applications || applications.length === 0) {
+          setCourses([]);
+          setProgressMap({});
+          setLoading(false);
+          return;
+        }
+
+        // Filter applications where at least one course is approved
+        const appsWithAnyApproved = applications.filter(app => {
+          const hasNewApprovals = app.approved_1 !== undefined || app.approved_2 !== undefined
+          
+          if (hasNewApprovals) {
+            // New system: check if at least one selected course is approved
+            const hasCourse1 = Boolean(app.course_name)
+            const hasCourse2 = Boolean(app.course_name_2)
+            
+            if (hasCourse1 && hasCourse2) {
+              // At least one course must be approved
+              return app.approved_1 === true || app.approved_2 === true
+            } else if (hasCourse1) {
+              // Only course 1 selected - must be approved
+              return app.approved_1 === true
+            }
+            return false
+          } else {
+            // Old system: use the approved field directly
+            return app.approved === true
+          }
+        });
+
+        if (appsWithAnyApproved.length === 0) {
+          setCourses([]);
+          setProgressMap({});
+          setLoading(false);
+          return;
+        }
+
+        // Get unique course names from applications (only include courses that are actually approved)
+        const approvedCourseNames = new Set<string>();
+        appsWithAnyApproved.forEach(app => {
+          // Only add courses that are actually approved
+          if (app.course_name?.trim() && app.approved_1 === true) {
+            approvedCourseNames.add(app.course_name.trim());
+          }
+          if (app.course_name_2?.trim() && app.approved_2 === true) {
+            approvedCourseNames.add(app.course_name_2.trim());
+          }
+          // Backward compatibility: if using old system, add course_name if approved
+          if (!app.approved_1 && !app.approved_2 && app.approved === true && app.course_name?.trim()) {
+            approvedCourseNames.add(app.course_name.trim());
+          }
+        });
+
+        // Fetch all courses from Supabase
+        const { data: allCourses, error: courseError } = await supabase
           .from('courses')
-          .select('*');
+          .select('*')
+          .order('order_index', { ascending: true })
+          .order('id', { ascending: false });
           
         if (courseError) throw courseError;
         
-        setCourses(courseData || []);
+        // Filter courses: only show courses where title matches approved course_name
+        const enrolledCourses = (allCourses || []).filter((course: any) => {
+          const courseTitle = (course.title || course.name || '').trim();
+          return Array.from(approvedCourseNames).some(approvedName => 
+            courseTitle.toLowerCase() === approvedName.toLowerCase()
+          );
+        });
+        
+        setCourses(enrolledCourses);
         
         // Fetch progress records for current user
         const { data: progressData } = await supabase
@@ -74,7 +156,7 @@ const StudentPage: React.FC = () => {
         const progressByCourse: Record<string, Progress> = {};
         if (progressData) {
           progressData.forEach((record: any) => {
-            const courseId = record.course_id;
+            const courseId = String(record.course_id);
             if (!progressByCourse[courseId]) {
               progressByCourse[courseId] = { completed: 0, total: 0 };
             }
@@ -100,14 +182,17 @@ const StudentPage: React.FC = () => {
     () =>
       courses.map((course) => ({
         ...course,
-        progress: progressMap[course.id] || { completed: 0, total: 0 },
+        name: course.name || (course as any).title || 'Untitled Course',
+        progress: progressMap[String(course.id)] || { completed: 0, total: 0 },
       })),
     [courses, progressMap]
   );
 
+  // All enrolled courses (same as CourseListPage)
+  const enrolledCourses = useMemo(() => courseStatus, [courseStatus]);
+
   // Calculate overall statistics
   const stats = useMemo(() => {
-    const enrolledCourses = courseStatus.filter(c => c.progress.total > 0);
     const totalCourses = enrolledCourses.length;
     const totalProgress = enrolledCourses.reduce((sum, c) => {
       const percentage = c.progress.total > 0 
@@ -126,7 +211,7 @@ const StudentPage: React.FC = () => {
       totalItems,
       overallPercentage: totalItems > 0 ? Math.round((totalCompleted / totalItems) * 100) : 0
     };
-  }, [courseStatus]);
+  }, [enrolledCourses]);
 
   if (loading) {
     return (
@@ -142,8 +227,6 @@ const StudentPage: React.FC = () => {
       </div>
     );
   }
-
-  const enrolledCourses = courseStatus.filter(c => c.progress.total > 0);
 
   return (
     <div className="min-h-screen transition-colors duration-300">
@@ -308,7 +391,7 @@ const StudentPage: React.FC = () => {
               My Enrolled Courses
             </h2>
             <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-              {enrolledCourses.length} {enrolledCourses.length === 1 ? 'course' : 'courses'} with progress
+              {enrolledCourses.length} {enrolledCourses.length === 1 ? 'course' : 'courses'} enrolled
             </p>
           </div>
 

@@ -16,6 +16,9 @@ const CoursesPage: React.FC = () => {
   const [dbCourses, setDbCourses] = useState<Array<{ id: number; title: string; description?: string; image_url?: string; level?: string; duration?: string; price?: string; note?: string; features?: string[]; gradient?: string }>>([]);
   const [isApprovedStudent, setIsApprovedStudent] = useState<boolean | null>(null);
   const [enrolledCourses, setEnrolledCourses] = useState<Set<string>>(new Set());
+  const [rejectedCourses, setRejectedCourses] = useState<Map<string, string>>(new Map()); // course_name -> rejection_message
+  const [showRejectionModal, setShowRejectionModal] = useState(false);
+  const [selectedRejectionMessage, setSelectedRejectionMessage] = useState<string>('');
 
   const courses = useMemo(() => ([
     {
@@ -85,7 +88,7 @@ const CoursesPage: React.FC = () => {
       try {
         const { data: applicationData, error } = await supabase
           .from('admission_form')
-          .select('approved, course_name')
+          .select('approved, approved_1, approved_2, course_name, course_name_2, rejection_message_1, rejection_message_2, rejection_message')
           .eq('email', user.email.toLowerCase().trim())
           .order('created_at', { ascending: false });
 
@@ -96,16 +99,97 @@ const CoursesPage: React.FC = () => {
           return;
         }
 
-        // Check if user has an approved application
-        const hasApproved = applicationData?.some(app => app.approved === true);
+        // Check if user has at least one course approved
+        const hasAnyCourseApproved = applicationData?.some(app => {
+          // Check if new per-course approval system is being used
+          const hasNewApprovals = app.approved_1 !== undefined || app.approved_2 !== undefined
+          
+          if (hasNewApprovals) {
+            // New system: check if at least one selected course is approved
+            const hasCourse1 = Boolean(app.course_name)
+            const hasCourse2 = Boolean(app.course_name_2)
+            
+            if (hasCourse1 && hasCourse2) {
+              // Both courses selected - at least one must be approved
+              return app.approved_1 === true || app.approved_2 === true
+            } else if (hasCourse1) {
+              // Only course 1 selected - must be approved
+              return app.approved_1 === true
+            }
+            return false
+          } else {
+            // Old system: use the approved field directly
+            return app.approved === true
+          }
+        }) || false;
+        
+        const hasApproved = hasAnyCourseApproved;
         setIsApprovedStudent(hasApproved || false);
 
-        // Get all course names user has applied for (regardless of approval status)
+        // Get course names from applications where at least one course is approved
         if (applicationData && applicationData.length > 0) {
-          const courseNames = new Set(applicationData.map(app => app.course_name?.trim()).filter(Boolean));
+          const appsWithAnyApproved = applicationData.filter(app => {
+            const hasNewApprovals = app.approved_1 !== undefined || app.approved_2 !== undefined
+            
+            if (hasNewApprovals) {
+              const hasCourse1 = Boolean(app.course_name)
+              const hasCourse2 = Boolean(app.course_name_2)
+              
+              if (hasCourse1 && hasCourse2) {
+                // At least one course must be approved
+                return app.approved_1 === true || app.approved_2 === true
+              } else if (hasCourse1) {
+                return app.approved_1 === true
+              }
+              return false
+            } else {
+              return app.approved === true
+            }
+          });
+          
+          const courseNames = new Set<string>();
+          const rejectedMap = new Map<string, string>();
+          
+          appsWithAnyApproved.forEach(app => {
+            // Only add courses that are actually approved
+            if (app.course_name?.trim() && app.approved_1 === true) {
+              courseNames.add(app.course_name.trim());
+            }
+            if (app.course_name_2?.trim() && app.approved_2 === true) {
+              courseNames.add(app.course_name_2.trim());
+            }
+            // Backward compatibility: if using old system, add course_name if approved
+            if (!app.approved_1 && !app.approved_2 && app.approved === true && app.course_name?.trim()) {
+              courseNames.add(app.course_name.trim());
+            }
+          });
+          
+          // Track rejected courses with their rejection messages
+          applicationData.forEach(app => {
+            const hasNewApprovals = app.approved_1 !== undefined || app.approved_2 !== undefined
+            
+            if (hasNewApprovals) {
+              // Check course 1
+              if (app.course_name?.trim() && app.approved_1 === false && app.rejection_message_1) {
+                rejectedMap.set(app.course_name.trim(), app.rejection_message_1);
+              }
+              // Check course 2
+              if (app.course_name_2?.trim() && app.approved_2 === false && app.rejection_message_2) {
+                rejectedMap.set(app.course_name_2.trim(), app.rejection_message_2);
+              }
+            } else {
+              // Old system
+              if (app.course_name?.trim() && app.approved === false && app.rejection_message) {
+                rejectedMap.set(app.course_name.trim(), app.rejection_message);
+              }
+            }
+          });
+          
           setEnrolledCourses(courseNames);
+          setRejectedCourses(rejectedMap);
         } else {
           setEnrolledCourses(new Set());
+          setRejectedCourses(new Map());
         }
       } catch (err) {
         console.error('Error checking student status:', err);
@@ -318,7 +402,7 @@ const CoursesPage: React.FC = () => {
                       </div>
                     )}
                     
-                    {/* Book Now / Already Enrolled Button */}
+                    {/* Book Now / Already Enrolled / Rejected Button */}
                     {enrolledCourses.has(course.title) ? (
                       <div className="w-full mt-auto bg-white/10 backdrop-blur-sm border border-white/20 text-white font-bold py-3 sm:py-4 rounded-lg sm:rounded-xl flex items-center justify-center gap-2 text-sm sm:text-base cursor-not-allowed opacity-75">
                         <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -326,6 +410,19 @@ const CoursesPage: React.FC = () => {
                         </svg>
                         <span>Already Enrolled</span>
                       </div>
+                    ) : rejectedCourses.has(course.title) ? (
+                      <button 
+                        onClick={() => {
+                          setSelectedRejectionMessage(rejectedCourses.get(course.title) || '');
+                          setShowRejectionModal(true);
+                        }}
+                        className="w-full mt-auto bg-red-500/80 hover:bg-red-600/90 backdrop-blur-sm border border-red-400/50 text-white font-bold py-3 sm:py-4 rounded-lg sm:rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-red-500/20 flex items-center justify-center gap-2 group text-sm sm:text-base"
+                      >
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        <span>Rejected</span>
+                      </button>
                     ) : (
                       <button 
                         onClick={() => openBooking(course.title)}
@@ -344,6 +441,53 @@ const CoursesPage: React.FC = () => {
           </div>
         </div>
       </section>
+
+      {/* Rejection Reason Modal */}
+      {showRejectionModal && (
+        <div className="fixed inset-0 z-[10001] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className={`w-full max-w-lg rounded-xl sm:rounded-2xl text-white bg-gradient-to-br from-red-600/20 to-orange-600/20 border border-red-400/30 max-h-[90vh] overflow-y-auto p-4 sm:p-6 ${
+            isDarkMode ? 'shadow-2xl' : 'shadow-xl'
+          }`}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+                <span className="text-2xl">⚠️</span>
+                Application Rejected
+              </h3>
+              <button
+                onClick={() => {
+                  setShowRejectionModal(false);
+                  setSelectedRejectionMessage('');
+                }}
+                className="text-white/70 hover:text-white transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="bg-red-500/20 border border-red-400/30 rounded-lg p-4 mb-4">
+              <p className="text-sm font-semibold text-white/90 mb-2">Rejection Reason:</p>
+              <p className="text-white/80 text-sm sm:text-base leading-relaxed">
+                {selectedRejectionMessage || 'No reason provided.'}
+              </p>
+            </div>
+            <div className="bg-yellow-500/20 border border-yellow-400/30 rounded-lg p-4 mb-4">
+              <p className="text-sm text-white/90">
+                <strong>Note:</strong> You cannot apply again for this course. If you have questions, please contact the administration.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setShowRejectionModal(false);
+                setSelectedRejectionMessage('');
+              }}
+              className="w-full px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Payment Notice Modal */}
       {noticeOpen && (

@@ -12,13 +12,18 @@ type ApplicationRow = {
   email: string
   address: string | null
   course_name: string
+  course_name_2: string | null
   message: string | null
   gender: string
   age: number
   image_attached: boolean
   viewed: boolean
   approved: boolean | null
+  approved_1: boolean | null
+  approved_2: boolean | null
   rejection_message: string | null
+  rejection_message_1: string | null
+  rejection_message_2: string | null
   created_at: string
   is_blocked?: boolean
 }
@@ -31,6 +36,7 @@ const ApplicationsPage: React.FC = () => {
   const [selectedApplication, setSelectedApplication] = useState<ApplicationRow | null>(null)
   const [showRejectModal, setShowRejectModal] = useState(false)
   const [rejectingId, setRejectingId] = useState<number | null>(null)
+  const [rejectingCourseNumber, setRejectingCourseNumber] = useState<1 | 2 | null>(null)
   const [rejectionMessage, setRejectionMessage] = useState('')
   const [showBlockModal, setShowBlockModal] = useState(false)
   const [blockingEmail, setBlockingEmail] = useState<string | null>(null)
@@ -57,7 +63,7 @@ const ApplicationsPage: React.FC = () => {
       
       if (err) throw err
       
-      // Check blocked status for each application
+      // Check blocked status for each application and calculate overall approved status
       const applicationsWithBlockStatus = await Promise.all(
         ((data as ApplicationRow[]) || []).map(async (app) => {
           const { data: userData } = await supabase
@@ -66,9 +72,30 @@ const ApplicationsPage: React.FC = () => {
             .eq('email', app.email.toLowerCase().trim())
             .maybeSingle()
           
+          // Calculate overall approved status based on individual course approvals
+          // Backward compatibility: if old approved field exists and new fields don't, use old field
+          const hasNewApprovals = app.approved_1 !== undefined || app.approved_2 !== undefined
+          
+          let hasApproved: boolean = false
+          let allRejected: boolean = false
+          
+          if (hasNewApprovals) {
+            // New system: check individual course approvals
+            hasApproved = Boolean(app.approved_1 === true || app.approved_2 === true)
+            allRejected = Boolean(
+              (app.course_name && app.approved_1 === false) &&
+              (!app.course_name_2 || app.approved_2 === false)
+            )
+          } else {
+            // Old system: use the approved field directly
+            hasApproved = app.approved === true
+            allRejected = app.approved === false
+          }
+          
           return {
             ...app,
-            is_blocked: userData?.is_blocked || false
+            is_blocked: userData?.is_blocked || false,
+            approved: hasApproved ? true : (allRejected ? false : null) // null means pending
           }
         })
       )
@@ -102,12 +129,19 @@ const ApplicationsPage: React.FC = () => {
     }
   }, [filter])
 
-  const approveApplication = async (id: number, email: string) => {
+  const approveApplication = async (id: number, email: string, courseNumber: 1 | 2) => {
     try {
-      // Update admission form
+      const updateField = `approved_${courseNumber}` as 'approved_1' | 'approved_2'
+      const rejectionField = `rejection_message_${courseNumber}` as 'rejection_message_1' | 'rejection_message_2'
+      
+      // Update admission form - approve specific course
       const { error: err } = await supabase
         .from('admission_form')
-        .update({ approved: true, viewed: true, rejection_message: null })
+        .update({ 
+          [updateField]: true, 
+          [rejectionField]: null,
+          viewed: true 
+        })
         .eq('id', id)
       
       if (err) throw err
@@ -143,9 +177,26 @@ const ApplicationsPage: React.FC = () => {
           .eq('email', email.toLowerCase().trim())
       }
       
-      setRows(rows.map(r => r.id === id ? { ...r, approved: true, viewed: true, rejection_message: null } : r))
-      setSelectedApplication(null)
-      toast.success('Application approved successfully!')
+      // Update local state
+      setRows(rows.map(r => {
+        if (r.id === id) {
+          const updated = { ...r, [updateField]: true, [rejectionField]: null, viewed: true } as ApplicationRow
+          // Set overall approved to true if at least one course is approved
+          updated.approved = updated.approved_1 === true || updated.approved_2 === true
+          return updated
+        }
+        return r
+      }))
+      
+      // Update selected application if it's the same
+      if (selectedApplication && selectedApplication.id === id) {
+        const updated = { ...selectedApplication, [updateField]: true, [rejectionField]: null, viewed: true } as ApplicationRow
+        updated.approved = updated.approved_1 === true || updated.approved_2 === true
+        setSelectedApplication(updated)
+      }
+      
+      toast.success(`Course ${courseNumber} approved successfully!`)
+      await load() // Reload to get latest data
     } catch (err: any) {
       if (process.env.NODE_ENV === 'development') {
         console.error('Error approving application:', err)
@@ -156,14 +207,15 @@ const ApplicationsPage: React.FC = () => {
     }
   }
 
-  const openRejectModal = (id: number) => {
+  const openRejectModal = (id: number, courseNumber: 1 | 2) => {
     setRejectingId(id)
+    setRejectingCourseNumber(courseNumber)
     setRejectionMessage('')
     setShowRejectModal(true)
   }
 
   const rejectApplication = async () => {
-    if (!rejectingId) return
+    if (!rejectingId || !rejectingCourseNumber) return
     if (!rejectionMessage.trim()) {
       const errorMsg = 'Please provide a rejection message'
       setError(errorMsg)
@@ -172,23 +224,44 @@ const ApplicationsPage: React.FC = () => {
     }
     
     try {
+      const updateField = `approved_${rejectingCourseNumber}` as 'approved_1' | 'approved_2'
+      const rejectionField = `rejection_message_${rejectingCourseNumber}` as 'rejection_message_1' | 'rejection_message_2'
+      
       const { error: err } = await supabase
         .from('admission_form')
         .update({ 
-          approved: false, 
-          viewed: true,
-          rejection_message: rejectionMessage.trim()
+          [updateField]: false, 
+          [rejectionField]: rejectionMessage.trim(),
+          viewed: true
         })
         .eq('id', rejectingId)
       
       if (err) throw err
       
-      setRows(rows.map(r => r.id === rejectingId ? { ...r, approved: false, viewed: true, rejection_message: rejectionMessage.trim() } : r))
+      // Update local state
+      setRows(rows.map(r => {
+        if (r.id === rejectingId) {
+          const updated = { ...r, [updateField]: false, [rejectionField]: rejectionMessage.trim(), viewed: true } as ApplicationRow
+          // Set overall approved based on remaining approved courses
+          updated.approved = updated.approved_1 === true || updated.approved_2 === true
+          return updated
+        }
+        return r
+      }))
+      
+      // Update selected application if it's the same
+      if (selectedApplication && selectedApplication.id === rejectingId) {
+        const updated = { ...selectedApplication, [updateField]: false, [rejectionField]: rejectionMessage.trim(), viewed: true } as ApplicationRow
+        updated.approved = updated.approved_1 === true || updated.approved_2 === true
+        setSelectedApplication(updated)
+      }
+      
       setShowRejectModal(false)
       setRejectingId(null)
+      setRejectingCourseNumber(null)
       setRejectionMessage('')
-      setSelectedApplication(null)
-      toast.success('Application rejected successfully!')
+      toast.success(`Course ${rejectingCourseNumber} rejected successfully!`)
+      await load() // Reload to get latest data
     } catch (err: any) {
       if (process.env.NODE_ENV === 'development') {
         console.error('Error rejecting application:', err)
@@ -428,8 +501,13 @@ const ApplicationsPage: React.FC = () => {
                       </div>
                     </div>
                     <div className="col-span-2">
-                      <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                        {application.course_name}
+                      <div className="text-sm font-medium text-gray-900 dark:text-white">
+                        <div className="truncate">{application.course_name}</div>
+                        {application.course_name_2 && (
+                          <div className="text-xs text-gray-500 dark:text-gray-400 truncate mt-1">
+                            + {application.course_name_2}
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="col-span-2">
@@ -446,23 +524,28 @@ const ApplicationsPage: React.FC = () => {
                           <span className="px-2 py-1 rounded text-xs font-bold bg-orange-600 text-white">
                             🚫 Blocked
                           </span>
-                        ) : application.approved === true ? (
-                          <span className="px-2 py-1 rounded text-xs font-bold bg-green-500 text-white">
-                            Approved
-                          </span>
-                        ) : application.approved === false ? (
-                          <span className="px-2 py-1 rounded text-xs font-bold bg-red-500 text-white">
-                            Rejected
-                          </span>
-                        ) : !application.viewed ? (
-                          <span className="px-2 py-1 rounded text-xs font-bold bg-yellow-500 text-white animate-pulse">
-                            Pending
-                          </span>
-                        ) : (
-                          <span className="px-2 py-1 rounded text-xs font-bold bg-gray-500 text-white">
-                            Pending
-                          </span>
-                        )}
+                        ) : (() => {
+                          // Check individual course approvals
+                          const hasApproved = application.approved_1 === true || application.approved_2 === true;
+                          const hasRejected = application.approved_1 === false || application.approved_2 === false;
+                          const hasPending = 
+                            (application.course_name && application.approved_1 === null) ||
+                            (application.course_name_2 && application.approved_2 === null);
+                          
+                          if (hasApproved && hasPending) {
+                            return <span className="px-2 py-1 rounded text-xs font-bold bg-green-500 text-white">Partially Approved</span>;
+                          } else if (hasApproved) {
+                            return <span className="px-2 py-1 rounded text-xs font-bold bg-green-500 text-white">Approved</span>;
+                          } else if (hasRejected && hasPending) {
+                            return <span className="px-2 py-1 rounded text-xs font-bold bg-yellow-500 text-white animate-pulse">Pending</span>;
+                          } else if (hasRejected) {
+                            return <span className="px-2 py-1 rounded text-xs font-bold bg-red-500 text-white">Rejected</span>;
+                          } else if (!application.viewed) {
+                            return <span className="px-2 py-1 rounded text-xs font-bold bg-yellow-500 text-white animate-pulse">Pending</span>;
+                          } else {
+                            return <span className="px-2 py-1 rounded text-xs font-bold bg-gray-500 text-white">Pending</span>;
+                          }
+                        })()}
                         {application.image_attached && (
                           <span className="px-2 py-1 rounded text-xs font-bold bg-blue-500 text-white">
                             📎
@@ -525,9 +608,116 @@ const ApplicationsPage: React.FC = () => {
                   <span className="text-sm font-semibold text-gray-600 dark:text-gray-400">Email</span>
                   <p className="text-base text-gray-900 dark:text-white">{selectedApplication.email}</p>
                 </div>
-                <div>
-                  <span className="text-sm font-semibold text-gray-600 dark:text-gray-400">Course</span>
-                  <p className="text-base font-semibold text-gray-900 dark:text-white">{selectedApplication.course_name}</p>
+                {/* Courses Section - Show all courses with individual approval status */}
+                <div className="md:col-span-2">
+                  <span className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2 block">Courses</span>
+                  <div className="space-y-3">
+                    {/* Course 1 - Required */}
+                    {selectedApplication.course_name && (
+                      <div className={`p-3 rounded-lg border-2 ${
+                        selectedApplication.approved_1 === true 
+                          ? 'bg-green-50 dark:bg-green-900/20 border-green-500' 
+                          : selectedApplication.approved_1 === false
+                          ? 'bg-red-50 dark:bg-red-900/20 border-red-500'
+                          : 'bg-gray-50 dark:bg-gray-700/50 border-gray-300 dark:border-gray-600'
+                      }`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <div>
+                            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">Course 1 (Required)</span>
+                            <p className="text-base font-semibold text-gray-900 dark:text-white mt-1">{selectedApplication.course_name}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {selectedApplication.approved_1 === true ? (
+                              <span className="px-2 py-1 rounded text-xs font-bold bg-green-500 text-white">✓ Approved</span>
+                            ) : selectedApplication.approved_1 === false ? (
+                              <span className="px-2 py-1 rounded text-xs font-bold bg-red-500 text-white">✗ Rejected</span>
+                            ) : (
+                              <span className="px-2 py-1 rounded text-xs font-bold bg-yellow-500 text-white">⏳ Pending</span>
+                            )}
+                          </div>
+                        </div>
+                        {selectedApplication.rejection_message_1 && (
+                          <p className="text-xs text-red-600 dark:text-red-400 mt-2 bg-red-50 dark:bg-red-900/20 p-2 rounded">
+                            {selectedApplication.rejection_message_1}
+                          </p>
+                        )}
+                        <div className="flex gap-2 mt-2">
+                          {selectedApplication.approved_1 !== true && (
+                            <button
+                              onClick={() => approveApplication(selectedApplication.id, selectedApplication.email, 1)}
+                              className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors text-xs"
+                            >
+                              ✓ Approve Course 1
+                            </button>
+                          )}
+                          {selectedApplication.approved_1 !== false && (
+                            <button
+                              onClick={() => {
+                                setSelectedApplication(null)
+                                openRejectModal(selectedApplication.id, 1)
+                              }}
+                              className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition-colors text-xs"
+                            >
+                              ✗ Reject Course 1
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Course 2 - Optional */}
+                    {selectedApplication.course_name_2 && (
+                      <div className={`p-3 rounded-lg border-2 ${
+                        selectedApplication.approved_2 === true 
+                          ? 'bg-green-50 dark:bg-green-900/20 border-green-500' 
+                          : selectedApplication.approved_2 === false
+                          ? 'bg-red-50 dark:bg-red-900/20 border-red-500'
+                          : 'bg-gray-50 dark:bg-gray-700/50 border-gray-300 dark:border-gray-600'
+                      }`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <div>
+                            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">Course 2 (Optional)</span>
+                            <p className="text-base font-semibold text-gray-900 dark:text-white mt-1">{selectedApplication.course_name_2}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {selectedApplication.approved_2 === true ? (
+                              <span className="px-2 py-1 rounded text-xs font-bold bg-green-500 text-white">✓ Approved</span>
+                            ) : selectedApplication.approved_2 === false ? (
+                              <span className="px-2 py-1 rounded text-xs font-bold bg-red-500 text-white">✗ Rejected</span>
+                            ) : (
+                              <span className="px-2 py-1 rounded text-xs font-bold bg-yellow-500 text-white">⏳ Pending</span>
+                            )}
+                          </div>
+                        </div>
+                        {selectedApplication.rejection_message_2 && (
+                          <p className="text-xs text-red-600 dark:text-red-400 mt-2 bg-red-50 dark:bg-red-900/20 p-2 rounded">
+                            {selectedApplication.rejection_message_2}
+                          </p>
+                        )}
+                        <div className="flex gap-2 mt-2">
+                          {selectedApplication.approved_2 !== true && (
+                            <button
+                              onClick={() => approveApplication(selectedApplication.id, selectedApplication.email, 2)}
+                              className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors text-xs"
+                            >
+                              ✓ Approve Course 2
+                            </button>
+                          )}
+                          {selectedApplication.approved_2 !== false && (
+                            <button
+                              onClick={() => {
+                                setSelectedApplication(null)
+                                openRejectModal(selectedApplication.id, 2)
+                              }}
+                              className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition-colors text-xs"
+                            >
+                              ✗ Reject Course 2
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <span className="text-sm font-semibold text-gray-600 dark:text-gray-400">Gender</span>
@@ -555,37 +745,8 @@ const ApplicationsPage: React.FC = () => {
                     <p className="text-base text-gray-900 dark:text-white">{selectedApplication.message}</p>
                   </div>
                 )}
-                {selectedApplication.rejection_message && (
-                  <div className="md:col-span-2">
-                    <span className="text-sm font-semibold text-red-600 dark:text-red-400">Rejection Message</span>
-                    <p className="text-base text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg mt-1">
-                      {selectedApplication.rejection_message}
-                    </p>
-                  </div>
-                )}
               </div>
               <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
-                {selectedApplication.approved !== true && (
-                  <button
-                    onClick={() => {
-                      approveApplication(selectedApplication.id, selectedApplication.email)
-                    }}
-                    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors text-sm"
-                  >
-                    ✓ Approve
-                  </button>
-                )}
-                {selectedApplication.approved !== false && (
-                  <button
-                    onClick={() => {
-                      setSelectedApplication(null)
-                      openRejectModal(selectedApplication.id)
-                    }}
-                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition-colors text-sm"
-                  >
-                    ✗ Reject
-                  </button>
-                )}
                 {!selectedApplication.viewed && (
                   <button
                     onClick={() => {
@@ -619,12 +780,12 @@ const ApplicationsPage: React.FC = () => {
             <div className="bg-gradient-to-r from-red-500 to-red-600 px-6 py-4">
               <h3 className="text-xl font-bold text-white flex items-center gap-2">
                 <span className="text-2xl">⚠️</span>
-                Reject Application
+                Reject Course {rejectingCourseNumber}
               </h3>
             </div>
             <div className="p-6">
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                Please provide a reason for rejection. This message will be shown to the applicant.
+                Please provide a reason for rejecting this course. This message will be shown to the applicant.
               </p>
               <textarea
                 value={rejectionMessage}
@@ -643,6 +804,7 @@ const ApplicationsPage: React.FC = () => {
                   onClick={() => {
                     setShowRejectModal(false)
                     setRejectingId(null)
+                    setRejectingCourseNumber(null)
                     setRejectionMessage('')
                   }}
                   className="flex-1 px-4 py-2.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-semibold transition-colors"

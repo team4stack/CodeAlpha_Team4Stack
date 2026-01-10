@@ -39,7 +39,7 @@ const StudentRouteGuard: React.FC<StudentRouteGuardProps> = ({ children }) => {
       try {
         const { data: applicationData, error } = await supabase
           .from('admission_form')
-          .select('approved, rejection_message')
+          .select('approved, approved_1, approved_2, course_name, course_name_2, rejection_message')
           .eq('email', user.email.toLowerCase().trim())
           .order('created_at', { ascending: false })
           .limit(1)
@@ -52,8 +52,36 @@ const StudentRouteGuard: React.FC<StudentRouteGuardProps> = ({ children }) => {
           return
         }
 
-        // Check if user has an approved application
-        if (applicationData && applicationData.approved === true) {
+        // Check if at least one course is approved (portal access if any course is approved)
+        let hasAnyCourseApproved = false
+        
+        if (applicationData) {
+          // Check if new per-course approval system is being used
+          const hasNewApprovals = applicationData.approved_1 !== undefined || applicationData.approved_2 !== undefined
+          
+          if (hasNewApprovals) {
+            // New system: check if at least one selected course is approved
+            const hasCourse1 = Boolean(applicationData.course_name)
+            const hasCourse2 = Boolean(applicationData.course_name_2)
+            
+            // Portal access if ANY course is approved
+            if (hasCourse1 && hasCourse2) {
+              // Both courses selected - at least one must be approved
+              hasAnyCourseApproved = applicationData.approved_1 === true || applicationData.approved_2 === true
+            } else if (hasCourse1) {
+              // Only course 1 selected - must be approved
+              hasAnyCourseApproved = applicationData.approved_1 === true
+            } else {
+              // No courses selected (shouldn't happen, but handle it)
+              hasAnyCourseApproved = false
+            }
+          } else {
+            // Old system: use the approved field directly
+            hasAnyCourseApproved = applicationData.approved === true
+          }
+        }
+
+        if (hasAnyCourseApproved) {
           setIsApproved(true)
           setShowNotApprovedModal(false)
         } else {

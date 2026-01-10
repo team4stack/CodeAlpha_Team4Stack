@@ -35,6 +35,21 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'admission_form' AND column_name = 'approved') THEN
     ALTER TABLE admission_form ADD COLUMN approved BOOLEAN;
   END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'admission_form' AND column_name = 'course_name_2') THEN
+    ALTER TABLE admission_form ADD COLUMN course_name_2 TEXT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'admission_form' AND column_name = 'approved_1') THEN
+    ALTER TABLE admission_form ADD COLUMN approved_1 BOOLEAN;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'admission_form' AND column_name = 'approved_2') THEN
+    ALTER TABLE admission_form ADD COLUMN approved_2 BOOLEAN;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'admission_form' AND column_name = 'rejection_message_1') THEN
+    ALTER TABLE admission_form ADD COLUMN rejection_message_1 TEXT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'admission_form' AND column_name = 'rejection_message_2') THEN
+    ALTER TABLE admission_form ADD COLUMN rejection_message_2 TEXT;
+  END IF;
 END $$;
 
 -- ============================================
