@@ -14,6 +14,9 @@ const CoursesAdminDashboard: React.FC = () => {
     activeCourses: 0,
     completedCourses: 0,
     totalProgress: 0,
+    totalApplications: 0,
+    pendingApplications: 0,
+    approvedApplications: 0,
   })
   const [loading, setLoading] = useState(true)
 
@@ -48,6 +51,21 @@ const CoursesAdminDashboard: React.FC = () => {
           .select('*', { count: 'exact', head: true })
           .eq('completed', true)
 
+        // Fetch admission applications
+        const { count: applicationsCount } = await supabase
+          .from('admission_form')
+          .select('*', { count: 'exact', head: true })
+
+        const { count: pendingCount } = await supabase
+          .from('admission_form')
+          .select('*', { count: 'exact', head: true })
+          .or('approved.is.null,approved.eq.false')
+
+        const { count: approvedCount } = await supabase
+          .from('admission_form')
+          .select('*', { count: 'exact', head: true })
+          .eq('approved', true)
+
         setStats({
           totalCourses: coursesCount || 0,
           totalVideos: videosCount || 0,
@@ -55,6 +73,9 @@ const CoursesAdminDashboard: React.FC = () => {
           activeCourses: coursesCount || 0, // TODO: Add active flag
           completedCourses: completedCount || 0,
           totalProgress: progressCount || 0,
+          totalApplications: applicationsCount || 0,
+          pendingApplications: pendingCount || 0,
+          approvedApplications: approvedCount || 0,
         })
       } catch (error) {
         console.error('Error loading Courses stats:', error)
@@ -96,42 +117,46 @@ const CoursesAdminDashboard: React.FC = () => {
           title="Total Courses"
           value={stats.totalCourses}
           icon="📚"
-          gradient="from-indigo-500 to-purple-500"
           onClick={() => router.push('/admincourset4s/manage')}
         />
         <StatCard
           title="Total Videos"
           value={stats.totalVideos}
           icon="🎥"
-          gradient="from-purple-500 to-pink-500"
           onClick={() => router.push('/admincourset4s/videos')}
         />
         <StatCard
           title="Total Students"
           value={stats.totalStudents}
           icon="👥"
-          gradient="from-pink-500 to-rose-500"
           onClick={() => router.push('/admincourset4s/progress')}
         />
         <StatCard
           title="Active Courses"
           value={stats.activeCourses}
           icon="✅"
-          gradient="from-green-500 to-emerald-500"
         />
         <StatCard
           title="Completed Courses"
           value={stats.completedCourses}
           icon="🎯"
-          gradient="from-blue-500 to-cyan-500"
           onClick={() => router.push('/admincourset4s/progress')}
         />
         <StatCard
           title="Total Progress"
           value={stats.totalProgress}
           icon="📊"
-          gradient="from-cyan-500 to-teal-500"
           onClick={() => router.push('/admincourset4s/progress')}
+        />
+        <StatCard
+          title="Applications"
+          value={stats.totalApplications}
+          icon="📝"
+          onClick={() => router.push('/admincourset4s/applications')}
+          badges={[
+            { label: 'Pending', value: stats.pendingApplications, color: 'yellow' },
+            { label: 'Approved', value: stats.approvedApplications, color: 'green' }
+          ]}
         />
       </div>
 
@@ -164,6 +189,14 @@ const CoursesAdminDashboard: React.FC = () => {
             <div className="text-3xl mb-2">📊</div>
             <div className="font-bold text-lg mb-1">View Progress</div>
             <div className="text-sm opacity-90">Monitor student progress</div>
+          </button>
+          <button
+            onClick={() => router.push('/admincourset4s/applications')}
+            className="p-5 rounded-xl bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left"
+          >
+            <div className="text-3xl mb-2">📝</div>
+            <div className="font-bold text-lg mb-1">Applications</div>
+            <div className="text-sm opacity-90">Review and approve applications</div>
           </button>
           <button
             onClick={() => router.push('/admincourset4s/settings')}

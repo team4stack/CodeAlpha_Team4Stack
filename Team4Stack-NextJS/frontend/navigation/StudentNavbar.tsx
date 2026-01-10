@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import AuthModal from '@/lib/auth/components/AuthModal';
 import UserSettingsModal from '@/modals/UserSettingsModal';
 
-const CoursesNavbar: React.FC = () => {
+const StudentNavbar: React.FC = () => {
   const { isDarkMode } = useTheme();
   const router = useRouter();
   const { user, loading, signOut } = useAuth();
@@ -40,7 +40,7 @@ const CoursesNavbar: React.FC = () => {
           willChange: 'auto'
         }}
         role="navigation"
-        aria-label="Courses navigation"
+        aria-label="Student portal navigation"
       >
         {isScrolled && (
           <div className="pointer-events-none absolute inset-0 opacity-20 overflow-hidden">
@@ -93,7 +93,7 @@ const CoursesNavbar: React.FC = () => {
                 className={`text-base sm:text-xl font-display font-bold transition-all duration-300 hidden sm:inline ${
                   isScrolled
                     ? (isDarkMode ? 'text-white' : 'text-black')
-                    : 'text-white group-hover:text-orange-300'
+                    : 'text-white group-hover:text-cyan-300'
                 }`}
               >
                 Team4Stack
@@ -108,18 +108,33 @@ const CoursesNavbar: React.FC = () => {
                   isScrolled
                     ? (isDarkMode
                         ? 'text-white/90 hover:text-white'
-                        : 'text-gray-800 hover:text-orange-600')
-                    : 'text-white hover:text-orange-300 font-medium'
+                        : 'text-gray-800 hover:text-cyan-600')
+                    : 'text-white hover:text-cyan-300 font-medium'
                 }`}
-                onClick={() => router.push('/courses')}
+                onClick={() => router.push('/student')}
               >
-                Courses
-                <span className="pointer-events-none absolute left-1/2 -bottom-0.5 w-0 h-px bg-gradient-to-r from-orange-400 to-red-500 rounded-full transition-all duration-300 group-hover:left-0 group-hover:w-full"></span>
+                Dashboard
+                <span className="pointer-events-none absolute left-1/2 -bottom-0.5 w-0 h-px bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full transition-all duration-300 group-hover:left-0 group-hover:w-full"></span>
+              </button>
+              <button
+                type="button"
+                className={`btn-plain px-3 sm:px-4 py-2 text-sm sm:text-base font-medium transition-all duration-300 relative group focus:outline-none ${
+                  isScrolled
+                    ? (isDarkMode
+                        ? 'text-white/90 hover:text-white'
+                        : 'text-gray-800 hover:text-cyan-600')
+                    : 'text-white hover:text-cyan-300 font-medium'
+                }`}
+                onClick={() => router.push('/student/courses')}
+              >
+                My Courses
+                <span className="pointer-events-none absolute left-1/2 -bottom-0.5 w-0 h-px bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full transition-all duration-300 group-hover:left-0 group-hover:w-full"></span>
               </button>
             </div>
 
-            {/* Right-side actions for courses area */}
+            {/* Right-side actions for student area */}
             <div className="flex items-center gap-1.5 sm:gap-3">
+
               {!loading && (
                 user ? (
                   <div className="relative">
@@ -138,7 +153,7 @@ const CoursesNavbar: React.FC = () => {
                           : 'bg-white/10 border border-white/20 hover:bg-white/15'
                       }`}
                     >
-                      <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center overflow-hidden flex-shrink-0">
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center overflow-hidden flex-shrink-0">
                         {user.avatar_url ? (
                           <img src={user.avatar_url} alt="avatar" className="w-full h-full object-cover" />
                         ) : (
@@ -248,9 +263,9 @@ const CoursesNavbar: React.FC = () => {
                     className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full transition-all hover:scale-110 flex items-center justify-center focus:outline-none flex-shrink-0 ${
                       isScrolled
                         ? (isDarkMode
-                            ? 'bg-gradient-to-br from-purple-500 via-pink-500 to-indigo-500 text-white shadow-[0_10px_30px_rgba(168,85,247,0.35)] hover:shadow-[0_12px_36px_rgba(99,102,241,0.45)]'
-                            : 'bg-gradient-to-br from-purple-500 via-pink-500 to-indigo-500 text-white shadow-[0_10px_30px_rgba(168,85,247,0.35)] hover:shadow-[0_12px_36px_rgba(99,102,241,0.45)]')
-                        : 'bg-gradient-to-br from-purple-500 via-pink-500 to-indigo-500 text-white shadow-[0_10px_30px_rgba(168,85,247,0.35)] hover:shadow-[0_12px_36px_rgba(99,102,241,0.45)]'
+                            ? 'bg-gradient-to-br from-cyan-500 via-blue-500 to-purple-500 text-white shadow-[0_10px_30px_rgba(56,189,248,0.35)] hover:shadow-[0_12px_36px_rgba(99,102,241,0.45)]'
+                            : 'bg-gradient-to-br from-cyan-500 via-blue-500 to-purple-500 text-white shadow-[0_10px_30px_rgba(56,189,248,0.35)] hover:shadow-[0_12px_36px_rgba(99,102,241,0.45)]')
+                        : 'bg-gradient-to-br from-cyan-500 via-blue-500 to-purple-500 text-white shadow-[0_10px_30px_rgba(56,189,248,0.35)] hover:shadow-[0_12px_36px_rgba(99,102,241,0.45)]'
                     }`}
                     aria-label="Sign In"
                   >
@@ -275,7 +290,7 @@ const CoursesNavbar: React.FC = () => {
         </div>
       </nav>
 
-      {/* Auth modal for courses area */}
+      {/* Auth modal for student area */}
       <AuthModal
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
@@ -291,4 +306,4 @@ const CoursesNavbar: React.FC = () => {
   );
 };
 
-export default CoursesNavbar;
+export default StudentNavbar;

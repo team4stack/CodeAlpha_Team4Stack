@@ -28,7 +28,7 @@ const QuickActions: React.FC = () => {
           <div className="absolute inset-0 bg-gradient-to-r from-rose-600 via-pink-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
         </button>
         <button 
-          onClick={() => router.push('/adminlandingt4s/courses')} 
+          onClick={() => router.push('/admincourset4s/manage')} 
           className="w-full px-4 py-3 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white font-semibold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 relative overflow-hidden group"
         >
           <span className="relative z-10">Add Course</span>

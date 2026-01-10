@@ -14,7 +14,8 @@ interface FormData {
   phone: string;
   email: string;
   address: string;
-  courseName: string;
+  courseName: string; // Required course
+  courseName2: string; // Optional course
   /** Message - optional field */
   message: string;
   /** Gender - required field */
@@ -66,6 +67,10 @@ const AdmissionForm: React.FC = () => {
   const [fileError, setFileError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSignInPrompt, setShowSignInPrompt] = useState(false);
+  const [availableCourses, setAvailableCourses] = useState<Array<{ id: number; title: string }>>([]);
+  const [loadingCourses, setLoadingCourses] = useState(true);
+  const [enrolledCourses, setEnrolledCourses] = useState<Set<string>>(new Set());
+  const [rejectedCourses, setRejectedCourses] = useState<Set<string>>(new Set());
 
   // React Hook Form setup
   const {
@@ -73,7 +78,8 @@ const AdmissionForm: React.FC = () => {
     handleSubmit,
     formState: { errors },
     reset,
-    setValue
+    setValue,
+    watch
   } = useForm<FormData>({
     defaultValues: {
       name: '',
@@ -81,13 +87,134 @@ const AdmissionForm: React.FC = () => {
       phone: '',
       email: '',
       address: '',
-      courseName: '',
+      courseName: '', // Required
+      courseName2: '', // Optional
       message: '',
       // Gender and age are required fields
       gender: '',
       age: ''
     }
   });
+
+  // Watch selected courses to filter dropdowns
+  const selectedCourse1 = watch('courseName');
+  const selectedCourse2 = watch('courseName2');
+
+  // Load available courses from Supabase and enrolled courses for logged-in user
+  useEffect(() => {
+    const loadCourses = async () => {
+      try {
+        setLoadingCourses(true);
+        
+        // Load all courses
+        const { data, error } = await supabase
+          .from('courses')
+          .select('id, title')
+          .order('order_index', { ascending: true })
+          .order('id', { ascending: false });
+
+        if (error) {
+          console.error('Error loading courses:', error);
+          setAvailableCourses([]);
+        } else if (data && data.length > 0) {
+          setAvailableCourses(data);
+        } else {
+          // Fallback to default courses if no courses in database
+          setAvailableCourses([
+            { id: 1, title: 'Physical Training (WE Connect)' },
+            { id: 2, title: 'Online Training' }
+          ]);
+        }
+        
+        // Load enrolled and rejected courses for logged-in user
+        if (user && user.email) {
+          const { data: applicationData } = await supabase
+            .from('admission_form')
+            .select('course_name, course_name_2, approved, approved_1, approved_2, rejection_message_1, rejection_message_2, rejection_message')
+            .eq('email', user.email.toLowerCase().trim())
+            .order('created_at', { ascending: false });
+          
+          if (applicationData) {
+            const enrolled = new Set<string>();
+            const rejected = new Set<string>();
+            
+            applicationData.forEach((app: any) => {
+              const hasNewApprovals = app.approved_1 !== undefined || app.approved_2 !== undefined;
+              
+              if (hasNewApprovals) {
+                // New system: check per-course approvals
+                if (app.course_name?.trim()) {
+                  if (app.approved_1 === true) {
+                    enrolled.add(app.course_name.trim());
+                  } else if (app.approved_1 === false) {
+                    // Course is rejected - add to rejected set
+                    rejected.add(app.course_name.trim());
+                  }
+                }
+                if (app.course_name_2?.trim()) {
+                  if (app.approved_2 === true) {
+                    enrolled.add(app.course_name_2.trim());
+                  } else if (app.approved_2 === false) {
+                    // Course is rejected - add to rejected set
+                    rejected.add(app.course_name_2.trim());
+                  }
+                }
+              } else {
+                // Old system
+                if (app.course_name?.trim()) {
+                  if (app.approved === true) {
+                    enrolled.add(app.course_name.trim());
+                  } else if (app.approved === false) {
+                    // Course is rejected - add to rejected set
+                    rejected.add(app.course_name.trim());
+                  }
+                }
+              }
+            });
+            
+            setEnrolledCourses(enrolled);
+            setRejectedCourses(rejected);
+          }
+        }
+      } catch (err) {
+        console.error('Error loading courses:', err);
+        setAvailableCourses([]);
+      } finally {
+        setLoadingCourses(false);
+      }
+    };
+
+    loadCourses();
+  }, [user]);
+  
+  // Filter courses for dropdowns - exclude already selected, enrolled, and rejected courses
+  const getFilteredCourses = (excludeCourse?: string) => {
+    return availableCourses.filter(course => {
+      const courseTitle = course.title.trim().toLowerCase();
+      const excludeTitle = excludeCourse?.trim().toLowerCase();
+      
+      // Exclude if already enrolled (case-insensitive)
+      for (const enrolled of enrolledCourses) {
+        if (enrolled.toLowerCase() === courseTitle) return false;
+      }
+      
+      // Exclude if rejected (case-insensitive)
+      for (const rejected of rejectedCourses) {
+        if (rejected.toLowerCase() === courseTitle) return false;
+      }
+      
+      // Exclude if already selected in another dropdown (case-insensitive)
+      if (excludeTitle && courseTitle === excludeTitle) return false;
+      
+      return true;
+    });
+  };
+  
+  // Get filtered courses for required dropdown
+  const requiredCourses: Array<{ id: number; title: string }> = getFilteredCourses();
+  
+  // Get filtered courses for optional dropdown (exclude selected required course)
+  const optionalCourses: Array<{ id: number; title: string }> = getFilteredCourses(selectedCourse1);
 
   // Prefill course name from selection (set by Courses Book Now)
   useEffect(() => {
@@ -98,7 +225,7 @@ const AdmissionForm: React.FC = () => {
         localStorage.removeItem('selectedCourse');
       }
     } catch {}
-  }, [setValue]);
+  }, [setValue, availableCourses]);
 
   const validateForm = (data: FormData) => {
     const newErrors: Record<string, string> = {};
@@ -148,9 +275,30 @@ const AdmissionForm: React.FC = () => {
       }
     }
     
-    // Course name validation
-    if (!data.courseName.trim()) {
+    // Course name validation - first course is required and must be a valid course (not empty/placeholder)
+    if (!data.courseName.trim() || data.courseName.trim() === '') {
       newErrors.courseName = 'Course name is required';
+    } else {
+      // Check if selected course is actually available (not just placeholder)
+      // Recalculate filtered courses for validation
+      const validRequiredCourses = getFilteredCourses();
+      const isValidCourse = validRequiredCourses.some(c => c.title.trim() === data.courseName.trim());
+      if (!isValidCourse) {
+        newErrors.courseName = 'Please select a valid course';
+      }
+    }
+    // Optional course validation - if selected, must be different from required course and valid
+    if (data.courseName2 && data.courseName2.trim()) {
+      if (data.courseName2.trim() === data.courseName.trim()) {
+        newErrors.courseName2 = 'Optional course must be different from required course';
+      } else {
+        // Recalculate filtered courses for validation (exclude selected required course)
+        const validOptionalCourses = getFilteredCourses(data.courseName);
+        const isValidOptionalCourse = validOptionalCourses.some(c => c.title.trim() === data.courseName2.trim());
+        if (!isValidOptionalCourse) {
+          newErrors.courseName2 = 'Please select a valid optional course';
+        }
+      }
     }
     
     // Payment screenshot validation
@@ -211,6 +359,7 @@ const AdmissionForm: React.FC = () => {
         email: sanitizeInput(data.email),
         address: sanitizeInput(data.address),
         courseName: sanitizeInput(data.courseName),
+        courseName2: data.courseName2 ? sanitizeInput(data.courseName2) : '',
         message: sanitizeInput(data.message || ''),
         gender: data.gender === 'male' ? 'Male' : data.gender === 'female' ? 'Female' : 'Other',
         age: sanitizeInput(data.age)
@@ -227,6 +376,7 @@ const AdmissionForm: React.FC = () => {
             email: sanitizedData.email,
             address: sanitizedData.address,
             course_name: sanitizedData.courseName,
+            course_name_2: sanitizedData.courseName2 || null,
             message: sanitizedData.message,
             gender: sanitizedData.gender,
             age: parseInt(sanitizedData.age, 10),
@@ -347,7 +497,7 @@ const AdmissionForm: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black pt-24 md:pt-32 pb-12 px-4">
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black pt-20 md:pt-28 pb-12 px-4">
       <div className="container-custom max-w-4xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
@@ -512,22 +662,78 @@ const AdmissionForm: React.FC = () => {
 
             <div>
               <label htmlFor="courseName" className="block text-sm font-medium text-white mb-2">
-                Course Name
+                Course Name *
               </label>
-              <input
-                type="text"
-                id="courseName"
-                {...register('courseName', { 
-                  required: 'Course name is required'
-                })}
-                className={`form-input ${errors.courseName ? 'border-red-500' : ''}`}
-                placeholder="Which course are you interested in?"
-                aria-invalid={!!errors.courseName}
-                aria-describedby={errors.courseName ? "courseName-error" : undefined}
-              />
-                {errors.courseName && (
-                  <p id="courseName-error" className="mt-1 text-xs sm:text-sm text-red-500 break-words">{errors.courseName.message}</p>
+              {loadingCourses ? (
+                <div className="form-input flex items-center justify-center py-3">
+                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span className="ml-2 text-white/70">Loading courses...</span>
+                </div>
+              ) : requiredCourses.length > 0 ? (
+                  <select
+                    id="courseName"
+                    {...register('courseName', { 
+                      required: 'Course name is required'
+                    })}
+                    className={`form-input ${errors.courseName ? 'border-red-500' : ''}`}
+                    aria-invalid={!!errors.courseName}
+                    aria-describedby={errors.courseName ? "courseName-error" : undefined}
+                  >
+                    <option value="">Select a course (Required)</option>
+                    {requiredCourses.map((course: { id: number; title: string }) => (
+                      <option key={course.id} value={course.title}>
+                        {course.title}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="form-input bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed">
+                    No courses available
+                  </div>
                 )}
+              {errors.courseName && (
+                <p id="courseName-error" className="mt-1 text-xs sm:text-sm text-red-500 break-words">{errors.courseName.message}</p>
+              )}
+            </div>
+
+            <div>
+              <label htmlFor="courseName2" className="block text-sm font-medium text-white mb-2">
+                Optional Course
+              </label>
+              {loadingCourses ? (
+                <div className="form-input flex items-center justify-center py-3">
+                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span className="ml-2 text-white/70">Loading courses...</span>
+                </div>
+              ) : optionalCourses.length > 0 ? (
+                <select
+                  id="courseName2"
+                  {...register('courseName2')}
+                  className={`form-input ${errors.courseName2 ? 'border-red-500' : ''}`}
+                  aria-invalid={!!errors.courseName2}
+                  aria-describedby={errors.courseName2 ? "courseName2-error" : undefined}
+                >
+                  <option value="">Select an optional course</option>
+                  {optionalCourses.map((course: { id: number; title: string }) => (
+                    <option key={course.id} value={course.title}>
+                      {course.title}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className="form-input bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed">
+                  No optional courses available
+                </div>
+              )}
+              {errors.courseName2 && (
+                <p id="courseName2-error" className="mt-1 text-xs sm:text-sm text-red-500 break-words">{errors.courseName2.message}</p>
+              )}
             </div>
 
             <div>
@@ -584,8 +790,8 @@ const AdmissionForm: React.FC = () => {
       
       {/* Custom Sign In Prompt Popup */}
       {showSignInPrompt && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center pointer-events-none pt-16 md:pt-20">
-          <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-4 rounded-lg shadow-2xl transform transition-all duration-300 animate-scale-in pointer-events-auto border border-white/20 backdrop-blur-sm mx-4">
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center pointer-events-none p-4">
+          <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-4 rounded-lg shadow-2xl transform transition-all duration-300 animate-scale-in pointer-events-auto border border-white/20 backdrop-blur-sm max-w-md w-full">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">

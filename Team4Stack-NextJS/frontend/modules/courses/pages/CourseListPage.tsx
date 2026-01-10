@@ -3,14 +3,18 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { ProgressBar } from '../components';
 import { supabase } from '@/lib/supabase/client';
+import StudentNavbar from '@/navigation/StudentNavbar';
 
 interface Course {
-  id: string;
-  name: string;
+  id: number | string;
+  title?: string;
+  name?: string;
   description?: string;
   thumbnail_url?: string;
+  image_url?: string;
   intro_video_url?: string;
 }
 
@@ -22,6 +26,7 @@ interface Progress {
 const CourseListPage: React.FC = () => {
   const router = useRouter();
   const { isDarkMode } = useTheme();
+  const { user } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [progressMap, setProgressMap] = useState<Record<string, Progress>>({});
   const [loading, setLoading] = useState(true);
@@ -29,28 +34,109 @@ const CourseListPage: React.FC = () => {
 
   useEffect(() => {
     const loadData = async () => {
+      if (!user || !user.email) {
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       setError(null);
 
       try {
-        // Fetch courses from Supabase
-        const { data: courseData, error: courseError } = await supabase
+        // First, get user's approved applications
+        const { data: applications, error: appError } = await supabase
+          .from('admission_form')
+          .select('course_name, course_name_2, approved, approved_1, approved_2')
+          .eq('email', user.email.toLowerCase().trim())
+          .order('created_at', { ascending: false });
+
+        if (appError) {
+          console.error('Error fetching applications:', appError);
+          throw appError;
+        }
+
+        if (!applications || applications.length === 0) {
+          setCourses([]);
+          setProgressMap({});
+          setLoading(false);
+          return;
+        }
+
+        // Filter applications where at least one course is approved
+        const appsWithAnyApproved = applications.filter(app => {
+          const hasNewApprovals = app.approved_1 !== undefined || app.approved_2 !== undefined
+          
+          if (hasNewApprovals) {
+            // New system: check if at least one selected course is approved
+            const hasCourse1 = Boolean(app.course_name)
+            const hasCourse2 = Boolean(app.course_name_2)
+            
+            if (hasCourse1 && hasCourse2) {
+              // At least one course must be approved
+              return app.approved_1 === true || app.approved_2 === true
+            } else if (hasCourse1) {
+              // Only course 1 selected - must be approved
+              return app.approved_1 === true
+            }
+            return false
+          } else {
+            // Old system: use the approved field directly
+            return app.approved === true
+          }
+        });
+
+        if (appsWithAnyApproved.length === 0) {
+          setCourses([]);
+          setProgressMap({});
+          setLoading(false);
+          return;
+        }
+
+        // Get unique course names from applications (only include courses that are actually approved)
+        const approvedCourseNames = new Set<string>();
+        appsWithAnyApproved.forEach(app => {
+          // Only add courses that are actually approved
+          if (app.course_name?.trim() && app.approved_1 === true) {
+            approvedCourseNames.add(app.course_name.trim());
+          }
+          if (app.course_name_2?.trim() && app.approved_2 === true) {
+            approvedCourseNames.add(app.course_name_2.trim());
+          }
+          // Backward compatibility: if using old system, add course_name if approved
+          if (!app.approved_1 && !app.approved_2 && app.approved === true && app.course_name?.trim()) {
+            approvedCourseNames.add(app.course_name.trim());
+          }
+        });
+
+        // Fetch all courses from Supabase
+        const { data: allCourses, error: courseError } = await supabase
           .from('courses')
-          .select('*');
+          .select('*')
+          .order('order_index', { ascending: true })
+          .order('id', { ascending: false });
           
         if (courseError) throw courseError;
         
-        setCourses(courseData || []);
+        // Filter courses: only show courses where title matches approved course_name
+        const enrolledCourses = (allCourses || []).filter((course: any) => {
+          const courseTitle = (course.title || course.name || '').trim();
+          return Array.from(approvedCourseNames).some(approvedName => 
+            courseTitle.toLowerCase() === approvedName.toLowerCase()
+          );
+        });
         
-        // For progress, we'll fetch from progress_records table
+        setCourses(enrolledCourses);
+        
+        // Fetch progress records for current user
         const { data: progressData } = await supabase
           .from('progress_records')
-          .select('*');
+          .select('*')
+          .eq('user_id', user.id);
 
         const progressByCourse: Record<string, Progress> = {};
         if (progressData) {
           progressData.forEach((record: any) => {
-            const courseId = record.course_id;
+            const courseId = String(record.course_id);
             if (!progressByCourse[courseId]) {
               progressByCourse[courseId] = { completed: 0, total: 0 };
             }
@@ -71,13 +157,14 @@ const CourseListPage: React.FC = () => {
     };
 
     loadData();
-  }, []);
+  }, [user]);
 
   const courseStatus = useMemo(
     () =>
       courses.map((course) => ({
         ...course,
-        progress: progressMap[course.id] || { completed: 0, total: 0 },
+        name: course.title || course.name || 'Untitled Course',
+        progress: progressMap[String(course.id)] || { completed: 0, total: 0 },
       })),
     [courses, progressMap]
   );
@@ -143,25 +230,14 @@ const CourseListPage: React.FC = () => {
 
   return (
     <div className="min-h-screen transition-colors duration-300">
-      {/* Hero Section */}
-      <div className={`pt-24 md:pt-32 pb-12 ${isDarkMode ? 'bg-gradient-to-b from-black via-gray-900 to-black' : 'bg-gradient-to-b from-gray-50 to-white'}`}>
-        <div className="container-custom">
-          <div className="text-center mb-8">
-            <h1 className={`text-4xl md:text-5xl lg:text-6xl font-bold mb-4 ${
-              isDarkMode ? 'text-white' : 'text-gray-900'
-            }`}>
-              My <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500">Courses</span>
-            </h1>
-            <p className={`text-lg md:text-xl max-w-2xl mx-auto ${
-              isDarkMode ? 'text-gray-300' : 'text-gray-600'
-            }`}>
-              Continue your learning journey. Track your progress and access all your enrolled courses.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="container-custom py-12">
+      <StudentNavbar />
+      
+      <div className={`pt-24 md:pt-32 pb-12 ${
+        isDarkMode 
+          ? 'bg-gradient-to-b from-black via-gray-900 to-black' 
+          : 'bg-gradient-to-b from-gray-50 via-white to-gray-50'
+      }`}>
+        <div className="container-custom py-12">
         <div className="flex flex-col md:flex-row justify-between items-center mb-8">
           <div>
             <h2 className={`text-2xl md:text-3xl font-bold mb-2 ${
@@ -207,11 +283,11 @@ const CourseListPage: React.FC = () => {
                   : 'bg-white border border-gray-200 hover:border-purple-300'
               }`}
             >
-              {course.thumbnail_url ? (
+              {(course.thumbnail_url || course.image_url) ? (
                 <div className="relative h-48 overflow-hidden">
                   <img 
-                    src={course.thumbnail_url} 
-                    alt={course.name} 
+                    src={course.thumbnail_url || course.image_url} 
+                    alt={course.name || course.title || 'Course'} 
                     className="w-full h-full object-cover transition-transform duration-300 hover:scale-110"
                   />
                   <div className="absolute top-4 right-4">
@@ -229,7 +305,7 @@ const CourseListPage: React.FC = () => {
                 </div>
               ) : (
                 <div className={`h-48 flex items-center justify-center ${
-                  isDarkMode ? 'bg-gradient-to-br from-purple-900/30 to-blue-900/30' : 'bg-gradient-to-br from-purple-50 to-blue-50'
+                  isDarkMode ? 'bg-gradient-to-br from-cyan-900/30 to-blue-900/30' : 'bg-gradient-to-br from-cyan-50 to-blue-50'
                 }`}>
                   <span className="text-6xl">📚</span>
                 </div>
@@ -238,7 +314,7 @@ const CourseListPage: React.FC = () => {
                 <h2 className={`text-xl font-bold mb-2 ${
                   isDarkMode ? 'text-white' : 'text-gray-900'
                 }`}>
-                  {course.name}
+                  {course.name || course.title || 'Untitled Course'}
                 </h2>
                 <p className={`flex-grow mb-4 text-sm line-clamp-2 ${
                   isDarkMode ? 'text-gray-300' : 'text-gray-600'
@@ -289,6 +365,7 @@ const CourseListPage: React.FC = () => {
             </button>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

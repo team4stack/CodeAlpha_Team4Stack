@@ -27,6 +27,7 @@ const CoursesAdminSidebar: React.FC = () => {
     { to: '/admincourset4s/manage', label: 'Manage Courses', icon: '📚' },
     { to: '/admincourset4s/videos', label: 'Videos', icon: '🎥' },
     { to: '/admincourset4s/progress', label: 'Student Progress', icon: '📊' },
+    { to: '/admincourset4s/applications', label: 'Applications', icon: '📝' },
     { to: '/admincourset4s/settings', label: 'Settings', icon: '⚙️' },
   ]
 

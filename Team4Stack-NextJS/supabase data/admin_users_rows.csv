@@ -1,0 +1,7 @@
+id,email,password_hash,created_at,updated_at,role
+0e68e351-9fd5-4b1d-970f-c6fa5032f3be,superadmin@gmail.com,$2a$06$GgTA6DUKFnwFicVhVNEqOOzPbob4jq8zLo8ESfKOD7QiMkkXD5Tf.,2025-11-27 20:18:53.816873+00,2025-11-27 20:18:53.816873+00,super_admin
+123564c5-05a9-47fd-8484-15c40e1a54d0,teamadmin@gmail.com,$2a$06$tnQBGFAMs5cBU6Hn5ruImeK3A.xtM0q6OZutlXn6Woq7PkJWtqole,2025-11-27 20:18:53.816873+00,2025-11-27 20:18:53.816873+00,team_admin
+1dea3599-e573-45ab-9bea-b28bb20c27a4,landingadmin@gmail.com,$2a$06$xRThIV.iO6EMFIBRWFtRHuUK8KVjIlg3sp.bgqqS4vRI3pd3t8SQS,2026-01-09 11:29:05.488823+00,2026-01-09 11:29:05.488823+00,landing_admin
+3c3783c6-a271-4ae1-8913-9f7f895b4a8d,kk34samikhan@gmail.com,$2a$12$DqV1Idz.jVbTNfajuMX2e.xvAyJWx6ljrd4LtREcWDLrhKQQRAr.u,2025-11-10 10:12:50.257459+00,2025-11-10 10:19:06.544024+00,admin
+dfc41f13-eb33-4f40-ac4c-c68c6ced065c,courseadmin@gmail.com,$2a$06$JUxgyWtwQxkfuyA1.o/1IuA3iXT8p.B8014TUgOdmzuiyC/DBrjo.,2025-11-27 20:18:53.816873+00,2025-11-27 20:18:53.816873+00,courses_admin
+f6b0235a-9db5-40a9-a956-9c2a646792d8,stackstoreadmin@gmail.com,$2a$06$krQ6a0NgZEV6eRlU8o30ROAPJM1H/0ykK3X/qrKAPDosIMKePZpJy,2025-11-27 20:18:53.816873+00,2025-11-27 20:18:53.816873+00,stackstore_admin
