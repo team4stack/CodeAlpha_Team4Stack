@@ -1,5 +1,5 @@
-import CoursesAdminDashboard from '@/modules/courses/admin/pages/CoursesAdminDashboard';
+import { ContentPage } from '@/modules/landing/admin/pages';
 
 export default function ManageCoursesPage() {
-  return <CoursesAdminDashboard />;
+  return <ContentPage contentType="courses" />;
 }

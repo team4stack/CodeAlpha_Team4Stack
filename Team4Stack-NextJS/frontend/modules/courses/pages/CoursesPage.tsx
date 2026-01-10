@@ -3,15 +3,19 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase/client';
 import CoursesNavbar from '@/navigation/CoursesNavbar';
 
 const CoursesPage: React.FC = () => {
   const { isDarkMode } = useTheme();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [noticeOpen, setNoticeOpen] = useState(false);
   const [pendingCourse, setPendingCourse] = useState<string>('');
   const [dbCourses, setDbCourses] = useState<Array<{ id: number; title: string; description?: string; image_url?: string; level?: string; duration?: string; price?: string; note?: string; features?: string[]; gradient?: string }>>([]);
+  const [isApprovedStudent, setIsApprovedStudent] = useState<boolean | null>(null);
+  const [enrolledCourses, setEnrolledCourses] = useState<Set<string>>(new Set());
 
   const courses = useMemo(() => ([
     {
@@ -61,6 +65,57 @@ const CoursesPage: React.FC = () => {
       if (!error && data) setDbCourses(data as any);
     })();
   }, []);
+
+  // Check if user is an approved student and get enrolled courses
+  useEffect(() => {
+    const checkStudentStatus = async () => {
+      // If auth is still loading, wait
+      if (authLoading) {
+        return;
+      }
+
+      // If user is not logged in, show Apply button
+      if (!user || !user.email) {
+        setIsApprovedStudent(false);
+        setEnrolledCourses(new Set());
+        return;
+      }
+
+      // Check if user is an approved student and get all applications
+      try {
+        const { data: applicationData, error } = await supabase
+          .from('admission_form')
+          .select('approved, course_name')
+          .eq('email', user.email.toLowerCase().trim())
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error checking student status:', error);
+          setIsApprovedStudent(false);
+          setEnrolledCourses(new Set());
+          return;
+        }
+
+        // Check if user has an approved application
+        const hasApproved = applicationData?.some(app => app.approved === true);
+        setIsApprovedStudent(hasApproved || false);
+
+        // Get all course names user has applied for (regardless of approval status)
+        if (applicationData && applicationData.length > 0) {
+          const courseNames = new Set(applicationData.map(app => app.course_name?.trim()).filter(Boolean));
+          setEnrolledCourses(courseNames);
+        } else {
+          setEnrolledCourses(new Set());
+        }
+      } catch (err) {
+        console.error('Error checking student status:', err);
+        setIsApprovedStudent(false);
+        setEnrolledCourses(new Set());
+      }
+    };
+
+    checkStudentStatus();
+  }, [user, authLoading]);
 
   const openBooking = (courseTitle: string) => {
     setPendingCourse(courseTitle);
@@ -118,15 +173,27 @@ const CoursesPage: React.FC = () => {
               Learn MERN stack with hands-on projects. Join us physically at WE Connect or learn online with live classes and expert mentorship.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center px-4">
-              <button
-                onClick={() => router.push('/student')}
-                className="group w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 rounded-xl bg-gradient-to-r from-orange-500 to-red-500 text-white font-bold text-base sm:text-lg shadow-lg hover:shadow-2xl hover:shadow-orange-500/50 hover:scale-105 transition-all duration-300 flex items-center justify-center gap-2"
-              >
-                <span>Student Portal</span>
-                <svg className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                </svg>
-              </button>
+              {isApprovedStudent ? (
+                <button
+                  onClick={() => router.push('/student')}
+                  className="group w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 rounded-xl bg-gradient-to-r from-orange-500 to-red-500 text-white font-bold text-base sm:text-lg shadow-lg hover:shadow-2xl hover:shadow-orange-500/50 hover:scale-105 transition-all duration-300 flex items-center justify-center gap-2"
+                >
+                  <span>Student Portal</span>
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </button>
+              ) : (
+                <button
+                  onClick={() => router.push('/courses/apply')}
+                  className="group w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 rounded-xl bg-gradient-to-r from-orange-500 to-red-500 text-white font-bold text-base sm:text-lg shadow-lg hover:shadow-2xl hover:shadow-orange-500/50 hover:scale-105 transition-all duration-300 flex items-center justify-center gap-2"
+                >
+                  <span>Apply</span>
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </button>
+              )}
             </div>
           </div>
 
@@ -251,16 +318,25 @@ const CoursesPage: React.FC = () => {
                       </div>
                     )}
                     
-                    {/* Book Now Button - Enhanced Styling */}
-                    <button 
-                      onClick={() => openBooking(course.title)}
-                      className="w-full mt-auto bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 text-white font-bold py-3 sm:py-4 rounded-lg sm:rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-white/20 flex items-center justify-center gap-2 group text-sm sm:text-base"
-                    >
-                      <span>Book Now</span>
-                      <svg className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                      </svg>
-                    </button>
+                    {/* Book Now / Already Enrolled Button */}
+                    {enrolledCourses.has(course.title) ? (
+                      <div className="w-full mt-auto bg-white/10 backdrop-blur-sm border border-white/20 text-white font-bold py-3 sm:py-4 rounded-lg sm:rounded-xl flex items-center justify-center gap-2 text-sm sm:text-base cursor-not-allowed opacity-75">
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Already Enrolled</span>
+                      </div>
+                    ) : (
+                      <button 
+                        onClick={() => openBooking(course.title)}
+                        className="w-full mt-auto bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 text-white font-bold py-3 sm:py-4 rounded-lg sm:rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-white/20 flex items-center justify-center gap-2 group text-sm sm:text-base"
+                      >
+                        <span>Book Now</span>
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                        </svg>
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

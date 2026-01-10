@@ -20,6 +20,7 @@ type ApplicationRow = {
   approved: boolean | null
   rejection_message: string | null
   created_at: string
+  is_blocked?: boolean
 }
 
 const ApplicationsPage: React.FC = () => {
@@ -31,6 +32,10 @@ const ApplicationsPage: React.FC = () => {
   const [showRejectModal, setShowRejectModal] = useState(false)
   const [rejectingId, setRejectingId] = useState<number | null>(null)
   const [rejectionMessage, setRejectionMessage] = useState('')
+  const [showBlockModal, setShowBlockModal] = useState(false)
+  const [blockingEmail, setBlockingEmail] = useState<string | null>(null)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
 
   const load = async () => {
     try {
@@ -51,7 +56,24 @@ const ApplicationsPage: React.FC = () => {
       const { data, error: err } = await query
       
       if (err) throw err
-      setRows((data as ApplicationRow[]) || [])
+      
+      // Check blocked status for each application
+      const applicationsWithBlockStatus = await Promise.all(
+        ((data as ApplicationRow[]) || []).map(async (app) => {
+          const { data: userData } = await supabase
+            .from('users')
+            .select('is_blocked')
+            .eq('email', app.email.toLowerCase().trim())
+            .maybeSingle()
+          
+          return {
+            ...app,
+            is_blocked: userData?.is_blocked || false
+          }
+        })
+      )
+      
+      setRows(applicationsWithBlockStatus)
     } catch (err: any) {
       if (process.env.NODE_ENV === 'development') {
         console.error('Error loading applications:', err)
@@ -198,18 +220,71 @@ const ApplicationsPage: React.FC = () => {
     }
   }
 
-  const blockUser = async (email: string) => {
-    if (!window.confirm('Are you sure you want to block this user? They will not be able to access the student portal.')) return
+  const openBlockModal = (email: string) => {
+    setBlockingEmail(email)
+    setShowBlockModal(true)
+  }
+
+  const blockUser = async () => {
+    if (!blockingEmail) return
     
     try {
-      const { error: err } = await supabase
+      // Check if user exists, if not create one with blocked status
+      const { data: existingUser } = await supabase
         .from('users')
-        .update({ is_blocked: true })
-        .eq('email', email.toLowerCase().trim())
-      
-      if (err) throw err
+        .select('id, email, is_blocked')
+        .eq('email', blockingEmail.toLowerCase().trim())
+        .maybeSingle()
+
+      if (!existingUser) {
+        // Create user with blocked status
+        const { error: createErr } = await supabase
+          .from('users')
+          .insert([
+            {
+              email: blockingEmail.toLowerCase().trim(),
+              username: blockingEmail.split('@')[0].toLowerCase(),
+              is_blocked: true,
+              created_at: new Date().toISOString()
+            }
+          ])
+
+        if (createErr && createErr.code !== '23505') { // Ignore duplicate key error
+          throw createErr
+        }
+      } else {
+        // Update existing user to blocked
+        const { error: userErr } = await supabase
+          .from('users')
+          .update({ is_blocked: true })
+          .eq('email', blockingEmail.toLowerCase().trim())
+        
+        if (userErr) throw userErr
+      }
+
+      // Update admission form status with block message
+      const application = rows.find(r => r.email.toLowerCase().trim() === blockingEmail.toLowerCase().trim())
+      if (application) {
+        const { error: appErr } = await supabase
+          .from('admission_form')
+          .update({ 
+            approved: false, 
+            viewed: true,
+            rejection_message: 'Your account has been blocked by the administrator. Please contact support for more information.'
+          })
+          .eq('id', application.id)
+        
+        if (appErr) throw appErr
+      }
       
       setError(null)
+      setShowBlockModal(false)
+      setBlockingEmail(null)
+      setSelectedApplication(null)
+      
+      // Reload data to get fresh blocked status
+      await load()
+      
       toast.success('User has been blocked successfully!')
     } catch (err: any) {
       if (process.env.NODE_ENV === 'development') {
@@ -221,22 +296,25 @@ const ApplicationsPage: React.FC = () => {
     }
   }
 
-  const deleteApplication = async (id: number) => {
-    const application = rows.find(r => r.id === id)
-    const confirmMessage = application 
-      ? `Are you sure you want to delete the application from ${application.name}? This action cannot be undone.`
-      : 'Are you sure you want to delete this application? This action cannot be undone.'
-    
-    if (!window.confirm(confirmMessage)) return
+  const openDeleteModal = (id: number) => {
+    setDeletingId(id)
+    setShowDeleteModal(true)
+  }
+
+  const deleteApplication = async () => {
+    if (!deletingId) return
     
     try {
       const { error: err } = await supabase
         .from('admission_form')
         .delete()
-        .eq('id', id)
+        .eq('id', deletingId)
       
       if (err) throw err
-      setRows(rows.filter(r => r.id !== id))
+      setRows(rows.filter(r => r.id !== deletingId))
+      setShowDeleteModal(false)
+      setDeletingId(null)
+      setSelectedApplication(null)
       toast.success('Application deleted successfully!')
     } catch (err: any) {
       if (process.env.NODE_ENV === 'development') {
@@ -330,7 +408,9 @@ const ApplicationsPage: React.FC = () => {
                   {/* Compact Row View */}
                   <div
                     className={`grid grid-cols-12 gap-4 px-4 py-3 items-center hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors ${
-                      application.approved === true
+                      application.is_blocked
+                        ? 'bg-orange-50/30 dark:bg-orange-900/10'
+                        : application.approved === true
                         ? 'bg-green-50/30 dark:bg-green-900/10'
                         : application.approved === false
                         ? 'bg-red-50/30 dark:bg-red-900/10'
@@ -362,22 +442,23 @@ const ApplicationsPage: React.FC = () => {
                     </div>
                     <div className="col-span-2">
                       <div className="flex items-center gap-2 flex-wrap">
-                        {application.approved === true && (
+                        {application.is_blocked ? (
+                          <span className="px-2 py-1 rounded text-xs font-bold bg-orange-600 text-white">
+                            🚫 Blocked
+                          </span>
+                        ) : application.approved === true ? (
                           <span className="px-2 py-1 rounded text-xs font-bold bg-green-500 text-white">
                             Approved
                           </span>
-                        )}
-                        {application.approved === false && (
+                        ) : application.approved === false ? (
                           <span className="px-2 py-1 rounded text-xs font-bold bg-red-500 text-white">
                             Rejected
                           </span>
-                        )}
-                        {application.approved === null && !application.viewed && (
+                        ) : !application.viewed ? (
                           <span className="px-2 py-1 rounded text-xs font-bold bg-yellow-500 text-white animate-pulse">
                             Pending
                           </span>
-                        )}
-                        {application.approved === null && application.viewed && (
+                        ) : (
                           <span className="px-2 py-1 rounded text-xs font-bold bg-gray-500 text-white">
                             Pending
                           </span>
@@ -505,14 +586,6 @@ const ApplicationsPage: React.FC = () => {
                     ✗ Reject
                   </button>
                 )}
-                <button
-                  onClick={() => {
-                    blockUser(selectedApplication.email)
-                  }}
-                  className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-semibold transition-colors text-sm"
-                >
-                  🚫 Block
-                </button>
                 {!selectedApplication.viewed && (
                   <button
                     onClick={() => {
@@ -526,8 +599,8 @@ const ApplicationsPage: React.FC = () => {
                 )}
                 <button
                   onClick={() => {
-                    deleteApplication(selectedApplication.id)
                     setSelectedApplication(null)
+                    openDeleteModal(selectedApplication.id)
                   }}
                   className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-semibold transition-colors text-sm"
                 >
@@ -541,35 +614,156 @@ const ApplicationsPage: React.FC = () => {
 
       {/* Reject Modal with Message Input */}
       {showRejectModal && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full p-6">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Reject Application</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Please provide a reason for rejection. This message will be shown to the applicant.
-            </p>
-            <textarea
-              value={rejectionMessage}
-              onChange={(e) => setRejectionMessage(e.target.value)}
-              placeholder="Enter rejection reason..."
-              className="w-full h-32 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none focus:outline-none focus:ring-2 focus:ring-red-500"
-            />
-            <div className="flex gap-2 mt-4">
-              <button
-                onClick={rejectApplication}
-                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition-colors"
-              >
-                Reject
-              </button>
-              <button
-                onClick={() => {
-                  setShowRejectModal(false)
-                  setRejectingId(null)
-                  setRejectionMessage('')
-                }}
-                className="flex-1 px-4 py-2 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-300 rounded-lg font-semibold transition-colors"
-              >
-                Cancel
-              </button>
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="bg-gradient-to-r from-red-500 to-red-600 px-6 py-4">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <span className="text-2xl">⚠️</span>
+                Reject Application
+              </h3>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                Please provide a reason for rejection. This message will be shown to the applicant.
+              </p>
+              <textarea
+                value={rejectionMessage}
+                onChange={(e) => setRejectionMessage(e.target.value)}
+                placeholder="Enter rejection reason..."
+                className="w-full h-32 px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all"
+              />
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={rejectApplication}
+                  className="flex-1 px-4 py-2.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-lg font-semibold transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+                >
+                  Reject Application
+                </button>
+                <button
+                  onClick={() => {
+                    setShowRejectModal(false)
+                    setRejectingId(null)
+                    setRejectionMessage('')
+                  }}
+                  className="flex-1 px-4 py-2.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-semibold transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Block User Confirmation Modal */}
+      {showBlockModal && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full border border-gray-200 dark:border-gray-700 overflow-hidden animate-scale-in">
+            <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-4">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <span className="text-2xl">🚫</span>
+                Block User
+              </h3>
+            </div>
+            <div className="p-6">
+              <div className="mb-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-12 h-12 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+                    <span className="text-2xl">⚠️</span>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900 dark:text-white">Are you sure?</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">This action will block the user from accessing the student portal</p>
+                  </div>
+                </div>
+                <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4 mt-4">
+                  <p className="text-sm text-gray-700 dark:text-gray-300">
+                    <strong>Email:</strong> {blockingEmail}
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                    The user will not be able to:
+                  </p>
+                  <ul className="text-sm text-gray-600 dark:text-gray-400 mt-1 ml-4 list-disc">
+                    <li>Access the student portal</li>
+                    <li>View enrolled courses</li>
+                    <li>Track their progress</li>
+                  </ul>
+                </div>
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={blockUser}
+                  className="flex-1 px-4 py-2.5 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white rounded-lg font-semibold transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+                >
+                  Yes, Block User
+                </button>
+                <button
+                  onClick={() => {
+                    setShowBlockModal(false)
+                    setBlockingEmail(null)
+                  }}
+                  className="flex-1 px-4 py-2.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-semibold transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Application Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full border border-gray-200 dark:border-gray-700 overflow-hidden animate-scale-in">
+            <div className="bg-gradient-to-r from-red-500 to-red-600 px-6 py-4">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <span className="text-2xl">🗑️</span>
+                Delete Application
+              </h3>
+            </div>
+            <div className="p-6">
+              <div className="mb-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                    <span className="text-2xl">⚠️</span>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900 dark:text-white">Are you absolutely sure?</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">This action cannot be undone</p>
+                  </div>
+                </div>
+                {deletingId && (
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mt-4">
+                    <p className="text-sm text-gray-700 dark:text-gray-300">
+                      <strong>Application from:</strong> {rows.find(r => r.id === deletingId)?.name || 'Unknown'}
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                      <strong>Email:</strong> {rows.find(r => r.id === deletingId)?.email || 'Unknown'}
+                    </p>
+                    <p className="text-sm text-red-600 dark:text-red-400 mt-3 font-semibold">
+                      ⚠️ All application data will be permanently deleted
+                    </p>
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={deleteApplication}
+                  className="flex-1 px-4 py-2.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-lg font-semibold transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+                >
+                  Yes, Delete
+                </button>
+                <button
+                  onClick={() => {
+                    setShowDeleteModal(false)
+                    setDeletingId(null)
+                  }}
+                  className="flex-1 px-4 py-2.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-semibold transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
         </div>

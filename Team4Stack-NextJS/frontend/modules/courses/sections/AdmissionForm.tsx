@@ -66,6 +66,8 @@ const AdmissionForm: React.FC = () => {
   const [fileError, setFileError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSignInPrompt, setShowSignInPrompt] = useState(false);
+  const [availableCourses, setAvailableCourses] = useState<Array<{ id: number; title: string }>>([]);
+  const [loadingCourses, setLoadingCourses] = useState(true);
 
   // React Hook Form setup
   const {
@@ -89,6 +91,40 @@ const AdmissionForm: React.FC = () => {
     }
   });
 
+  // Load available courses from Supabase
+  useEffect(() => {
+    const loadCourses = async () => {
+      try {
+        setLoadingCourses(true);
+        const { data, error } = await supabase
+          .from('courses')
+          .select('id, title')
+          .order('order_index', { ascending: true })
+          .order('id', { ascending: false });
+
+        if (error) {
+          console.error('Error loading courses:', error);
+          setAvailableCourses([]);
+        } else if (data && data.length > 0) {
+          setAvailableCourses(data);
+        } else {
+          // Fallback to default courses if no courses in database
+          setAvailableCourses([
+            { id: 1, title: 'Physical Training (WE Connect)' },
+            { id: 2, title: 'Online Training' }
+          ]);
+        }
+      } catch (err) {
+        console.error('Error loading courses:', err);
+        setAvailableCourses([]);
+      } finally {
+        setLoadingCourses(false);
+      }
+    };
+
+    loadCourses();
+  }, []);
+
   // Prefill course name from selection (set by Courses Book Now)
   useEffect(() => {
     try {
@@ -98,7 +134,7 @@ const AdmissionForm: React.FC = () => {
         localStorage.removeItem('selectedCourse');
       }
     } catch {}
-  }, [setValue]);
+  }, [setValue, availableCourses]);
 
   const validateForm = (data: FormData) => {
     const newErrors: Record<string, string> = {};
@@ -347,7 +383,7 @@ const AdmissionForm: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black pt-24 md:pt-32 pb-12 px-4">
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black pt-20 md:pt-28 pb-12 px-4">
       <div className="container-custom max-w-4xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
@@ -512,22 +548,37 @@ const AdmissionForm: React.FC = () => {
 
             <div>
               <label htmlFor="courseName" className="block text-sm font-medium text-white mb-2">
-                Course Name
+                Course Name *
               </label>
-              <input
-                type="text"
-                id="courseName"
-                {...register('courseName', { 
-                  required: 'Course name is required'
-                })}
-                className={`form-input ${errors.courseName ? 'border-red-500' : ''}`}
-                placeholder="Which course are you interested in?"
-                aria-invalid={!!errors.courseName}
-                aria-describedby={errors.courseName ? "courseName-error" : undefined}
-              />
-                {errors.courseName && (
-                  <p id="courseName-error" className="mt-1 text-xs sm:text-sm text-red-500 break-words">{errors.courseName.message}</p>
-                )}
+              {loadingCourses ? (
+                <div className="form-input flex items-center justify-center py-3">
+                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span className="ml-2 text-white/70">Loading courses...</span>
+                </div>
+              ) : (
+                <select
+                  id="courseName"
+                  {...register('courseName', { 
+                    required: 'Course name is required'
+                  })}
+                  className={`form-input ${errors.courseName ? 'border-red-500' : ''}`}
+                  aria-invalid={!!errors.courseName}
+                  aria-describedby={errors.courseName ? "courseName-error" : undefined}
+                >
+                  <option value="">Select a course</option>
+                  {availableCourses.map((course) => (
+                    <option key={course.id} value={course.title}>
+                      {course.title}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {errors.courseName && (
+                <p id="courseName-error" className="mt-1 text-xs sm:text-sm text-red-500 break-words">{errors.courseName.message}</p>
+              )}
             </div>
 
             <div>

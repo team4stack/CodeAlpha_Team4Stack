@@ -392,7 +392,7 @@ const DashboardPage: React.FC = () => {
               value={stats.courses} 
               trend="" 
               icon="🎓" 
-              onClick={() => router.push('/adminlandingt4s/courses')}
+              onClick={() => router.push('/admincourset4s/manage')}
             />
             <StatCard 
               title="Admission Form" 
@@ -446,7 +446,7 @@ const DashboardPage: React.FC = () => {
                           project: '/adminlandingt4s/projects',
                           service: '/adminlandingt4s/services',
                           review: '/adminlandingt4s/reviews',
-                          course: '/adminlandingt4s/courses',
+                          course: '/admincourset4s/manage',
                           contact: '/adminlandingt4s/contact',
                           user: '/adminlandingt4s/users',
                           support: '/adminlandingt4s/support'

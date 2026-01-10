@@ -304,7 +304,7 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
           return
         }
         
-        // Success - reload page to update user state
+        // Success - session is automatically saved by Supabase
         setSuccess('Signed in successfully!')
         // Reset reCAPTCHA
         if (window.grecaptcha && window.grecaptcha.reset) {
@@ -315,9 +315,11 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
             // Silent fail
           }
         }
+        // Reload page to ensure session is properly loaded across all pages
+        // Session is already saved in localStorage, so reload will load it properly
         setTimeout(() => {
           window.location.reload()
-        }, 500)
+        }, 800)
       }
     } catch (err: any) {
       // Generic error message - no sensitive info
