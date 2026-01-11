@@ -156,10 +156,19 @@ CREATE TABLE IF NOT EXISTS progress_records (
   course_id BIGINT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
   video_id BIGINT REFERENCES videos(id) ON DELETE CASCADE,
   completed BOOLEAN DEFAULT false,
+  score INTEGER, -- Store watched time in seconds
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(user_id, course_id, video_id)
 );
+
+-- Add score column if table exists
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'progress_records' AND column_name = 'score') THEN
+    ALTER TABLE progress_records ADD COLUMN score INTEGER;
+  END IF;
+END $$;
 
 -- ============================================
 -- 6. ADMIN_USERS TABLE
