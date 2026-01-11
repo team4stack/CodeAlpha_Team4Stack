@@ -13,6 +13,7 @@ interface FormData {
   fatherName: string;
   phone: string;
   email: string;
+  cnic: string; // CNIC - required field
   address: string;
   courseName: string; // Required course
   courseName2: string; // Optional course
@@ -86,6 +87,7 @@ const AdmissionForm: React.FC = () => {
       fatherName: '',
       phone: '',
       email: '',
+      cnic: '',
       address: '',
       courseName: '', // Required
       courseName2: '', // Optional
@@ -357,6 +359,7 @@ const AdmissionForm: React.FC = () => {
         fatherName: sanitizeInput(data.fatherName),
         phone: sanitizeInput(data.phone),
         email: sanitizeInput(data.email),
+        cnic: sanitizeInput(data.cnic),
         address: sanitizeInput(data.address),
         courseName: sanitizeInput(data.courseName),
         courseName2: data.courseName2 ? sanitizeInput(data.courseName2) : '',
@@ -374,6 +377,7 @@ const AdmissionForm: React.FC = () => {
             father_name: sanitizedData.fatherName,
             phone: sanitizedData.phone,
             email: sanitizedData.email,
+            cnic: sanitizedData.cnic,
             address: sanitizedData.address,
             course_name: sanitizedData.courseName,
             course_name_2: sanitizedData.courseName2 || null,
@@ -397,6 +401,7 @@ const AdmissionForm: React.FC = () => {
         `Father Name: ${sanitizedData.fatherName}`,
         `Phone: ${sanitizedData.phone}`,
         `Email: ${sanitizedData.email}`,
+        `CNIC: ${sanitizedData.cnic}`,
         `Address: ${sanitizedData.address}`,
         `Gender: ${sanitizedData.gender}`,
         `Age: ${sanitizedData.age}`,
@@ -595,6 +600,32 @@ const AdmissionForm: React.FC = () => {
                   <p id="email-error" className="mt-1 text-xs sm:text-sm text-red-500 break-words">{errors.email.message}</p>
                 )}
               </div>
+            </div>
+
+            {/* CNIC Row */}
+            <div>
+              <label htmlFor="cnic" className="block text-sm font-medium text-white mb-2">
+                CNIC Number *
+              </label>
+              <input
+                type="text"
+                id="cnic"
+                {...register('cnic', { 
+                  required: 'CNIC number is required',
+                  pattern: { 
+                    value: /^(\d{5}-\d{7}-\d{1}|\d{13})$/, 
+                    message: 'CNIC must be 13 digits (format: 12345-1234567-1)' 
+                  }
+                })}
+                className={`form-input ${errors.cnic ? 'border-red-500' : ''}`}
+                placeholder="12345-1234567-1"
+                maxLength={15}
+                aria-invalid={!!errors.cnic}
+                aria-describedby={errors.cnic ? "cnic-error" : undefined}
+              />
+              {errors.cnic && (
+                <p id="cnic-error" className="mt-1 text-xs sm:text-sm text-red-500 break-words">{errors.cnic.message}</p>
+              )}
             </div>
 
             {/* Gender and Age Row */}
