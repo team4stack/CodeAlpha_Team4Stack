@@ -20,6 +20,7 @@ type Video = {
 type Course = {
   id: string
   title?: string
+  video_count?: number
 }
 
 const VideosManagementPage: React.FC = () => {
@@ -30,7 +31,7 @@ const VideosManagementPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [filterCourse, setFilterCourse] = useState<string>('all')
+  const [filterCourse, setFilterCourse] = useState<string>('') // No default, must select course
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingVideo, setEditingVideo] = useState<Video | null>(null)
   const [formData, setFormData] = useState<{
@@ -49,12 +50,12 @@ const VideosManagementPage: React.FC = () => {
     order_index: 0
   })
 
-  const loadData = useCallback(async () => {
+  const loadCourses = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
 
-      // Load courses - show all courses (title or name)
+      // Load courses with video counts
       const { data: coursesData, error: coursesError } = await supabase
         .from('courses')
         .select('id, title')
@@ -62,16 +63,46 @@ const VideosManagementPage: React.FC = () => {
         .order('id', { ascending: false })
 
       if (coursesError) throw coursesError
-      setCourses(coursesData || [])
 
-      // Load videos
+      // Get video count for each course
+      const coursesWithCounts = await Promise.all(
+        (coursesData || []).map(async (course) => {
+          const { count } = await supabase
+            .from('videos')
+            .select('*', { count: 'exact', head: true })
+            .eq('course_id', course.id)
+          
+          return {
+            ...course,
+            video_count: count || 0
+          }
+        })
+      )
+
+      setCourses(coursesWithCounts)
+    } catch (err: any) {
+      const errorMessage = err.message || 'Failed to load courses'
+      setError(errorMessage)
+      toast.error(errorMessage)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  const loadVideos = useCallback(async () => {
+    if (!filterCourse) {
+      setVideos([])
+      return
+    }
+
+    try {
+      setLoading(true)
+      setError(null)
+
       let query = supabase
         .from('videos')
         .select('*')
-
-      if (filterCourse !== 'all') {
-        query = query.eq('course_id', filterCourse)
-      }
+        .eq('course_id', filterCourse)
 
       if (searchQuery.trim()) {
         query = query.or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
@@ -84,7 +115,7 @@ const VideosManagementPage: React.FC = () => {
       if (videosError) throw videosError
       setVideos(videosData || [])
     } catch (err: any) {
-      const errorMessage = err.message || 'Failed to load data'
+      const errorMessage = err.message || 'Failed to load videos'
       setError(errorMessage)
       toast.error(errorMessage)
     } finally {
@@ -93,30 +124,60 @@ const VideosManagementPage: React.FC = () => {
   }, [searchQuery, filterCourse])
 
   useEffect(() => {
-    loadData()
+    if (!filterCourse) {
+      loadCourses()
+    } else {
+      loadVideos()
+    }
+  }, [filterCourse, loadCourses, loadVideos])
 
-    // Real-time subscription
+  // Separate effect for real-time subscription
+  useEffect(() => {
     const channel = supabase
       .channel('videos_realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'videos' }, () => {
-        loadData()
+        if (filterCourse) {
+          loadVideos()
+          loadCourses() // Refresh counts
+        } else {
+          loadCourses()
+        }
       })
       .subscribe()
 
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [loadData])
+  }, [filterCourse, loadCourses, loadVideos])
+
+  const handleCourseSelect = (courseId: string) => {
+    setFilterCourse(courseId)
+    setSearchQuery('') // Reset search when switching courses
+    setShowAddForm(false) // Close form if open
+  }
+
+  const handleBackToCourses = () => {
+    setFilterCourse('')
+    setVideos([])
+    setShowAddForm(false)
+    setEditingVideo(null)
+    setSearchQuery('')
+  }
 
   const handleAdd = () => {
+    if (!filterCourse) {
+      toast.error('Please select a course first to add videos')
+      return
+    }
+    
     setEditingVideo(null)
     // Get max order_index for the selected course
-    const maxOrder = filterCourse !== 'all' 
-      ? videos.filter(v => v.course_id === filterCourse).reduce((max, v) => Math.max(max, (v.order_index || v.order || 0)), 0)
-      : videos.reduce((max, v) => Math.max(max, (v.order_index || v.order || 0)), 0)
+    const maxOrder = videos
+      .filter(v => v.course_id === filterCourse)
+      .reduce((max, v) => Math.max(max, (v.order_index || v.order || 0)), 0)
     
     setFormData({
-      course_id: filterCourse !== 'all' ? filterCourse : '',
+      course_id: filterCourse,
       title: '',
       description: '',
       video_url: '',
@@ -181,7 +242,8 @@ const VideosManagementPage: React.FC = () => {
 
       setShowAddForm(false)
       setEditingVideo(null)
-      loadData()
+      await loadVideos()
+      await loadCourses() // Refresh course counts
       setTimeout(() => setSuccess(null), 3000)
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to save video'
@@ -208,7 +270,8 @@ const VideosManagementPage: React.FC = () => {
 
       toast.success('Video deleted successfully!')
       setSuccess('Video deleted successfully!')
-      loadData()
+      await loadVideos()
+      await loadCourses() // Refresh course counts
       setTimeout(() => setSuccess(null), 3000)
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to delete video'
@@ -222,7 +285,7 @@ const VideosManagementPage: React.FC = () => {
     return course ? (course.title || `Course ${courseId}`) : 'Unknown Course';
   }
 
-  if (loading && videos.length === 0) {
+  if (loading && !filterCourse && courses.length === 0) {
     return (
       <div className="h-96 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
@@ -234,8 +297,22 @@ const VideosManagementPage: React.FC = () => {
     <div className="space-y-6">
       {/* Header */}
       <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-xl p-6 text-white shadow-lg">
-        <h1 className="text-3xl font-bold mb-2">🎥 Videos Management</h1>
-        <p className="text-white/90">Add, edit, and organize course videos</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">🎥 Videos Management</h1>
+            <p className="text-white/90">
+              {filterCourse ? `Managing videos for: ${getCourseName(filterCourse)}` : 'Select a course to manage videos'}
+            </p>
+          </div>
+          {filterCourse && (
+            <button
+              onClick={handleBackToCourses}
+              className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors font-semibold flex items-center gap-2"
+            >
+              ← Back to Courses
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Messages */}
@@ -250,43 +327,73 @@ const VideosManagementPage: React.FC = () => {
         </div>
       )}
 
-      {/* Filters and Add Button */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
-        <div className="flex flex-col md:flex-row gap-4">
-          {/* Search */}
-          <div className="flex-1">
-            <input
-              type="text"
-              placeholder="Search videos by title or description..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-
-          {/* Course Filter */}
-          <select
-            value={filterCourse}
-            onChange={(e) => setFilterCourse(e.target.value)}
-            className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          >
-            <option value="all">All Courses</option>
-            {courses.map((course) => (
-              <option key={course.id} value={course.id}>
-                {course.title || `Course ${course.id}`}
-              </option>
-            ))}
-          </select>
-
-          {/* Add Button */}
-          <button
-            onClick={handleAdd}
-            className="px-6 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors font-semibold whitespace-nowrap"
-          >
-            + Add Video
-          </button>
+      {/* Course Cards View - Show when no course selected */}
+      {!filterCourse && (
+        <div>
+          <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-white">
+            Select a Course to Manage Videos
+          </h2>
+          {courses.length === 0 ? (
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-12 text-center border border-gray-200 dark:border-gray-700">
+              <p className="text-gray-500 dark:text-gray-400">No courses found. Please add courses first.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {courses.map((course) => (
+                <button
+                  key={course.id}
+                  onClick={() => handleCourseSelect(course.id)}
+                  className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg border-2 border-gray-200 dark:border-gray-700 hover:border-indigo-500 dark:hover:border-indigo-500 transition-all hover:shadow-xl text-left group"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="h-16 w-16 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-lg flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                      📚
+                    </div>
+                    <div className="px-3 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full text-sm font-semibold">
+                      {course.video_count || 0} {course.video_count === 1 ? 'Video' : 'Videos'}
+                    </div>
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                    {course.title || `Course ${course.id}`}
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Click to manage videos for this course
+                  </p>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-      </div>
+      )}
+
+      {/* Videos Management View - Show when course selected */}
+      {filterCourse && (
+        <>
+          {/* Search and Add Button */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
+            <div className="flex flex-col md:flex-row gap-4">
+              {/* Search */}
+              <div className="flex-1">
+                <input
+                  type="text"
+                  placeholder="Search videos by title or description..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              {/* Add Button */}
+              <button
+                onClick={handleAdd}
+                className="px-6 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors font-semibold whitespace-nowrap"
+              >
+                + Add Video
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Add/Edit Form */}
       {showAddForm && (
@@ -304,7 +411,10 @@ const VideosManagementPage: React.FC = () => {
                   value={formData.course_id}
                   onChange={(e) => setFormData({ ...formData, course_id: e.target.value })}
                   required
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  disabled={!!editingVideo} // Disable if editing (course shouldn't change)
+                  className={`w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                    editingVideo ? 'opacity-60 cursor-not-allowed' : ''
+                  }`}
                 >
                   <option value="">Select Course</option>
                   {courses.map((course) => (
@@ -313,6 +423,11 @@ const VideosManagementPage: React.FC = () => {
                     </option>
                   ))}
                 </select>
+                {!editingVideo && (
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    💡 Course is pre-selected
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -417,40 +532,46 @@ const VideosManagementPage: React.FC = () => {
         </div>
       )}
 
-      {/* Videos List */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-700">
-              <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Thumbnail
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Title
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Course
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Order
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Video URL
-                </th>
-                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-              {videos.length === 0 ? (
+      {/* Videos List - Only show when course is selected */}
+      {filterCourse && (
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
-                    {loading ? 'Loading...' : 'No videos found'}
-                  </td>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Thumbnail
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Title
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Order
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Video URL
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
-              ) : (
+              </thead>
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                {loading ? (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                      <div className="flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500"></div>
+                      </div>
+                    </td>
+                  </tr>
+                ) : videos.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                      No videos found for {getCourseName(filterCourse)}. Click "Add Video" to add videos to this course.
+                    </td>
+                  </tr>
+                ) : (
                 videos.map((video) => (
                   <tr key={video.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -465,9 +586,6 @@ const VideosManagementPage: React.FC = () => {
                           {video.description}
                         </div>
                       )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                      {getCourseName(video.course_id)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                       {video.order_index || video.order || 0}
@@ -504,11 +622,12 @@ const VideosManagementPage: React.FC = () => {
                     </td>
                   </tr>
                 ))
-              )}
-            </tbody>
-          </table>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

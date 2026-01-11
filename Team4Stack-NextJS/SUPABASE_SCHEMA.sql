@@ -50,6 +50,14 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'admission_form' AND column_name = 'rejection_message_2') THEN
     ALTER TABLE admission_form ADD COLUMN rejection_message_2 TEXT;
   END IF;
+  -- Add roll_number column for student roll numbers (T4S-{courseId}-{sequence})
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'admission_form' AND column_name = 'roll_number') THEN
+    ALTER TABLE admission_form ADD COLUMN roll_number TEXT;
+  END IF;
+  -- Add cnic column for student CNIC number
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'admission_form' AND column_name = 'cnic') THEN
+    ALTER TABLE admission_form ADD COLUMN cnic TEXT;
+  END IF;
 END $$;
 
 -- ============================================

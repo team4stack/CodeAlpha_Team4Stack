@@ -376,24 +376,52 @@ const ApplicationsPage: React.FC = () => {
 
   const deleteApplication = async () => {
     if (!deletingId) return
-    
+
     try {
-      const { error: err } = await supabase
+      const { error: err, data } = await supabase
         .from('admission_form')
         .delete()
         .eq('id', deletingId)
+        .select()
       
-      if (err) throw err
+      if (err) {
+        console.error('Supabase delete error:', {
+          error: err,
+          message: err.message,
+          details: err.details,
+          hint: err.hint,
+          code: err.code
+        })
+        throw err
+      }
+      
       setRows(rows.filter(r => r.id !== deletingId))
       setShowDeleteModal(false)
       setDeletingId(null)
       setSelectedApplication(null)
       toast.success('Application deleted successfully!')
     } catch (err: any) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Error deleting application:', err)
+      console.error('Error deleting application:', {
+        error: err,
+        message: err?.message,
+        details: err?.details,
+        hint: err?.hint,
+        code: err?.code,
+        fullError: JSON.stringify(err, null, 2)
+      })
+      
+      // Better error message handling
+      let errorMsg = 'Failed to delete application'
+      if (err?.message) {
+        errorMsg = err.message
+      } else if (err?.details) {
+        errorMsg = err.details
+      } else if (err?.hint) {
+        errorMsg = err.hint
+      } else if (typeof err === 'string') {
+        errorMsg = err
       }
-      const errorMsg = err.message || 'Failed to delete application'
+      
       setError(errorMsg)
       toast.error(errorMsg)
     }
