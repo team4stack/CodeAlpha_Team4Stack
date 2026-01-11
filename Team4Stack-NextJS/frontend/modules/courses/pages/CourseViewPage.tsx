@@ -60,6 +60,8 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const watchTimeIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const elapsedTimeRef = useRef<Map<number, number>>(new Map()); // videoId -> elapsed seconds
+  const lastTrackedTimeRef = useRef<Map<number, number>>(new Map()); // videoId -> last tracked time (for seek detection)
+  const actualWatchedTimeRef = useRef<Map<number, number>>(new Map()); // videoId -> actual watched time (excluding seeks)
   const [youtubeApiReady, setYoutubeApiReady] = useState(false);
 
   const loadCourseData = useCallback(async () => {
@@ -123,6 +125,8 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
           // Store watched time from score field (or 0 if not set)
           if (record.score) {
             watchedTimeMap.set(record.video_id, record.score);
+            // Initialize actual watched time refs
+            actualWatchedTimeRef.current.set(record.video_id, record.score);
           }
         }
       });
@@ -175,21 +179,30 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
     try {
       // Get the video to ensure we have the correct duration
       const currentVideo = videos.find(v => v.id === videoId);
-      const videoDuration = currentVideo?.duration || 0;
+      if (!currentVideo) {
+        throw new Error('Video not found');
+      }
       
-      // Get current watched time
-      const watchedTime = videoWatchedTime.get(videoId) || 0;
+      const videoDuration = videoTotalDuration.get(videoId) || currentVideo.duration || 0;
       
-      // Ensure watched time is at least the video duration (for 100% progress)
-      const finalWatchedTime = Math.max(watchedTime, videoDuration);
+      // Get current actual watched time (not seek position)
+      const actualWatchedTime = actualWatchedTimeRef.current?.get(videoId) || videoWatchedTime.get(videoId) || 0;
       
-      // Update local state FIRST - mark as watched and set progress to 100%
+      // Ensure we have a valid watched time (at least 1 second if video was watched)
+      const finalWatchedTime = Math.max(actualWatchedTime, 1);
+      
+      // Calculate actual progress based on watched time (preserve actual progress, don't force 100%)
+      const actualProgress = videoDuration > 0 
+        ? Math.min((finalWatchedTime / videoDuration) * 100, 100) 
+        : 0;
+      
+      // Update local state - mark as watched but preserve actual progress
       setVideoWatched(prev => new Set(prev).add(videoId));
-      setVideoProgress(prev => new Map(prev).set(videoId, 100));
-      setVideoWatchedTime(prev => new Map(prev).set(videoId, finalWatchedTime));
+      setVideoProgress(prev => new Map(prev).set(videoId, actualProgress)); // Preserve actual progress
+      setVideoWatchedTime(prev => new Map(prev).set(videoId, finalWatchedTime)); // Preserve actual watched time
       
       // Check if progress record exists
-      const { data: existingRecord } = await supabase
+      const { data: existingRecord, error: selectError } = await supabase
         .from('progress_records')
         .select('id')
         .eq('user_id', user.id)
@@ -197,39 +210,55 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
         .eq('video_id', videoId)
         .maybeSingle();
 
+      if (selectError) {
+        console.error('Error checking existing record:', selectError);
+        throw selectError;
+      }
+
       // Update or insert progress record
       if (existingRecord) {
-        const { error } = await supabase
+        const { error: updateError } = await supabase
           .from('progress_records')
           .update({ 
             completed: true,
-            score: finalWatchedTime
+            score: Math.round(finalWatchedTime) // Store actual watched time, rounded to integer
           })
           .eq('id', existingRecord.id);
         
-        if (error) throw error;
+        if (updateError) {
+          console.error('Error updating progress record:', updateError);
+          throw updateError;
+        }
       } else {
-        const { error } = await supabase
+        const { error: insertError } = await supabase
           .from('progress_records')
           .insert({
             user_id: user.id,
             course_id: Number(courseId),
             video_id: videoId,
             completed: true,
-            score: finalWatchedTime
+            score: Math.round(finalWatchedTime) // Store actual watched time, rounded to integer
           });
         
-        if (error) throw error;
+        if (insertError) {
+          console.error('Error inserting progress record:', insertError);
+          throw insertError;
+        }
       }
       
       // Reload progress records
-      const { data: progressData } = await supabase
+      const { data: progressData, error: reloadError } = await supabase
         .from('progress_records')
         .select('*')
         .eq('course_id', courseId)
         .eq('user_id', user.id);
       
-      setProgressRecords(progressData || []);
+      if (reloadError) {
+        console.error('Error reloading progress records:', reloadError);
+        // Don't throw here, just log - progress was already saved
+      } else {
+        setProgressRecords(progressData || []);
+      }
       
       toast.success('Lecture marked as complete!');
       
@@ -237,10 +266,17 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
       // Next lecture will be automatically unlocked when progress >= 90%
     } catch (err: any) {
       console.error('Failed to mark video as completed:', err);
-      const errorMessage = err?.message || 'Failed to update progress';
+      console.error('Error details:', {
+        message: err?.message,
+        code: err?.code,
+        details: err?.details,
+        hint: err?.hint,
+        fullError: err
+      });
+      const errorMessage = err?.message || err?.details || 'Failed to update progress';
       toast.error(errorMessage);
     }
-  }, [user?.id, courseId, videoWatched, videoWatchedTime, videos]);
+  }, [user?.id, courseId, videoWatched, videoWatchedTime, videos, videoTotalDuration]);
 
   // Extract YouTube video ID from URL
   const extractYouTubeVideoId = (url: string): string | null => {
@@ -461,26 +497,50 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
                   if (progressIntervalRef.current) {
                     clearInterval(progressIntervalRef.current);
                   }
-                  // Start tracking progress
+                  
+                  // Initialize tracking refs
+                  let lastYTTime = lastTrackedTimeRef.current.get(selectedVideoId) || 0;
+                  let actualYTWatched = actualWatchedTimeRef.current.get(selectedVideoId) || 0;
+                  let lastYTUpdateTime = Date.now();
+                  
+                  // Start tracking progress with seek detection
                   progressIntervalRef.current = setInterval(() => {
                     if (youtubePlayerRef.current) {
                       try {
                         const currentTime = youtubePlayerRef.current.getCurrentTime();
                         const duration = youtubePlayerRef.current.getDuration();
+                        const playerState = youtubePlayerRef.current.getPlayerState();
+                        const isYTPlaying = playerState === (window as any).YT.PlayerState.PLAYING;
                         
-                        if (duration && duration > 0) {
-                          const watchedSeconds = Math.floor(currentTime);
-                          const progress = Math.min((currentTime / duration) * 100, 100);
+                        if (duration && duration > 0 && isYTPlaying) {
+                          const currentTimeSeconds = Math.floor(currentTime);
+                          const timeDiff = currentTimeSeconds - lastYTTime;
+                          const realTimeDiff = (Date.now() - lastYTUpdateTime) / 1000; // Real elapsed seconds
                           
-                          setVideoWatchedTime(prev => new Map(prev).set(selectedVideoId, watchedSeconds));
+                          // Detect seek: if video time jumps more than real time, it's a seek
+                          if (timeDiff > realTimeDiff + 1) {
+                            // User seeked forward - only count real time passed (max 1 second per interval)
+                            actualYTWatched = actualYTWatched + Math.min(realTimeDiff, 1);
+                          } else if (timeDiff >= 0 && timeDiff <= realTimeDiff + 1) {
+                            // Normal playback - add real time difference
+                            actualYTWatched = actualYTWatched + Math.min(realTimeDiff, 1);
+                          }
+                          
+                          // Update refs
+                          lastYTTime = currentTimeSeconds;
+                          lastTrackedTimeRef.current.set(selectedVideoId, lastYTTime);
+                          actualWatchedTimeRef.current.set(selectedVideoId, actualYTWatched);
+                          elapsedTimeRef.current.set(selectedVideoId, currentTimeSeconds);
+                          lastYTUpdateTime = Date.now();
+                          
+                          // Calculate progress based on ACTUAL watched time, not current position
+                          const progress = Math.min((actualYTWatched / duration) * 100, 100);
+                          
+                          setVideoWatchedTime(prev => new Map(prev).set(selectedVideoId, actualYTWatched));
                           setVideoProgress(prev => new Map(prev).set(selectedVideoId, progress));
                           setVideoTotalDuration(prev => new Map(prev).set(selectedVideoId, duration));
-                          elapsedTimeRef.current.set(selectedVideoId, watchedSeconds);
                           
-                          // Auto-complete at 99%+
-                          if (progress >= 99 && !videoWatched.has(selectedVideoId)) {
-                            markVideoAsCompleted(selectedVideoId);
-                          }
+                          // Don't auto-complete, let user click button at 90%+
                         }
                       } catch (e) {
                         console.log('Error getting YouTube player state:', e);
@@ -488,14 +548,19 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
                     }
                   }, 1000);
                 } else if (event.data === (window as any).YT.PlayerState.ENDED) {
-                  // Video ended - mark as complete
+                  // Video ended - use actual watched time, not duration
                   if (youtubePlayerRef.current) {
                     try {
                       const duration = youtubePlayerRef.current.getDuration();
+                      const actualWatched = actualWatchedTimeRef.current.get(selectedVideoId) || 0;
                       if (duration) {
-                        setVideoWatchedTime(prev => new Map(prev).set(selectedVideoId, Math.floor(duration)));
-                        setVideoProgress(prev => new Map(prev).set(selectedVideoId, 100));
-                        markVideoAsCompleted(selectedVideoId);
+                        // Only mark complete if actual watched time is 90%+
+                        const progress = (actualWatched / duration) * 100;
+                        if (progress >= 90) {
+                          setVideoWatchedTime(prev => new Map(prev).set(selectedVideoId, actualWatched));
+                          setVideoProgress(prev => new Map(prev).set(selectedVideoId, progress));
+                          markVideoAsCompleted(selectedVideoId);
+                        }
                       }
                     } catch (e) {
                       console.log('Error handling video end:', e);
@@ -586,36 +651,101 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
       }
     };
 
+    // Initialize watched time from state
+    const initialWatchedTime = videoWatchedTime.get(selectedVideoId) || 0;
+    if (!actualWatchedTimeRef.current.has(selectedVideoId)) {
+      actualWatchedTimeRef.current.set(selectedVideoId, initialWatchedTime);
+    }
+    if (!lastTrackedTimeRef.current.has(selectedVideoId)) {
+      lastTrackedTimeRef.current.set(selectedVideoId, 0);
+    }
+
+    let isPlaying = false;
+    let lastUpdateTime = Date.now();
+
     const handleTimeUpdate = () => {
-      if (videoElement.duration && videoElement.duration > 0) {
-        const watchedSeconds = Math.floor(videoElement.currentTime);
+      if (videoElement.duration && videoElement.duration > 0 && videoElement.paused === false) {
+        const currentTime = Math.floor(videoElement.currentTime);
         const totalSeconds = Math.floor(videoElement.duration);
-        const progress = Math.min((videoElement.currentTime / videoElement.duration) * 100, 100);
         
-        // Update real-time tracking
-        elapsedTimeRef.current.set(selectedVideoId, watchedSeconds);
+        // Get last tracked values
+        const lastTracked = lastTrackedTimeRef.current.get(selectedVideoId) || 0;
+        let actualWatched = actualWatchedTimeRef.current.get(selectedVideoId) || 0;
+        
+        // Calculate time difference
+        const timeDiff = currentTime - lastTracked;
+        const realTimeDiff = (Date.now() - lastUpdateTime) / 1000; // Real elapsed seconds
+        
+        // Detect seek: if video time jumps more than real time, it's a seek
+        if (timeDiff > realTimeDiff + 1) {
+          // User seeked forward - only count real time passed (max 1 second per update)
+          actualWatched = actualWatched + Math.min(realTimeDiff, 1);
+        } else if (timeDiff >= 0 && timeDiff <= realTimeDiff + 1) {
+          // Normal playback - add real time difference
+          actualWatched = actualWatched + Math.min(realTimeDiff, 1);
+        }
+        
+        // Update refs
+        lastTrackedTimeRef.current.set(selectedVideoId, currentTime);
+        actualWatchedTimeRef.current.set(selectedVideoId, actualWatched);
+        elapsedTimeRef.current.set(selectedVideoId, currentTime);
+        lastUpdateTime = Date.now();
+        
+        // Calculate progress based on ACTUAL watched time, not current position
+        const progress = totalSeconds > 0 
+          ? Math.min((actualWatched / totalSeconds) * 100, 100) 
+          : 0;
+        
+        // Update state with actual watched time
         setVideoProgress(prev => new Map(prev).set(selectedVideoId, progress));
-        setVideoWatchedTime(prev => new Map(prev).set(selectedVideoId, watchedSeconds));
+        setVideoWatchedTime(prev => new Map(prev).set(selectedVideoId, actualWatched));
+      }
+    };
+
+    const handlePlay = () => {
+      isPlaying = true;
+      lastUpdateTime = Date.now();
+      const currentTime = Math.floor(videoElement.currentTime);
+      lastTrackedTimeRef.current.set(selectedVideoId, currentTime);
+    };
+
+    const handlePause = () => {
+      isPlaying = false;
+    };
+
+    const handleSeeked = () => {
+      // User seeked - reset last tracked time to current position
+      const currentTime = Math.floor(videoElement.currentTime);
+      lastTrackedTimeRef.current.set(selectedVideoId, currentTime);
+      lastUpdateTime = Date.now();
+      // Don't add to watched time when seeking
+    };
+
+    const handleVideoEnd = () => {
+      // Use actual watched time when video ends, not duration
+      if (videoElement.duration && videoElement.duration > 0) {
+        const totalSeconds = Math.floor(videoElement.duration);
+        const actualWatched = actualWatchedTimeRef.current.get(selectedVideoId) || 0;
+        const progress = totalSeconds > 0 ? Math.min((actualWatched / totalSeconds) * 100, 100) : 0;
         
-        // If video is at or near end (99%+), mark as complete
-        if (progress >= 99 && !videoWatched.has(selectedVideoId)) {
+        // Only mark complete if actual watched time is 90%+
+        if (progress >= 90) {
+          setVideoProgress(prev => new Map(prev).set(selectedVideoId, progress));
+          setVideoWatchedTime(prev => new Map(prev).set(selectedVideoId, actualWatched));
           markVideoAsCompleted(selectedVideoId);
+        } else {
+          // Update progress but don't mark complete
+          setVideoProgress(prev => new Map(prev).set(selectedVideoId, progress));
+          setVideoWatchedTime(prev => new Map(prev).set(selectedVideoId, actualWatched));
         }
       }
     };
 
-    const handleVideoEnd = () => {
-      // Ensure progress is 100% when video ends
-      if (videoElement.duration && videoElement.duration > 0) {
-        const totalSeconds = Math.floor(videoElement.duration);
-        setVideoProgress(prev => new Map(prev).set(selectedVideoId, 100));
-        setVideoWatchedTime(prev => new Map(prev).set(selectedVideoId, totalSeconds));
-      }
-      markVideoAsCompleted(selectedVideoId);
-    };
-
     videoElement.addEventListener('loadedmetadata', handleLoadedMetadata);
     videoElement.addEventListener('timeupdate', handleTimeUpdate);
+    videoElement.addEventListener('play', handlePlay);
+    videoElement.addEventListener('pause', handlePause);
+    videoElement.addEventListener('seeked', handleSeeked);
     videoElement.addEventListener('ended', handleVideoEnd);
     
     // Trigger loadedmetadata if already loaded
@@ -626,9 +756,12 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
     return () => {
       videoElement.removeEventListener('loadedmetadata', handleLoadedMetadata);
       videoElement.removeEventListener('timeupdate', handleTimeUpdate);
+      videoElement.removeEventListener('play', handlePlay);
+      videoElement.removeEventListener('pause', handlePause);
+      videoElement.removeEventListener('seeked', handleSeeked);
       videoElement.removeEventListener('ended', handleVideoEnd);
     };
-  }, [selectedVideoId, markVideoAsCompleted, videos, loadCourseData]);
+  }, [selectedVideoId, markVideoAsCompleted, videos, loadCourseData, videoWatchedTime]);
 
   const progressByVideo = useMemo(() => {
     const map = new Map<number, ProgressRecord>();
@@ -648,10 +781,12 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
   const totalVideos = videos.length;
   const progressPercentage = totalVideos > 0 ? Math.round((completedCount / totalVideos) * 100) : 0;
 
-  // Calculate total course duration (sum of all videos) - use actual detected durations
+  // Calculate total course duration (sum of ALL videos - locked + unlocked) - use actual detected durations
   const totalCourseDuration = useMemo(() => {
+    // Sum ALL videos regardless of lock status
     return videos.reduce((total, video) => {
       // Use videoTotalDuration state (actual detected) or fallback to database duration
+      // Include ALL videos, even if locked
       const duration = videoTotalDuration.get(video.id) || video.duration || 0;
       return total + duration;
     }, 0);
@@ -833,36 +968,46 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
                   {completedCount} of {totalVideos} lectures completed
                 </p>
                 {/* Total Course Time */}
-                {totalCourseDuration > 0 && (
-                  <div className={`mt-3 pt-3 border-t ${
-                    isDarkMode ? 'border-gray-700' : 'border-gray-200'
-                  }`}>
-                    <div className="flex justify-between items-center">
-                      <span className={`text-xs font-semibold ${
-                        isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                      }`}>
-                        Total Course Time
-                      </span>
-                      <span className={`text-xs font-bold ${
-                        isDarkMode ? 'text-purple-400' : 'text-purple-600'
-                      }`}>
-                        {Math.floor(totalCourseDuration / 60)}:{(totalCourseDuration % 60).toString().padStart(2, '0')}
-                      </span>
+                {totalCourseDuration > 0 && (() => {
+                  // Format time helper function
+                  const formatTime = (seconds: number) => {
+                    const totalSeconds = Math.floor(seconds); // Ensure integer
+                    const mins = Math.floor(totalSeconds / 60);
+                    const secs = totalSeconds % 60;
+                    return `${mins}:${secs.toString().padStart(2, '0')}`;
+                  };
+                  
+                  return (
+                    <div className={`mt-3 pt-3 border-t ${
+                      isDarkMode ? 'border-gray-700' : 'border-gray-200'
+                    }`}>
+                      <div className="flex justify-between items-center">
+                        <span className={`text-xs font-semibold ${
+                          isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                        }`}>
+                          Total Course Time
+                        </span>
+                        <span className={`text-xs font-bold ${
+                          isDarkMode ? 'text-purple-400' : 'text-purple-600'
+                        }`}>
+                          {formatTime(totalCourseDuration)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center mt-1">
+                        <span className={`text-xs ${
+                          isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                        }`}>
+                          Watched
+                        </span>
+                        <span className={`text-xs ${
+                          isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                        }`}>
+                          {formatTime(totalWatchedTime)}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex justify-between items-center mt-1">
-                      <span className={`text-xs ${
-                        isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                      }`}>
-                        Watched
-                      </span>
-                      <span className={`text-xs ${
-                        isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                      }`}>
-                        {Math.floor(totalWatchedTime / 60)}:{(totalWatchedTime % 60).toString().padStart(2, '0')}
-                      </span>
-                    </div>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
             </div>
 
@@ -941,14 +1086,18 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
                                   isDarkMode ? 'text-gray-400' : 'text-gray-500'
                                 }`}>
                                   {(() => {
-                                    const totalSeconds = video.duration;
-                                    const watchedSeconds = isCompleted 
+                                    // Use videoTotalDuration state if available, otherwise database duration
+                                    const totalSeconds = Math.floor(videoTotalDuration.get(video.id) || video.duration || 0);
+                                    const watchedSeconds = Math.floor(isCompleted 
                                       ? (videoWatchedTime.get(video.id) || totalSeconds)
-                                      : (videoWatchedTime.get(video.id) || 0);
+                                      : (videoWatchedTime.get(video.id) || 0));
+                                    
+                                    // Format time properly
                                     const totalMin = Math.floor(totalSeconds / 60);
                                     const totalSec = totalSeconds % 60;
                                     const watchedMin = Math.floor(watchedSeconds / 60);
                                     const watchedSec = watchedSeconds % 60;
+                                    
                                     return `${watchedMin}:${watchedSec.toString().padStart(2, '0')} / ${totalMin}:${totalSec.toString().padStart(2, '0')}`;
                                   })()}
                                 </p>
@@ -963,21 +1112,15 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
                                     : isDarkMode ? 'text-purple-400' : 'text-purple-600'
                                 }`}>
                                   {(() => {
-                                    // If completed, always show 100%
-                                    if (isCompleted) {
-                                      return '100%';
-                                    }
-                                    
-                                    const totalSeconds = video.duration || 0;
-                                    const watchedSeconds = videoWatchedTime.get(video.id) || 0;
-                                    
-                                    // Get progress from videoProgress state if available (more accurate)
+                                    // Get progress from videoProgress state (shows actual progress, not forced 100%)
                                     const progressFromState = videoProgress.get(video.id);
                                     if (progressFromState !== undefined) {
                                       return `${Math.round(progressFromState)}%`;
                                     }
                                     
                                     // Fallback to calculated progress
+                                    const totalSeconds = videoTotalDuration.get(video.id) || video.duration || 0;
+                                    const watchedSeconds = videoWatchedTime.get(video.id) || 0;
                                     const progress = totalSeconds > 0 
                                       ? Math.round((watchedSeconds / totalSeconds) * 100) 
                                       : 0;
