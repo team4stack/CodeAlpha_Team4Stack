@@ -1,30 +1,36 @@
 'use client'
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/contexts/ThemeContext';
-import { ProgressBar, Certificate } from '../components';
+import { useAuth } from '@/contexts/AuthContext';
+import StudentNavbar from '@/navigation/StudentNavbar';
 import { supabase } from '@/lib/supabase/client';
+import toast from 'react-hot-toast';
 
 interface Video {
-  id: string;
-  course_id: string;
+  id: number;
+  course_id: number;
   title: string;
   description?: string;
   video_url?: string;
   thumbnail_url?: string;
-  order: number;
+  order_index: number;
+  duration?: number;
 }
 
 interface Course {
-  id: string;
-  name: string;
+  id: number;
+  name?: string;
+  title?: string;
   description?: string;
 }
 
 interface ProgressRecord {
-  id: string;
-  video_id: string;
+  id: number;
+  user_id: string;
+  course_id: number;
+  video_id: number;
   completed: boolean;
   score?: number;
 }
@@ -36,15 +42,18 @@ interface CourseViewPageProps {
 const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
   const router = useRouter();
   const { isDarkMode } = useTheme();
+  const { user } = useAuth();
   const [course, setCourse] = useState<Course | null>(null);
   const [videos, setVideos] = useState<Video[]>([]);
   const [progressRecords, setProgressRecords] = useState<ProgressRecord[]>([]);
-  const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
+  const [selectedVideoId, setSelectedVideoId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [videoWatched, setVideoWatched] = useState<Set<number>>(new Set());
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const loadCourseData = useCallback(async () => {
-    if (!courseId) return;
+    if (!courseId || !user?.id) return;
     
     try {
       setLoading(true);
@@ -60,40 +69,122 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
       if (courseError) throw courseError;
       setCourse(courseData);
       
-      // Fetch videos
+      // Fetch videos ordered by order_index (admin's order)
       const { data: videosData, error: videosError } = await supabase
         .from('videos')
         .select('*')
         .eq('course_id', courseId)
-        .order('order');
+        .order('order_index', { ascending: true });
         
       if (videosError) throw videosError;
       setVideos(videosData || []);
       if (videosData && videosData.length > 0) {
         setSelectedVideoId(videosData[0].id);
+      } else {
+        setSelectedVideoId(null);
       }
       
-      // Fetch progress records
-      const { data: progressData } = await supabase
+      // Fetch progress records for current user
+      const { data: progressData, error: progressError } = await supabase
         .from('progress_records')
         .select('*')
-        .eq('course_id', courseId);
+        .eq('course_id', courseId)
+        .eq('user_id', user.id);
         
+      if (progressError) throw progressError;
       setProgressRecords(progressData || []);
+      
+      // Track which videos have been watched
+      const watched = new Set<number>();
+      progressData?.forEach((record) => {
+        if (record.completed && record.video_id) {
+          watched.add(record.video_id);
+        }
+      });
+      setVideoWatched(watched);
     } catch (err: any) {
       console.error('[CourseViewPage] Failed to load course', err);
       setError('Unable to load course content right now.');
+      toast.error('Failed to load course');
     } finally {
       setLoading(false);
     }
-  }, [courseId]);
+  }, [courseId, user?.id]);
 
   useEffect(() => {
     loadCourseData();
   }, [loadCourseData]);
 
+  // Mark video as completed when watched
+  const markVideoAsCompleted = useCallback(async (videoId: number) => {
+    if (!user?.id || !courseId || videoWatched.has(videoId)) return;
+
+    try {
+      // Check if progress record exists
+      const { data: existingRecord } = await supabase
+        .from('progress_records')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('course_id', courseId)
+        .eq('video_id', videoId)
+        .maybeSingle();
+
+      if (existingRecord) {
+        // Update existing record
+        const { error } = await supabase
+          .from('progress_records')
+          .update({ completed: true })
+          .eq('id', existingRecord.id);
+        
+        if (error) throw error;
+      } else {
+        // Create new record
+        const { error } = await supabase
+          .from('progress_records')
+          .insert({
+            user_id: user.id,
+            course_id: Number(courseId),
+            video_id: videoId,
+            completed: true
+          });
+        
+        if (error) throw error;
+      }
+
+      // Update local state
+      setVideoWatched(prev => new Set(prev).add(videoId));
+      
+      // Reload progress records
+      const { data: progressData } = await supabase
+        .from('progress_records')
+        .select('*')
+        .eq('course_id', courseId)
+        .eq('user_id', user.id);
+      
+      setProgressRecords(progressData || []);
+    } catch (err: any) {
+      console.error('Failed to mark video as completed:', err);
+      toast.error('Failed to update progress');
+    }
+  }, [user?.id, courseId, videoWatched]);
+
+  // Handle video end event
+  useEffect(() => {
+    const videoElement = videoRef.current;
+    if (!videoElement || !selectedVideoId) return;
+
+    const handleVideoEnd = () => {
+      markVideoAsCompleted(selectedVideoId);
+    };
+
+    videoElement.addEventListener('ended', handleVideoEnd);
+    return () => {
+      videoElement.removeEventListener('ended', handleVideoEnd);
+    };
+  }, [selectedVideoId, markVideoAsCompleted]);
+
   const progressByVideo = useMemo(() => {
-    const map = new Map<string, ProgressRecord>();
+    const map = new Map<number, ProgressRecord>();
     progressRecords.forEach((record) => {
       if (record.video_id) {
         map.set(record.video_id, record);
@@ -107,23 +198,18 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
     [progressRecords]
   );
 
-  const unlockedVideoIds = useMemo(
-    () => new Set(progressRecords.filter((record) => record.video_id).map((record) => record.video_id)),
-    [progressRecords]
-  );
-
   const totalVideos = videos.length;
-  const courseCompleted = totalVideos > 0 && completedCount === totalVideos;
+  const progressPercentage = totalVideos > 0 ? Math.round((completedCount / totalVideos) * 100) : 0;
 
-  const handleSelectVideo = (videoId: string, unlocked: boolean) => {
-    if (!unlocked) return;
+  const handleSelectVideo = (videoId: number) => {
     setSelectedVideoId(videoId);
   };
 
   if (loading) {
     return (
       <div className="min-h-screen transition-colors duration-300">
-        <div className={`pt-24 md:pt-32 ${isDarkMode ? 'bg-gradient-to-b from-black via-gray-900 to-black' : 'bg-gradient-to-b from-gray-50 to-white'}`}>
+        <StudentNavbar />
+        <div className={`pt-24 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
           <div className="min-h-[60vh] flex items-center justify-center">
             <div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 ${
               isDarkMode ? 'border-purple-500' : 'border-purple-600'
@@ -134,10 +220,11 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
     );
   }
 
-  if (error) {
+  if (error || !course) {
     return (
       <div className="min-h-screen transition-colors duration-300">
-        <div className={`pt-24 md:pt-32 pb-12 ${isDarkMode ? 'bg-gradient-to-b from-black via-gray-900 to-black' : 'bg-gradient-to-b from-gray-50 to-white'}`}>
+        <StudentNavbar />
+        <div className={`pt-24 pb-12 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
           <div className="container-custom">
             <div className="text-center mb-8">
               <h1 className={`text-4xl md:text-5xl font-bold mb-4 ${
@@ -151,13 +238,7 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
                 ? 'bg-red-900/30 text-red-300 border border-red-700' 
                 : 'bg-red-100 text-red-700 border border-red-300'
             }`}>
-              <div className="flex items-center gap-3 mb-4">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                <h2 className="text-xl font-bold">Error Loading Course</h2>
-              </div>
-              <p className="mb-4">{error}</p>
+              <p className="mb-4">{error || 'Course not found'}</p>
               <button
                 onClick={() => router.push('/student/courses')}
                 className={`px-6 py-3 rounded-lg font-semibold transition-all ${
@@ -175,228 +256,94 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
     );
   }
 
-  if (!course) {
-    return null;
-  }
-
-  const selectedVideo = videos.find((video) => video.id === selectedVideoId) || videos[0];
-  const selectedProgress = selectedVideo ? progressByVideo.get(selectedVideo.id) : null;
-  const selectedUnlocked = selectedVideo ? unlockedVideoIds.has(selectedVideo.id) || selectedVideo === videos[0] : false;
+  const selectedVideo = selectedVideoId ? videos.find((video) => video.id === selectedVideoId) : null;
+  const courseTitle = course.title || course.name || 'Course';
 
   return (
     <div className="min-h-screen transition-colors duration-300">
-      {/* Header Section */}
-      <div className={`pt-24 md:pt-32 pb-8 ${isDarkMode ? 'bg-gradient-to-b from-black via-gray-900 to-black' : 'bg-gradient-to-b from-gray-50 to-white'}`}>
-        <div className="container-custom">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-            <div className="flex-1">
-              <div className="inline-block mb-3">
-                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                  isDarkMode
-                    ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-                    : 'bg-purple-100 text-purple-700 border border-purple-200'
-                }`}>
-                  Course
-                </span>
-              </div>
-              <h1 className={`text-4xl md:text-5xl font-bold mb-2 ${
-                isDarkMode ? 'text-white' : 'text-gray-900'
-              }`}>
-                {course.name}
-              </h1>
-              {course.description && (
-                <p className={`text-lg max-w-3xl ${
-                  isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                }`}>
-                  {course.description}
-                </p>
-              )}
-            </div>
-            {courseCompleted && <Certificate courseName={course.name} />}
-          </div>
-        </div>
-      </div>
-
-      <div className="container-custom py-12">
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <div className={`rounded-xl shadow-lg overflow-hidden ${
-              isDarkMode 
-                ? 'bg-gray-800 border border-gray-700' 
-                : 'bg-white border border-gray-200'
+      <StudentNavbar />
+      <div className={`pt-20 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+        <div className="flex h-[calc(100vh-5rem)]">
+          {/* Left Sidebar */}
+          <div className={`w-80 border-r overflow-y-auto ${
+            isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+          }`}>
+            {/* Timeline/Progress Bar at Top */}
+            <div className={`p-4 border-b sticky top-0 z-10 ${
+              isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
             }`}>
-              <div className="aspect-video bg-black">
-                {selectedVideo?.video_url ? (
-                  <iframe
-                    src={selectedVideo.video_url}
-                    title={selectedVideo.title}
-                    className="w-full h-full"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen
-                  />
-                ) : (
-                  <div className="w-full h-full flex flex-col justify-center items-center bg-gray-900">
-                    <span className={`text-lg font-semibold mb-2 ${
-                      isDarkMode ? 'text-gray-300' : 'text-gray-100'
-                    }`}>
-                      Video player
-                    </span>
-                    <span className={`text-sm ${
-                      isDarkMode ? 'text-gray-400' : 'text-gray-300'
-                    }`}>
-                      No video URL provided
-                    </span>
-                  </div>
-                )}
-              </div>
-              <div className="p-6">
-                <h2 className={`text-2xl font-semibold mb-2 ${
+              <div className="mb-3">
+                <h2 className={`text-lg font-bold mb-2 ${
                   isDarkMode ? 'text-white' : 'text-gray-900'
                 }`}>
-                  {selectedVideo?.title}
+                  {courseTitle}
                 </h2>
-                <p className={`mb-4 ${
-                  isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                }`}>
-                  {selectedVideo?.description || 'No description available'}
-                </p>
-                {selectedProgress?.score != null && (
-                  <div className={`rounded-lg p-4 mb-4 ${
-                    isDarkMode 
-                      ? 'bg-blue-900/30 border border-blue-700' 
-                      : 'bg-blue-50 border border-blue-200'
-                  }`}>
-                    <p className={`mb-2 ${
-                      isDarkMode ? 'text-blue-300' : 'text-blue-700'
-                    }`}>
-                      Your previous score: {selectedProgress.score}%
-                    </p>
-                    <button className={`px-4 py-2 rounded-lg text-sm ${
-                      isDarkMode
-                        ? 'bg-blue-700 text-white hover:bg-blue-600'
-                        : 'bg-blue-600 text-white hover:bg-blue-700'
-                    }`}>
-                      Request Review
-                    </button>
-                  </div>
-                )}
-                <div className="flex gap-2">
-                  {selectedProgress?.completed ? (
-                    <button className="px-4 py-2 rounded-lg bg-green-600 text-white font-semibold" disabled>
-                      Approved
-                    </button>
-                  ) : (
-                    <button className={`px-4 py-2 rounded-lg font-semibold ${
-                      isDarkMode
-                        ? 'bg-gray-700 text-gray-300'
-                        : 'bg-gray-300 text-gray-700'
-                    }`} disabled>
-                      Locked
-                    </button>
-                  )}
-                  <button 
-                    onClick={() => router.back()}
-                    className={`px-4 py-2 rounded-lg font-semibold ${
-                      isDarkMode
-                        ? 'bg-gray-700 text-white hover:bg-gray-600'
-                        : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-                    }`}
-                  >
-                    Back
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="lg:col-span-1">
-            <div className={`rounded-xl shadow-lg p-6 sticky top-24 ${
-              isDarkMode 
-                ? 'bg-gray-800 border border-gray-700' 
-                : 'bg-white border border-gray-200'
-            }`}>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className={`text-xl font-bold ${
-                  isDarkMode ? 'text-white' : 'text-gray-900'
-                }`}>
-                  Course Content
-                </h2>
-                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                  isDarkMode
-                    ? 'bg-purple-500/20 text-purple-300'
-                    : 'bg-purple-100 text-purple-700'
-                }`}>
-                  {totalVideos} Videos
-                </span>
-              </div>
-              <div className={`rounded-lg p-4 mb-6 ${
-                isDarkMode
-                  ? 'bg-gray-700/50 border border-gray-600'
-                  : 'bg-gray-50 border border-gray-200'
-              }`}>
                 <div className="flex justify-between items-center mb-2">
                   <span className={`text-sm font-semibold ${
                     isDarkMode ? 'text-gray-300' : 'text-gray-700'
                   }`}>
-                    Your Progress
+                    Course Progress
                   </span>
                   <span className={`text-sm font-bold ${
                     isDarkMode ? 'text-purple-400' : 'text-purple-600'
                   }`}>
-                    {completedCount} / {totalVideos}
+                    {progressPercentage}%
                   </span>
                 </div>
-                <ProgressBar completed={completedCount} total={totalVideos} />
+                {/* Progress Bar */}
+                <div className={`w-full h-3 rounded-full overflow-hidden ${
+                  isDarkMode ? 'bg-gray-700' : 'bg-gray-200'
+                }`}>
+                  <div
+                    className="h-full bg-gradient-to-r from-purple-500 to-blue-500 transition-all duration-500"
+                    style={{ width: `${progressPercentage}%` }}
+                  />
+                </div>
                 <p className={`text-xs mt-2 text-center ${
                   isDarkMode ? 'text-gray-400' : 'text-gray-500'
                 }`}>
-                  {totalVideos > 0 ? Math.round((completedCount / totalVideos) * 100) : 0}% Complete
+                  {completedCount} of {totalVideos} lectures completed
                 </p>
               </div>
-              <div className="space-y-2 max-h-[600px] overflow-y-auto">
-                {videos.map((video, index) => {
-                  const progress = progressByVideo.get(video.id);
-                  const unlocked = unlockedVideoIds.has(video.id) || video === videos[0];
+            </div>
+
+            {/* Lectures List */}
+            <div className="p-4 space-y-2">
+              {videos.length > 0 ? (
+                videos.map((video, index) => {
+                  const isCompleted = videoWatched.has(video.id);
                   const isSelected = video.id === selectedVideoId;
 
                   return (
                     <div
                       key={video.id}
-                      onClick={() => handleSelectVideo(video.id, unlocked)}
-                      className={`p-4 rounded-lg cursor-pointer transition-all duration-300 ${
+                      onClick={() => handleSelectVideo(video.id)}
+                      className={`p-3 rounded-lg cursor-pointer transition-all ${
                         isSelected
                           ? isDarkMode
-                            ? 'bg-gradient-to-r from-purple-900/40 to-blue-900/40 border-2 border-purple-500 shadow-lg'
-                            : 'bg-gradient-to-r from-purple-50 to-blue-50 border-2 border-purple-300 shadow-lg'
+                            ? 'bg-gradient-to-r from-purple-900/40 to-blue-900/40 border-2 border-purple-500'
+                            : 'bg-gradient-to-r from-purple-50 to-blue-50 border-2 border-purple-300'
                           : isDarkMode
                           ? 'bg-gray-700/30 hover:bg-gray-700/50 border border-gray-600'
                           : 'bg-gray-50 hover:bg-gray-100 border border-gray-200'
-                      } ${!unlocked ? 'opacity-60 cursor-not-allowed' : 'hover:scale-[1.02]'}`}
+                      }`}
                     >
                       <div className="flex items-start gap-3">
                         <div className="flex-shrink-0 mt-1">
-                          {!unlocked ? (
-                            <span className="text-xl">🔒</span>
-                          ) : progress?.completed ? (
-                            <span className="text-2xl">✅</span>
-                          ) : progress ? (
-                            <span className="text-2xl">⏸️</span>
+                          {isCompleted ? (
+                            <span className="text-xl">✅</span>
                           ) : (
-                            <span className={`text-xl ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>⭕</span>
+                            <span className={`text-xl ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                              {index + 1}
+                            </span>
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <span className={`text-xs font-semibold ${
-                              isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                            }`}>
-                              {index + 1}.
-                            </span>
-                            <span className={`font-semibold truncate ${
-                              unlocked 
+                            <span className={`font-semibold text-sm truncate ${
+                              isSelected
                                 ? isDarkMode ? 'text-white' : 'text-gray-900'
-                                : isDarkMode ? 'text-gray-500' : 'text-gray-400'
+                                : isDarkMode ? 'text-gray-300' : 'text-gray-700'
                             }`}>
                               {video.title}
                             </span>
@@ -408,19 +355,154 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
                               {video.description}
                             </p>
                           )}
+                          {video.duration && (
+                            <p className={`text-xs mt-1 ${
+                              isDarkMode ? 'text-gray-500' : 'text-gray-400'
+                            }`}>
+                              {Math.floor(video.duration / 60)}:{(video.duration % 60).toString().padStart(2, '0')}
+                            </p>
+                          )}
                         </div>
-                        {video.thumbnail_url && (
-                          <img
-                            src={video.thumbnail_url}
-                            alt={video.title}
-                            className="rounded-lg w-16 h-10 object-cover flex-shrink-0"
-                          />
-                        )}
                       </div>
                     </div>
                   );
-                })}
-              </div>
+                })
+              ) : (
+                <div className={`p-6 text-center rounded-lg ${
+                  isDarkMode 
+                    ? 'bg-gray-700/30 border border-gray-600' 
+                    : 'bg-gray-50 border border-gray-200'
+                }`}>
+                  <div className="text-4xl mb-3">📚</div>
+                  <p className={`font-semibold mb-2 ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                  }`}>
+                    No Lectures Available
+                  </p>
+                  <p className={`text-sm ${
+                    isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                  }`}>
+                    Admin hasn't uploaded any lectures for this course yet.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right Side - Video Player */}
+          <div className="flex-1 overflow-y-auto">
+            <div className={`p-6 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+              {videos.length > 0 && selectedVideo ? (
+                <div>
+                  {/* Video Player */}
+                  <div className={`rounded-xl shadow-lg overflow-hidden mb-6 ${
+                    isDarkMode 
+                      ? 'bg-gray-800 border border-gray-700' 
+                      : 'bg-white border border-gray-200'
+                  }`}>
+                    <div className="aspect-video bg-black">
+                      {selectedVideo.video_url ? (
+                        selectedVideo.video_url.includes('youtube.com') || selectedVideo.video_url.includes('youtu.be') || selectedVideo.video_url.includes('embed') ? (
+                          <iframe
+                            src={selectedVideo.video_url.includes('embed') ? selectedVideo.video_url : selectedVideo.video_url.replace('watch?v=', 'embed/').split('&')[0]}
+                            title={selectedVideo.title}
+                            className="w-full h-full"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                            allowFullScreen
+                            onLoad={() => {
+                              // For iframe videos, we'll mark as completed when user clicks play
+                              // This is a simple approach - you might want to use YouTube API for better tracking
+                            }}
+                          />
+                        ) : (
+                          <video
+                            ref={videoRef}
+                            src={selectedVideo.video_url}
+                            controls
+                            className="w-full h-full"
+                            onEnded={() => markVideoAsCompleted(selectedVideo.id)}
+                          />
+                        )
+                      ) : (
+                        <div className="w-full h-full flex flex-col justify-center items-center bg-gray-900">
+                          <span className={`text-lg font-semibold mb-2 ${
+                            isDarkMode ? 'text-gray-300' : 'text-gray-100'
+                          }`}>
+                            Video Player
+                          </span>
+                          <span className={`text-sm ${
+                            isDarkMode ? 'text-gray-400' : 'text-gray-300'
+                          }`}>
+                            No video URL provided
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Video Info */}
+                  <div className={`rounded-xl shadow-lg p-6 ${
+                    isDarkMode 
+                      ? 'bg-gray-800 border border-gray-700' 
+                      : 'bg-white border border-gray-200'
+                  }`}>
+                    <h2 className={`text-2xl font-semibold mb-2 ${
+                      isDarkMode ? 'text-white' : 'text-gray-900'
+                    }`}>
+                      {selectedVideo.title}
+                    </h2>
+                    {selectedVideo.description && (
+                      <p className={`mb-4 ${
+                        isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                      }`}>
+                        {selectedVideo.description}
+                      </p>
+                    )}
+                    {videoWatched.has(selectedVideo.id) ? (
+                      <div className={`rounded-lg p-4 ${
+                        isDarkMode 
+                          ? 'bg-green-900/30 border border-green-700' 
+                          : 'bg-green-50 border border-green-200'
+                      }`}>
+                        <p className={`flex items-center gap-2 ${
+                          isDarkMode ? 'text-green-300' : 'text-green-700'
+                        }`}>
+                          <span>✅</span>
+                          <span className="font-semibold">This lecture has been completed</span>
+                        </p>
+                      </div>
+                    ) : (
+                      selectedVideo.video_url && (selectedVideo.video_url.includes('youtube.com') || selectedVideo.video_url.includes('youtu.be') || selectedVideo.video_url.includes('embed')) && (
+                        <button
+                          onClick={() => markVideoAsCompleted(selectedVideo.id)}
+                          className={`w-full px-4 py-3 rounded-lg font-semibold transition-all ${
+                            isDarkMode
+                              ? 'bg-green-600 hover:bg-green-700 text-white'
+                              : 'bg-green-500 hover:bg-green-600 text-white'
+                          }`}
+                        >
+                          ✅ Mark as Complete
+                        </button>
+                      )
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className={`flex flex-col items-center justify-center min-h-[60vh] ${
+                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                }`}>
+                  <div className="text-6xl mb-4">📚</div>
+                  <h2 className={`text-2xl font-bold mb-2 ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                  }`}>
+                    Lectures Not Available
+                  </h2>
+                  <p className="text-center max-w-md">
+                    The admin hasn't uploaded any lectures for this course yet. 
+                    Please check back later or contact the administration.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -430,4 +512,3 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
 };
 
 export default CourseViewPage;
-

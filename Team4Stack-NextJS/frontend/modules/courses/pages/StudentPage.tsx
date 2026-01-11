@@ -466,6 +466,7 @@ const StudentPage: React.FC = () => {
                         />
                       </div>
                       <button
+                        onClick={() => router.push(`/student/courses/view/${course.id}`)}
                         className={`w-full px-4 py-2 rounded-lg font-semibold transition-all ${
                           isDarkMode
                             ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700'
