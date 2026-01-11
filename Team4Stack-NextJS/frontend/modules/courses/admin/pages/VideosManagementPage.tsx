@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { useTheme } from '@/contexts/ThemeContext'
+import toast from 'react-hot-toast'
 
 type Video = {
   id: string
@@ -10,7 +11,6 @@ type Video = {
   title: string
   description?: string
   video_url?: string
-  thumbnail_url?: string
   order: number
   order_index?: number
   created_at?: string
@@ -19,7 +19,6 @@ type Video = {
 
 type Course = {
   id: string
-  name?: string
   title?: string
 }
 
@@ -39,7 +38,6 @@ const VideosManagementPage: React.FC = () => {
     title: string;
     description: string;
     video_url: string;
-    thumbnail_url: string;
     order: number;
     order_index: number;
   }>({
@@ -47,7 +45,6 @@ const VideosManagementPage: React.FC = () => {
     title: '',
     description: '',
     video_url: '',
-    thumbnail_url: '',
     order: 0,
     order_index: 0
   })
@@ -60,7 +57,7 @@ const VideosManagementPage: React.FC = () => {
       // Load courses - show all courses (title or name)
       const { data: coursesData, error: coursesError } = await supabase
         .from('courses')
-        .select('id, name, title')
+        .select('id, title')
         .order('order_index', { ascending: true })
         .order('id', { ascending: false })
 
@@ -87,7 +84,9 @@ const VideosManagementPage: React.FC = () => {
       if (videosError) throw videosError
       setVideos(videosData || [])
     } catch (err: any) {
-      setError('Failed to load data: ' + err.message)
+      const errorMessage = err.message || 'Failed to load data'
+      setError(errorMessage)
+      toast.error(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -121,7 +120,6 @@ const VideosManagementPage: React.FC = () => {
       title: '',
       description: '',
       video_url: '',
-      thumbnail_url: '',
       order: maxOrder + 1,
       order_index: maxOrder + 1
     })
@@ -135,7 +133,6 @@ const VideosManagementPage: React.FC = () => {
       title: video.title,
       description: video.description || '',
       video_url: video.video_url || '',
-      thumbnail_url: video.thumbnail_url || '',
       order: video.order_index || video.order || 0,
       order_index: video.order_index || video.order || 0
     })
@@ -157,14 +154,13 @@ const VideosManagementPage: React.FC = () => {
             title: formData.title,
             description: formData.description || null,
             video_url: formData.video_url || null,
-            thumbnail_url: formData.thumbnail_url || null,
-            order: formData.order_index || formData.order,
             order_index: formData.order_index || formData.order,
             updated_at: new Date().toISOString()
           })
           .eq('id', editingVideo.id)
 
         if (updateError) throw updateError
+        toast.success('Video updated successfully!')
         setSuccess('Video updated successfully!')
       } else {
         // Create new video
@@ -175,11 +171,11 @@ const VideosManagementPage: React.FC = () => {
             title: formData.title,
             description: formData.description || null,
             video_url: formData.video_url || null,
-            thumbnail_url: formData.thumbnail_url || null,
-            order: formData.order
+            order_index: formData.order_index || formData.order
           })
 
         if (insertError) throw insertError
+        toast.success('Video added successfully!')
         setSuccess('Video added successfully!')
       }
 
@@ -188,7 +184,9 @@ const VideosManagementPage: React.FC = () => {
       loadData()
       setTimeout(() => setSuccess(null), 3000)
     } catch (err: any) {
-      setError('Failed to save video: ' + err.message)
+      const errorMessage = err.message || 'Failed to save video'
+      setError(errorMessage)
+      toast.error(errorMessage)
     }
   }
 
@@ -208,17 +206,20 @@ const VideosManagementPage: React.FC = () => {
 
       if (deleteError) throw deleteError
 
+      toast.success('Video deleted successfully!')
       setSuccess('Video deleted successfully!')
       loadData()
       setTimeout(() => setSuccess(null), 3000)
     } catch (err: any) {
-      setError('Failed to delete video: ' + err.message)
+      const errorMessage = err.message || 'Failed to delete video'
+      setError(errorMessage)
+      toast.error(errorMessage)
     }
   }
 
   const getCourseName = (courseId: string) => {
     const course = courses.find(c => c.id === courseId);
-    return course ? (course.title || course.name || `Course ${courseId}`) : 'Unknown Course';
+    return course ? (course.title || `Course ${courseId}`) : 'Unknown Course';
   }
 
   if (loading && videos.length === 0) {
@@ -272,7 +273,7 @@ const VideosManagementPage: React.FC = () => {
             <option value="all">All Courses</option>
             {courses.map((course) => (
               <option key={course.id} value={course.id}>
-                {course.title || course.name || `Course ${course.id}`}
+                {course.title || `Course ${course.id}`}
               </option>
             ))}
           </select>
@@ -308,7 +309,7 @@ const VideosManagementPage: React.FC = () => {
                   <option value="">Select Course</option>
                   {courses.map((course) => (
                     <option key={course.id} value={course.id}>
-                      {course.title || course.name || `Course ${course.id}`}
+                      {course.title || `Course ${course.id}`}
                     </option>
                   ))}
                 </select>
@@ -372,25 +373,27 @@ const VideosManagementPage: React.FC = () => {
                 placeholder="https://youtube.com/watch?v=... or https://youtu.be/..."
               />
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                💡 Paste YouTube video link (watch or youtu.be format). It will automatically convert to embed format.
+                💡 Paste YouTube <strong>individual video</strong> link (watch or youtu.be format). <strong>Playlist URLs are not supported.</strong>
               </p>
-              {formData.video_url && (formData.video_url.includes('youtube.com') || formData.video_url.includes('youtu.be')) && (
-                <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded text-xs text-green-700 dark:text-green-300">
-                  ✅ Valid YouTube link detected
-                </div>
-              )}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Thumbnail URL
-              </label>
-              <input
-                type="url"
-                value={formData.thumbnail_url}
-                onChange={(e) => setFormData({ ...formData, thumbnail_url: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="https://example.com/thumbnail.jpg"
-              />
+              {formData.video_url && (() => {
+                const isPlaylist = formData.video_url.includes('playlist?list=') || formData.video_url.includes('/playlist');
+                const isYouTube = formData.video_url.includes('youtube.com') || formData.video_url.includes('youtu.be');
+                
+                if (isPlaylist) {
+                  return (
+                    <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-xs text-red-700 dark:text-red-300">
+                      ❌ Playlist URLs are not supported. Please use an individual video URL (e.g., https://youtube.com/watch?v=VIDEO_ID)
+                    </div>
+                  );
+                } else if (isYouTube && !isPlaylist) {
+                  return (
+                    <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded text-xs text-green-700 dark:text-green-300">
+                      ✅ Valid YouTube video link detected
+                    </div>
+                  );
+                }
+                return null;
+              })()}
             </div>
             <div className="flex gap-2">
               <button
@@ -451,17 +454,9 @@ const VideosManagementPage: React.FC = () => {
                 videos.map((video) => (
                   <tr key={video.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {video.thumbnail_url ? (
-                        <img
-                          src={video.thumbnail_url}
-                          alt={video.title}
-                          className="h-16 w-28 object-cover rounded"
-                        />
-                      ) : (
-                        <div className="h-16 w-28 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center text-gray-400">
-                          No Image
-                        </div>
-                      )}
+                      <div className="h-16 w-28 bg-gradient-to-br from-indigo-500 to-purple-500 rounded flex items-center justify-center text-white font-bold text-xs">
+                        🎥
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm font-medium text-gray-900 dark:text-white">{video.title}</div>
