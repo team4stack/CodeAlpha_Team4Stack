@@ -20,6 +20,7 @@ router.delete('/videos/:id', courseController.deleteVideo);
 router.get('/admissions', courseController.getAdmissionForms);
 router.post('/admissions', courseController.createAdmissionForm);
 router.put('/admissions/:id', courseController.updateAdmissionForm);
+router.delete('/admissions/:id', courseController.deleteAdmissionForm);
 
 // Progress routes
 router.get('/progress/:userId', courseController.getUserProgress);

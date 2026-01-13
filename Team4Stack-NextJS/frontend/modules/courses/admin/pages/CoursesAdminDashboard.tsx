@@ -51,20 +51,17 @@ const CoursesAdminDashboard: React.FC = () => {
           .select('*', { count: 'exact', head: true })
           .eq('completed', true)
 
-        // Fetch admission applications
-        const { count: applicationsCount } = await supabase
-          .from('admission_form')
-          .select('*', { count: 'exact', head: true })
-
-        const { count: pendingCount } = await supabase
-          .from('admission_form')
-          .select('*', { count: 'exact', head: true })
-          .or('approved.is.null,approved.eq.false')
-
-        const { count: approvedCount } = await supabase
-          .from('admission_form')
-          .select('*', { count: 'exact', head: true })
-          .eq('approved', true)
+        // Fetch admission applications via API
+        const { coursesApi } = await import('@/lib/api');
+        const allAppsResult = await coursesApi.getAdmissionForms();
+        const allApps = allAppsResult.data || [];
+        const applicationsCount = allApps.length;
+        
+        // Count pending (approved is null or false)
+        const pendingCount = allApps.filter(app => app.approved === null || app.approved === false).length;
+        
+        // Count approved
+        const approvedCount = allApps.filter(app => app.approved === true).length;
 
         setStats({
           totalCourses: coursesCount || 0,

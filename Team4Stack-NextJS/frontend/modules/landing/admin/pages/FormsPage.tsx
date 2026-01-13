@@ -1,7 +1,6 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase/client'
 
 type FormRow = {
   id: number
@@ -27,13 +26,14 @@ const FormsPage: React.FC = () => {
   const load = async () => {
     try {
       setError(null)
-      const { data, error: err } = await supabase
-        .from('admission_form')
-        .select('*')
-        .order('created_at', { ascending: false })
+      const { coursesApi } = await import('@/lib/api');
+      const result = await coursesApi.getAdmissionForms();
       
-      if (err) throw err
-      setRows((data as FormRow[]) || [])
+      if (result.error) {
+        throw new Error(result.error)
+      }
+      
+      setRows((result.data as FormRow[]) || [])
     } catch (err: any) {
       if (process.env.NODE_ENV === 'development') {
         console.error('Error loading forms:', err)
@@ -46,28 +46,16 @@ const FormsPage: React.FC = () => {
 
   useEffect(() => {
     load()
-
-    // Real-time subscription
-    const channel = supabase
-      .channel('forms_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'admission_form' }, () => {
-        load()
-      })
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
   }, [])
 
   const markAsViewed = async (id: number) => {
     try {
-      const { error: err } = await supabase
-        .from('admission_form')
-        .update({ viewed: true })
-        .eq('id', id)
+      const { coursesApi } = await import('@/lib/api');
+      const result = await coursesApi.updateAdmissionForm(id, { viewed: true });
       
-      if (err) throw err
+      if (result.error) {
+        throw new Error(result.error)
+      }
       
       setRows(rows.map(r => r.id === id ? { ...r, viewed: true } : r))
     } catch (err: any) {
@@ -82,12 +70,13 @@ const FormsPage: React.FC = () => {
     if (!window.confirm('Delete this form submission?')) return
     
     try {
-      const { error: err } = await supabase
-        .from('admission_form')
-        .delete()
-        .eq('id', id)
+      const { coursesApi } = await import('@/lib/api');
+      const result = await coursesApi.deleteAdmissionForm(id);
       
-      if (err) throw err
+      if (result.error) {
+        throw new Error(result.error)
+      }
+      
       setRows(rows.filter(r => r.id !== id))
     } catch (err: any) {
       if (process.env.NODE_ENV === 'development') {

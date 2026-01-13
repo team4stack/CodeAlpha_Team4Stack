@@ -371,29 +371,26 @@ const Contact: React.FC = () => {
         age: sanitizeInput(data.age)
       };
       
-      // Store data in Supabase (image is NOT uploaded, only flag is saved)
-      const { error } = await supabase
-        .from('admission_form')
-        .insert([
-          {
-            name: sanitizedData.name,
-            father_name: sanitizedData.fatherName,
-            phone: sanitizedData.phone,
-            email: sanitizedData.email,
-            address: sanitizedData.address,
-            course_name: sanitizedData.courseName,
-            message: sanitizedData.message,
-            gender: sanitizedData.gender,
-            age: parseInt(sanitizedData.age, 10),
-            image_attached: !!paymentScreenshot, // Store flag only, not the image
-            viewed: false,
-            created_at: new Date()
-          }
-        ]);
+      // Store data via API (image is NOT uploaded, only flag is saved)
+      const { coursesApi } = await import('@/lib/api');
+      const result = await coursesApi.createAdmissionForm({
+        name: sanitizedData.name,
+        father_name: sanitizedData.fatherName,
+        phone: sanitizedData.phone,
+        email: sanitizedData.email,
+        address: sanitizedData.address,
+        course_name: sanitizedData.courseName,
+        message: sanitizedData.message,
+        gender: sanitizedData.gender,
+        age: parseInt(sanitizedData.age, 10),
+        image_attached: !!paymentScreenshot, // Store flag only, not the image
+        viewed: false,
+        created_at: new Date().toISOString()
+      });
       
-      if (error) {
+      if (result.error) {
         // No sensitive info in logs
-        throw new Error('Failed to store data in database');
+        throw new Error(result.error || 'Failed to store data in database');
       }
       
       // Generate printable summary

@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProgressBar } from '../components';
-import { supabase } from '@/lib/supabase/client';
 import StudentNavbar from '@/navigation/StudentNavbar';
 
 interface Course {
@@ -43,17 +42,16 @@ const CourseListPage: React.FC = () => {
       setError(null);
 
       try {
-        // First, get user's approved applications
-        const { data: applications, error: appError } = await supabase
-          .from('admission_form')
-          .select('course_name, course_name_2, approved, approved_1, approved_2')
-          .eq('email', user.email.toLowerCase().trim())
-          .order('created_at', { ascending: false });
+        // First, get user's approved applications via API
+        const { coursesApi } = await import('@/lib/api');
+        const result = await coursesApi.getAdmissionForms({ email: user.email.toLowerCase().trim() });
 
-        if (appError) {
-          console.error('Error fetching applications:', appError);
-          throw appError;
+        if (result.error) {
+          console.error('Error fetching applications:', result.error);
+          throw new Error(result.error);
         }
+
+        const applications = result.data || [];
 
         if (!applications || applications.length === 0) {
           setCourses([]);

@@ -138,6 +138,17 @@ export class CourseController {
     }
   };
 
+  // Delete admission form
+  deleteAdmissionForm = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id } = req.params;
+      await courseService.deleteAdmissionForm(parseInt(id));
+      res.json({ success: true, message: 'Admission form deleted successfully' });
+    } catch (error: any) {
+      next(error);
+    }
+  };
+
   // Get user progress
   getUserProgress = async (req: Request, res: Response, next: NextFunction) => {
     try {

@@ -68,6 +68,11 @@ export const coursesApi = {
     return apiClient.put(`/courses/admissions/${id}`, form);
   },
 
+  // Delete admission form
+  deleteAdmissionForm: async (id: number) => {
+    return apiClient.delete(`/courses/admissions/${id}`);
+  },
+
   // Get user progress
   getUserProgress: async (userId: string, courseId?: number) => {
     const query = courseId ? `?courseId=${courseId}` : '';

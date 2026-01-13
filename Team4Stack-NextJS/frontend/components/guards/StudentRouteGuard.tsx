@@ -35,22 +35,20 @@ const StudentRouteGuard: React.FC<StudentRouteGuardProps> = ({ children }) => {
         return
       }
 
-      // Check if user is an approved student
+      // Check if user is an approved student via API
       try {
-        const { data: applicationData, error } = await supabase
-          .from('admission_form')
-          .select('approved, approved_1, approved_2, course_name, course_name_2, rejection_message')
-          .eq('email', user.email.toLowerCase().trim())
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle()
+        const { coursesApi } = await import('@/lib/api');
+        const result = await coursesApi.getAdmissionForms({ email: user.email.toLowerCase().trim() });
 
-        if (error) {
-          console.error('Error checking student status:', error)
+        if (result.error) {
+          console.error('Error checking student status:', result.error)
           setIsApproved(false)
           setChecking(false)
           return
         }
+
+        const applications = result.data || [];
+        const applicationData = applications.length > 0 ? applications[0] : null;
 
         // Check if at least one course is approved (portal access if any course is approved)
         let hasAnyCourseApproved = false

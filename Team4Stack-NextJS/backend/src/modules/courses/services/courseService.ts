@@ -158,6 +158,16 @@ export class CourseService {
     return data;
   }
 
+  // Delete admission form
+  async deleteAdmissionForm(id: number): Promise<void> {
+    const { error } = await supabaseAdmin
+      .from('admission_form')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+  }
+
   // Get user progress
   async getUserProgress(userId: string, courseId?: number): Promise<ProgressRecord[]> {
     let query = supabaseAdmin

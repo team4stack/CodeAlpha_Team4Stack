@@ -279,12 +279,11 @@ const ApplicationsPage: React.FC = () => {
 
   const markAsViewed = async (id: number) => {
     try {
-      const { error: err } = await supabase
-        .from('admission_form')
-        .update({ viewed: true })
-        .eq('id', id)
+      const result = await coursesApi.updateAdmissionForm(id, { viewed: true })
       
-      if (err) throw err
+      if (result.error) {
+        throw new Error(result.error)
+      }
       
       setRows(rows.map(r => r.id === id ? { ...r, viewed: true } : r))
       toast.success('Application marked as viewed!')
@@ -334,19 +333,18 @@ const ApplicationsPage: React.FC = () => {
         }
       }
 
-      // Update admission form status with block message
+      // Update admission form status with block message via API
       const application = rows.find(r => r.email.toLowerCase().trim() === blockingEmail.toLowerCase().trim())
       if (application) {
-        const { error: appErr } = await supabase
-          .from('admission_form')
-          .update({ 
-            approved: false, 
-            viewed: true,
-            rejection_message: 'Your account has been blocked by the administrator. Please contact support for more information.'
-          })
-          .eq('id', application.id)
+        const updateResult = await coursesApi.updateAdmissionForm(application.id, { 
+          approved: false, 
+          viewed: true,
+          rejection_message: 'Your account has been blocked by the administrator. Please contact support for more information.'
+        })
         
-        if (appErr) throw appErr
+        if (updateResult.error) {
+          throw new Error(updateResult.error)
+        }
       }
       
       setError(null)
@@ -377,21 +375,11 @@ const ApplicationsPage: React.FC = () => {
     if (!deletingId) return
 
     try {
-      const { error: err, data } = await supabase
-        .from('admission_form')
-        .delete()
-        .eq('id', deletingId)
-        .select()
+      const result = await coursesApi.deleteAdmissionForm(deletingId)
       
-      if (err) {
-        console.error('Supabase delete error:', {
-          error: err,
-          message: err.message,
-          details: err.details,
-          hint: err.hint,
-          code: err.code
-        })
-        throw err
+      if (result.error) {
+        console.error('Delete error:', result.error)
+        throw new Error(result.error)
       }
       
       setRows(rows.filter(r => r.id !== deletingId))

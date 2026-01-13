@@ -149,29 +149,29 @@ const StudentProgressPage: React.FC = () => {
 
       // Calculate student-wise progress (always show students view)
       {
-        // Load all students with approved courses from admission_form
-        // Use separate queries and combine results to avoid .or() syntax issues
-        const { data: appsOld, error: appsOldError } = await supabase
-          .from('admission_form')
-          .select('id, email, course_name, course_name_2, approved, approved_1, approved_2, roll_number, cnic')
-          .eq('approved', true)
-          .order('created_at', { ascending: true })
+        // Load all students with approved courses from admission_form via API
+        const { coursesApi } = await import('@/lib/api');
+        const allAppsResult = await coursesApi.getAdmissionForms();
         
-        const { data: appsNew1, error: appsNew1Error } = await supabase
-          .from('admission_form')
-          .select('id, email, course_name, course_name_2, approved, approved_1, approved_2, roll_number, cnic')
-          .eq('approved_1', true)
-          .order('created_at', { ascending: true })
+        if (allAppsResult.error) {
+          throw new Error(allAppsResult.error);
+        }
         
-        const { data: appsNew2, error: appsNew2Error } = await supabase
-          .from('admission_form')
-          .select('id, email, course_name, course_name_2, approved, approved_1, approved_2, roll_number, cnic')
-          .eq('approved_2', true)
-          .order('created_at', { ascending: true })
-        
-        const appsError = appsOldError || appsNew1Error || appsNew2Error
-        // Combine all results and remove duplicates based on id
-        const allApps = [...(appsOld || []), ...(appsNew1 || []), ...(appsNew2 || [])]
+        const allAppsData = allAppsResult.data || [];
+        // Filter approved applications (old system: approved=true, new system: approved_1=true or approved_2=true)
+        const allApps = allAppsData.filter((app: any) => 
+          app.approved === true || app.approved_1 === true || app.approved_2 === true
+        ).map((app: any) => ({
+          id: app.id,
+          email: app.email,
+          course_name: app.course_name,
+          course_name_2: app.course_name_2,
+          approved: app.approved,
+          approved_1: app.approved_1,
+          approved_2: app.approved_2,
+          roll_number: app.roll_number,
+          cnic: app.cnic
+        }));
         const uniqueAppsMap = new Map()
         allApps.forEach((app: any) => {
           if (!uniqueAppsMap.has(app.id)) {
@@ -331,11 +331,9 @@ const StudentProgressPage: React.FC = () => {
                   const sequence = String(courseSequenceCount[courseId]).padStart(3, '0')
                   rollNumberMap[email][courseId] = `T4S-${courseId}-${sequence}`
                   
-                  // Save roll number to database (update the application)
-                  supabase
-                    .from('admission_form')
-                    .update({ roll_number: rollNumberMap[email][courseId] })
-                    .eq('id', appId)
+                  // Save roll number to database via API (update the application)
+                  const { coursesApi } = await import('@/lib/api');
+                  coursesApi.updateAdmissionForm(appId, { roll_number: rollNumberMap[email][courseId] })
                     .then(() => {})
                     .catch(() => {})
                 }
