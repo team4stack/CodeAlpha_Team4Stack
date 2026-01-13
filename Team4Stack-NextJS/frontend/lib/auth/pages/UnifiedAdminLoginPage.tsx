@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase/client'
 import { isEmailAllowedForAdmin } from '@/lib/auth/utils/adminSecurity'
 
 const UnifiedAdminLoginPage: React.FC = () => {
@@ -117,7 +116,7 @@ const UnifiedAdminLoginPage: React.FC = () => {
       // CRITICAL: If email is NOT in admin_users table, deny immediately
       // Normal users ka email admin_users mein nahi hoga
       // Only manually added admins will be in admin_users table
-      if (!adminCheckResult.data || !adminCheckResult.data.email) {
+      if (!adminCheckResult.data || !(adminCheckResult.data as any)?.email) {
         // Email not in admin_users table - this is a normal user
         // Deny access immediately - do not proceed with password verification
         setError('Invalid email or password.')
@@ -125,14 +124,10 @@ const UnifiedAdminLoginPage: React.FC = () => {
         return
       }
 
-      // Step 3: Verify password using admin_users table (NOT Supabase Auth)
-      // Admin login is completely separate from normal website login
-      const { data: verifyResult, error: verifyError } = await supabase.rpc('verify_admin_password', {
-        p_email: loginEmail,
-        p_password: loginPassword
-      })
+      // Step 3: Verify password via API
+      const verifyResult = await superadminApi.verifyAdminPassword(loginEmail, loginPassword)
 
-      if (verifyError) {
+      if (verifyResult.error) {
         // Generic error message - no sensitive info revealed
         setError('Invalid email or password.')
         setLoading(false)
@@ -140,7 +135,7 @@ const UnifiedAdminLoginPage: React.FC = () => {
       }
 
       // Check if password is valid
-      const isValid = verifyResult && typeof verifyResult === 'object' && verifyResult.valid === true
+      const isValid = verifyResult.data && (verifyResult.data as any).valid === true
 
       if (!isValid) {
         // Password is incorrect
@@ -152,7 +147,7 @@ const UnifiedAdminLoginPage: React.FC = () => {
       // Step 4: Create custom admin session (NOT Supabase Auth session)
       // Admin login is completely separate from normal website login
       // Store the role from database in session (use 'admin' as default if role column doesn't exist)
-      const userRole = (adminCheck as any)?.role || 'admin'
+      const userRole = (adminCheckResult.data as any)?.role || 'admin'
       const adminSession = {
         email: loginEmail,
         role: userRole,

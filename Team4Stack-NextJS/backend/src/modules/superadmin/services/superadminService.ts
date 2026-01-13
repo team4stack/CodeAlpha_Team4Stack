@@ -48,6 +48,29 @@ export class SuperAdminService {
     return data;
   }
 
+  async verifyAdminPassword(email: string, password: string): Promise<{ valid: boolean; error?: string }> {
+    try {
+      // Use Supabase RPC function to verify password (uses pgcrypto for secure comparison)
+      const { data, error } = await supabaseAdmin.rpc('verify_admin_password', {
+        p_email: email.toLowerCase().trim(),
+        p_password: password
+      });
+
+      if (error) {
+        return { valid: false, error: error.message || 'Failed to verify password' };
+      }
+
+      // RPC function returns { valid: true/false, error?: string }
+      if (data && typeof data === 'object' && data.valid === true) {
+        return { valid: true };
+      }
+
+      return { valid: false, error: (data as any)?.error || 'Invalid password' };
+    } catch (error: any) {
+      return { valid: false, error: error.message || 'Failed to verify password' };
+    }
+  }
+
   // Audit Logs
   async getAuditLogs(filters?: {
     user_id?: string;

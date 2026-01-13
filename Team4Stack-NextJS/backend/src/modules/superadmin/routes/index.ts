@@ -9,6 +9,7 @@ router.get('/admins/check/:email', superadminController.checkAdminByEmail);
 router.post('/admins', superadminController.createAdminUser);
 router.put('/admins/:id', superadminController.updateAdminUser);
 router.delete('/admins/:id', superadminController.deleteAdminUser);
+router.post('/admins/verify-password', superadminController.verifyAdminPassword);
 
 // Audit Logs
 router.get('/audit', superadminController.getAuditLogs);

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '@/lib/supabase/client'
 import { isEmailAllowedForAdmin, verifyAdminAccess } from '../utils/adminSecurity'
 
 const LoginPage: React.FC = () => {
@@ -93,14 +92,11 @@ const LoginPage: React.FC = () => {
         return
       }
 
-      // Step 2: Verify password using admin_users table (NOT Supabase Auth)
-      // Admin login is completely separate from normal website login
-      const { data: verifyResult, error: verifyError } = await supabase.rpc('verify_admin_password', {
-        p_email: loginEmail,
-        p_password: loginPassword
-      })
+      // Step 2: Verify password via API
+      const { superadminApi } = await import('@/lib/api')
+      const verifyResult = await superadminApi.verifyAdminPassword(loginEmail, loginPassword)
 
-      if (verifyError) {
+      if (verifyResult.error) {
         // Generic error message - no sensitive info revealed
         setError('Invalid email or password.')
         setLoading(false)
@@ -108,7 +104,7 @@ const LoginPage: React.FC = () => {
       }
 
       // Check if password is valid
-      const isValid = verifyResult && typeof verifyResult === 'object' && verifyResult.valid === true
+      const isValid = verifyResult.data && verifyResult.data.valid === true
 
       if (!isValid) {
         // Password is incorrect

@@ -81,30 +81,25 @@ export const isAdminTokenValid = (): boolean => {
 };
 
 /**
- * Verify admin password directly with Supabase
- * No server endpoint needed - directly checks admin_users table
+ * Verify admin password via API
  */
 export const verifyAdminPassword = async (
   adminPassword: string,
   userEmail: string
 ): Promise<{ success: boolean; token?: string; expiresAt?: number; error?: string }> => {
   try {
-    const { supabase } = await import('../../utils/supabaseClient');
+    const { superadminApi } = await import('@/lib/api');
     
-    // Verify password using Supabase RPC function
-    const { data: verifyResult, error: verifyError } = await supabase.rpc('verify_admin_password', {
-      p_email: userEmail.toLowerCase().trim(),
-      p_password: adminPassword
-    });
+    // Verify password via API
+    const verifyResult = await superadminApi.verifyAdminPassword(userEmail.toLowerCase().trim(), adminPassword);
 
-    if (verifyError) {
+    if (verifyResult.error) {
       // No sensitive info in logs
-      return { success: false, error: verifyError.message || 'Failed to verify password. Please try again.' };
+      return { success: false, error: verifyResult.error || 'Failed to verify password. Please try again.' };
     }
 
-    // Check result - RPC function returns JSON object
-    // Result format: { valid: true/false, message/error: string }
-    const isValid = verifyResult && typeof verifyResult === 'object' && verifyResult.valid === true;
+    // Check result - API returns { valid: true/false, error?: string }
+    const isValid = verifyResult.data && verifyResult.data.valid === true;
     
     if (isValid) {
       // Password is valid, create admin token
@@ -122,7 +117,7 @@ export const verifyAdminPassword = async (
       };
     }
 
-    return { success: false, error: verifyResult?.error || 'Invalid admin password. Please check your password and try again.' };
+    return { success: false, error: verifyResult.data?.error || 'Invalid admin password. Please check your password and try again.' };
   } catch (error: any) {
     // No sensitive info in logs
     return {

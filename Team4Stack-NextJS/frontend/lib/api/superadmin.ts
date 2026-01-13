@@ -23,6 +23,10 @@ export const superadminApi = {
     return apiClient.delete(`/superadmin/admins/${id}`);
   },
 
+  verifyAdminPassword: async (email: string, password: string) => {
+    return apiClient.post('/superadmin/admins/verify-password', { email, password });
+  },
+
   // Audit Logs
   getAuditLogs: async (filters?: { user_id?: string; action?: string; table_name?: string }) => {
     const params = new URLSearchParams();
