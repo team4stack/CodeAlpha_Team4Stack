@@ -31,16 +31,46 @@ const SuperAdminDashboard: React.FC = () => {
           coursesResult,
           formsResult,
         ] = await Promise.all([
-          supabase.from('users').select('*', { count: 'exact', head: false }),
-          supabase.from('admin_users').select('*', { count: 'exact', head: false }),
-          supabase.from('projects').select('id', { count: 'exact', head: true }),
-          supabase.from('services').select('id', { count: 'exact', head: true }),
-          supabase.from('courses').select('id', { count: 'exact', head: true }),
-          supabase.from('admission_forms').select('id', { count: 'exact', head: true }),
+          // Users via API
+          (async () => {
+            const { superadminApi } = await import('@/lib/api')
+            const result = await superadminApi.getUsers()
+            return { count: result.data?.length || 0, data: result.data || [] }
+          })(),
+          // Admin users count via API
+          (async () => {
+            const { superadminApi } = await import('@/lib/api')
+            const result = await superadminApi.getAdminUsers()
+            return { count: result.data?.length || 0, data: result.data || [] }
+          })(),
+          // Projects via API
+          (async () => {
+            const { landingApi } = await import('@/lib/api')
+            const result = await landingApi.getProjects()
+            return { count: result.data?.length || 0, data: result.data || [] }
+          })(),
+          // Services via API
+          (async () => {
+            const { landingApi } = await import('@/lib/api')
+            const result = await landingApi.getServices()
+            return { count: result.data?.length || 0, data: result.data || [] }
+          })(),
+          // Courses via API
+          (async () => {
+            const { coursesApi } = await import('@/lib/api')
+            const result = await coursesApi.getAllCourses()
+            return { count: result.data?.length || 0, data: result.data || [] }
+          })(),
+          // Admission forms via API
+          (async () => {
+            const { coursesApi } = await import('@/lib/api')
+            const result = await coursesApi.getAdmissionForms()
+            return { count: result.data?.length || 0, data: result.data || [] }
+          })(),
         ])
 
-        const users = usersResult.data || []
-        const admins = adminsResult.data || []
+        const users = (usersResult as any).data || []
+        const admins = (adminsResult as any).data || []
 
         setStats({
           totalUsers: users.length,

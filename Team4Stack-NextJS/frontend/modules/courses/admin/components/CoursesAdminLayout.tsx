@@ -4,7 +4,6 @@ import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import CoursesAdminSidebar from './CoursesAdminSidebar'
 import AdminHeader from '../../../../components/admin/shared/AdminHeader'
-import { supabase } from '@/lib/supabase/client'
 import { isEmailAllowedForAdmin } from '@/lib/auth/utils/adminSecurity'
 
 interface CoursesAdminLayoutProps {
@@ -56,14 +55,11 @@ const CoursesAdminLayout: React.FC<CoursesAdminLayoutProps> = ({ children }) => 
           return
         }
         
-        // Check if user is admin in admin_users table
-        const { data: adminData, error: adminError } = await supabase
-          .from('admin_users')
-          .select('*')
-          .eq('email', userEmail)
-          .maybeSingle()
+        // Check if user is admin in admin_users table via API
+        const { superadminApi } = await import('@/lib/api')
+        const adminResult = await superadminApi.checkAdminByEmail(userEmail)
 
-        if (adminError || !adminData || !adminData.email) {
+        if (adminResult.error || !adminResult.data || !adminResult.data.email) {
           sessionStorage.removeItem('admin_session')
           router.replace('/admincourset4s/login')
           setLoading(false)
@@ -73,7 +69,7 @@ const CoursesAdminLayout: React.FC<CoursesAdminLayoutProps> = ({ children }) => 
         // Step 3: ROLE-BASED ACCESS CONTROL
         // Check if user has permission to access courses admin panel
         // Only super_admin or courses_admin role can access
-        const userRole = (adminData as any)?.role || 'admin'
+        const userRole = (adminResult.data as any)?.role || 'admin'
         const allowedRoles = ['super_admin', 'courses_admin']
         if (!allowedRoles.includes(userRole)) {
           sessionStorage.removeItem('admin_session')

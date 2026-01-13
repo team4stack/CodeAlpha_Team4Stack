@@ -190,13 +190,97 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
   // Helper: delete site_settings keys; fallback to clearing values if delete blocked by RLS
   const deleteSiteSettingKeys = async (keys: string[]) => {
     if (!keys.length) return
-    const delRes = await (retryWithBackoff(async () => await supabase.from('site_settings').delete().in('key', keys)) as Promise<{ error: { message: string } | null }>)
-    if (delRes?.error) {
+    const delRes = await landingApi.deleteSiteSettings(keys)
+    if (delRes.error) {
       // Fallback: upsert empty values so UI clears
       const entries = keys.map((k) => ({ key: k, value: '' }))
-      const upRes = await (retryWithBackoff(async () => await supabase.from('site_settings').upsert(entries, { onConflict: 'key' })) as Promise<{ error: { message: string } | null }>)
-      if (upRes?.error) setError(upRes.error.message)
+      const upRes = await landingApi.upsertSiteSettings(entries)
+      if (upRes.error) setError(upRes.error)
     }
+  }
+
+  // Helper: Get API function based on table name
+  const getApiForTable = (tableName: string) => {
+    if (tableName === 'reviews' || tableName === 'projects' || tableName === 'services') {
+      return landingApi
+    } else if (tableName === 'team_members' || tableName === 'mentor_profile') {
+      return teamApi
+    } else if (tableName === 'courses') {
+      return coursesApi
+    }
+    return null
+  }
+
+  // Helper: Update record in table
+  const updateTableRecord = async (tableName: string, id: number, payload: any) => {
+    const api = getApiForTable(tableName)
+    if (!api) {
+      setError(`Unknown table: ${tableName}`)
+      return { error: `Unknown table: ${tableName}` }
+    }
+
+    if (tableName === 'reviews') {
+      return await api.updateReview(id, payload)
+    } else if (tableName === 'projects') {
+      return await api.updateProject(id, payload)
+    } else if (tableName === 'services') {
+      return await api.updateService(id, payload)
+    } else if (tableName === 'team_members') {
+      return await api.updateTeamMember(id, payload)
+    } else if (tableName === 'mentor_profile') {
+      return await api.updateMentorProfile(id, payload)
+    } else if (tableName === 'courses') {
+      return await api.updateCourse(id, payload)
+    }
+    return { error: `Update not implemented for table: ${tableName}` }
+  }
+
+  // Helper: Create record in table
+  const createTableRecord = async (tableName: string, payload: any) => {
+    const api = getApiForTable(tableName)
+    if (!api) {
+      setError(`Unknown table: ${tableName}`)
+      return { error: `Unknown table: ${tableName}` }
+    }
+
+    if (tableName === 'reviews') {
+      return await api.createReview(payload)
+    } else if (tableName === 'projects') {
+      return await api.createProject(payload)
+    } else if (tableName === 'services') {
+      return await api.createService(payload)
+    } else if (tableName === 'team_members') {
+      return await api.createTeamMember(payload)
+    } else if (tableName === 'mentor_profile') {
+      return await api.createMentorProfile(payload)
+    } else if (tableName === 'courses') {
+      return await api.createCourse(payload)
+    }
+    return { error: `Create not implemented for table: ${tableName}` }
+  }
+
+  // Helper: Delete record from table
+  const deleteTableRecord = async (tableName: string, id: number) => {
+    const api = getApiForTable(tableName)
+    if (!api) {
+      setError(`Unknown table: ${tableName}`)
+      return { error: `Unknown table: ${tableName}` }
+    }
+
+    if (tableName === 'reviews') {
+      return await api.deleteReview(id)
+    } else if (tableName === 'projects') {
+      return await api.deleteProject(id)
+    } else if (tableName === 'services') {
+      return await api.deleteService(id)
+    } else if (tableName === 'team_members') {
+      return await api.deleteTeamMember(id)
+    } else if (tableName === 'mentor_profile') {
+      return await api.deleteMentorProfile(id)
+    } else if (tableName === 'courses') {
+      return await api.deleteCourse(id)
+    }
+    return { error: `Delete not implemented for table: ${tableName}` }
   }
 
   // Convert features input into JSON array safely (accepts JSON or comma/newline separated)
@@ -410,17 +494,11 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
     }, [table, isReviews, isTeamLike, isCourses, isServices, isContact, isFooter, isHero, defaultSocialSlots, editingId])
   
   useEffect(() => {
-    let sub: ReturnType<typeof supabase.channel> | null = null
+    // Realtime subscriptions removed - data now comes from backend API
+    // If needed, implement polling or WebSocket from backend in the future
     if (table && table !== 'users' && table !== 'settings') {
       load()
-      // realtime
-      const subTable = (isContact || isFooter || isHero) ? 'site_settings' : table
-      sub = supabase
-        .channel(`realtime:${subTable}`)
-        .on('postgres_changes', { event: '*', schema: 'public', table: subTable }, () => load())
-        .subscribe()
     }
-    return () => { sub?.unsubscribe() }
   }, [table, load])
 
   // Reset socials UI when switching away/back to contact
@@ -454,14 +532,11 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
         .forEach(k => { if (kv[k] !== undefined) entries.push({ key: k, value: String(kv[k] ?? '') }) })
       entries.push({ key: 'contact_socials_json', value: socialsJson })
       if (entries.length) {
-        const { error } = await retryWithBackoff(async () => await supabase.from('site_settings').upsert(entries, { onConflict: 'key' })) as { error: { message: string } | null }
-        if (error) return setError(error.message)
+        const result = await landingApi.upsertSiteSettings(entries)
+        if (result.error) return setError(result.error)
         // refresh immediately
-        const { data: refreshed } = await supabase
-          .from('site_settings')
-          .select('key,value')
-          .in('key', ['contact_address','contact_website','contact_phone','contact_map_src','contact_primary_name','contact_primary_tagline','contact_whatsapp','contact_socials_json'])
-        setRows(refreshed as any || [])
+        const refreshedResult = await landingApi.getSiteSettings(['contact_address','contact_website','contact_phone','contact_map_src','contact_primary_name','contact_primary_tagline','contact_whatsapp','contact_socials_json'])
+        setRows((refreshedResult.data as any) || [])
         setNotice('Saved contact settings')
       }
       return
@@ -480,13 +555,10 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
       entries.push({ key: 'footer_socials_json', value: socialsJson })
       entries.push({ key: 'footer_links_json', value: linksJson })
       if (entries.length) {
-        const { error } = await retryWithBackoff(async () => await supabase.from('site_settings').upsert(entries, { onConflict: 'key' })) as { error: { message: string } | null }
-        if (error) return setError(error.message)
-        const { data: refreshed } = await supabase
-          .from('site_settings')
-          .select('key,value')
-          .in('key', ['footer_about_text','footer_socials_json','footer_version','footer_links_json'])
-        setRows(refreshed as any || [])
+        const result = await landingApi.upsertSiteSettings(entries)
+        if (result.error) return setError(result.error)
+        const refreshedResult = await landingApi.getSiteSettings(['footer_about_text','footer_socials_json','footer_version','footer_links_json'])
+        setRows((refreshedResult.data as any) || [])
         setNotice('Saved footer settings')
       }
       return
@@ -515,13 +587,10 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
         entries.push({ key: 'navbar_links', value: JSON.stringify(validNavbarLinks) })
       }
       if (entries.length) {
-        const { error } = await retryWithBackoff(async () => await supabase.from('site_settings').upsert(entries, { onConflict: 'key' })) as { error: { message: string } | null }
-        if (error) return setError(error.message)
-        const { data: refreshed } = await supabase
-          .from('site_settings')
-          .select('key,value')
-          .in('key', ['hero_projects_count','hero_services_count','hero_courses_count','hero_animated_texts','hero_bullet_points','navbar_links'])
-        setRows(refreshed as any || [])
+        const result = await landingApi.upsertSiteSettings(entries)
+        if (result.error) return setError(result.error)
+        const refreshedResult = await landingApi.getSiteSettings(['hero_projects_count','hero_services_count','hero_courses_count','hero_animated_texts','hero_bullet_points','navbar_links'])
+        setRows((refreshedResult.data as any) || [])
         setNotice('Saved hero settings')
       }
       return
@@ -579,10 +648,8 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
     
     // No conflict check needed - dropdown only shows available orders (including current service's order when editing)
     
-    const { error } = await retryWithBackoff(async () => {
-        return await supabase.from(table).update(payload).eq('id', editingId)
-      }) as { error: { message: string } | null }
-      if (error) return setError(error.message)
+    const result = await updateTableRecord(table, editingId, payload)
+    if (result.error) return setError(result.error)
       setEditingId(null)
       setForm({ title: '', description: '', image_url: '', is_head: false, profile_image_url: '', banner_image_url: '', portfolio_url: '', github_url: '', primary_tag: '', order_index: undefined, active: true, emoji: '', gradient_color: '', contact: '' })
       return
@@ -638,10 +705,8 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
     
     // No conflict check needed - dropdown only shows available orders
     
-    const { error } = await retryWithBackoff(async () => {
-      return await supabase.from(table).insert(payload)
-    }) as { error: { message: string } | null }
-    if (error) return setError(error.message)
+    const result = await createTableRecord(table, payload)
+    if (result.error) return setError(result.error)
     setForm({ title: '', description: '', role_text: '', image_url: '', is_head: false, profile_image_url: '', banner_image_url: '', portfolio_url: '', github_url: '', primary_tag: '', order_index: undefined, active: true, level: '', duration: '', price: '', note: '', features: '', emoji: '', gradient_color: '', contact: '' })
   }
 
@@ -696,9 +761,9 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
     if (!ok) return
     
     try {
-      const { error } = await retryWithBackoff(async () => await supabase.from(table).delete().eq('id', id)) as { error: { message: string } | null }
-      if (error) {
-        setError(error.message || 'Failed to delete record. Please check permissions.')
+      const result = await deleteTableRecord(table, id)
+      if (result.error) {
+        setError(result.error || 'Failed to delete record. Please check permissions.')
         return
       }
       
@@ -1239,11 +1304,8 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
                       {!r.viewed && (
                         <button
                           onClick={async () => {
-                            const { error } = await supabase
-                              .from('support_requests')
-                              .update({ viewed: true })
-                              .eq('id', r.id);
-                            if (!error) {
+                            const result = await landingApi.updateSupportRequest(r.id, { viewed: true });
+                            if (!result.error) {
                               const updated = rows.map((row: any) => 
                                 row.id === r.id ? { ...row, viewed: true } : row
                               );
@@ -1442,10 +1504,10 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
                           
                           setError(null)
                           try {
-                            const result = await supabase.from(table).update({ order_index: value }).eq('id', r.id).select()
-                            if (result.error) {
-                              setError(result.error.message || 'Failed to update order')
-                            } else if (result.data && result.data.length > 0) {
+                            const updateResult = await updateTableRecord(table, r.id, { order_index: value })
+                            if (updateResult.error) {
+                              setError(updateResult.error || 'Failed to update order')
+                            } else if (updateResult.data) {
                               setNotice('Order updated successfully')
                               setTimeout(() => setNotice(null), 2000)
                               await load()
@@ -1481,10 +1543,10 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
                       <button className="px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white font-semibold shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-300" onClick={async () => {
                         setError(null)
                         try {
-                          const result = await supabase.from(table).update({ status: 'approved' }).eq('id', r.id).select()
-                          if (result.error) {
-                            setError(result.error.message || 'Failed to approve review')
-                          } else if (result.data && result.data.length > 0) {
+                          const updateResult = await updateTableRecord(table, r.id, { status: 'approved' })
+                          if (updateResult.error) {
+                            setError(updateResult.error || 'Failed to approve review')
+                          } else if (updateResult.data) {
                             setNotice('Review approved successfully')
                             setTimeout(() => setNotice(null), 2000)
                             await load()
@@ -1499,10 +1561,10 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
                       <button className="px-4 py-2 rounded-lg bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-semibold shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-300" onClick={async () => {
                         setError(null)
                         try {
-                          const result = await supabase.from(table).update({ status: 'pending' }).eq('id', r.id).select()
-                          if (result.error) {
-                            setError(result.error.message || 'Failed to unapprove review')
-                          } else if (result.data && result.data.length > 0) {
+                          const updateResult = await updateTableRecord(table, r.id, { status: 'pending' })
+                          if (updateResult.error) {
+                            setError(updateResult.error || 'Failed to unapprove review')
+                          } else if (updateResult.data) {
                             setNotice('Review unapproved successfully')
                             setTimeout(() => setNotice(null), 2000)
                             await load()
@@ -1573,10 +1635,10 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
                           
                           setError(null)
                           try {
-                            const result = await supabase.from(table).update({ order_index: value }).eq('id', r.id).select()
-                            if (result.error) {
-                              setError(result.error.message || 'Failed to update order')
-                            } else if (result.data && result.data.length > 0) {
+                            const updateResult = await updateTableRecord(table, r.id, { order_index: value })
+                            if (updateResult.error) {
+                              setError(updateResult.error || 'Failed to update order')
+                            } else if (updateResult.data) {
                               setNotice('Order updated successfully')
                               setTimeout(() => setNotice(null), 2000)
                               await load()

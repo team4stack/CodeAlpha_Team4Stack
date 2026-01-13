@@ -32,14 +32,11 @@ const TeamAdminLoginPage: React.FC = () => {
         return
       }
 
-      // Step 2: Check if email exists in admin_users table
-      const { data: adminCheck, error: adminError } = await supabase
-        .from('admin_users')
-        .select('email, role')
-        .eq('email', loginEmail)
-        .maybeSingle()
+      // Step 2: Check if email exists in admin_users table via API
+      const { superadminApi } = await import('@/lib/api')
+      const adminCheckResult = await superadminApi.checkAdminByEmail(loginEmail)
 
-      if (adminError || !adminCheck || !adminCheck.email) {
+      if (adminCheckResult.error || !adminCheckResult.data || !adminCheckResult.data.email) {
         setError('Invalid email or password.')
         setLoading(false)
         return

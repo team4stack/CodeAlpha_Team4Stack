@@ -56,14 +56,11 @@ const TeamAdminLayout: React.FC<TeamAdminLayoutProps> = ({ children }) => {
           return
         }
         
-        // Check if user is admin in admin_users table
-        const { data: adminData, error: adminError } = await supabase
-          .from('admin_users')
-          .select('*')
-          .eq('email', userEmail)
-          .maybeSingle()
+        // Check if user is admin in admin_users table via API
+        const { superadminApi } = await import('@/lib/api')
+        const adminResult = await superadminApi.checkAdminByEmail(userEmail)
 
-        if (adminError || !adminData || !adminData.email) {
+        if (adminResult.error || !adminResult.data || !adminResult.data.email) {
           sessionStorage.removeItem('admin_session')
           router.replace('/adminteamt4s/login')
           setLoading(false)

@@ -2,6 +2,7 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase/client'
+import { superadminApi, usersApi } from '@/lib/api'
 
 export type AppUser = {
   id: string
@@ -33,8 +34,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let finalUsername = username
     
     while (true) {
-      const { data } = await supabase.from('users').select('id').eq('username', finalUsername).maybeSingle()
-      if (!data) break
+      const result = await usersApi.checkUsernameAvailability(finalUsername)
+      // Backend returns { success: true, available: boolean }
+      // API client returns { success: boolean, data?: { success: true, available: boolean }, error?: string }
+      // If username is available (available === true), break
+      const responseData = result.data as any
+      if (responseData && responseData.available === true) break
+      // If error, just use current username
+      if (result.error) {
+        break
+      }
+      // Username not available, try next
       finalUsername = `${username}${counter}`
       counter++
       if (counter > 1000) {
@@ -58,13 +68,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const upsertProfile = useCallback(async (sessionUser: any) => {
     if (!sessionUser) return null
     
-    // Get existing profile to check if it exists
-    const { data: existingProfile } = await supabase.from('users').select('*').eq('id', sessionUser.id).maybeSingle()
+    // Get existing profile to check if it exists via API
+    const existingResult = await usersApi.getUserById(sessionUser.id)
     
     // If profile exists, don't overwrite it - just return it
     // Only create new profile if it doesn't exist
-    if (existingProfile) {
-      return mapProfile(sessionUser, existingProfile)
+    if (existingResult.data) {
+      return mapProfile(sessionUser, existingResult.data)
     }
     
     // Only create new profile if it doesn't exist
@@ -78,9 +88,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       avatar_url: sessionUser.user_metadata?.avatar_url ?? null,
       role: 'user'
     }
-    await supabase.from('users').upsert(candidate, { onConflict: 'id' })
-    const { data: profile } = await supabase.from('users').select('*').eq('id', sessionUser.id).maybeSingle()
-    return mapProfile(sessionUser, profile)
+    
+    // Upsert user via API
+    const upsertResult = await usersApi.upsertUser(candidate)
+    if (upsertResult.error) {
+      console.error('Error upserting user:', upsertResult.error)
+      // Return mapped profile even if upsert fails
+      return mapProfile(sessionUser, candidate as any)
+    }
+    
+    // Get the created/updated profile
+    const profileResult = await usersApi.getUserById(sessionUser.id)
+    return mapProfile(sessionUser, profileResult.data || candidate as any)
   }, [])
 
   const loadSession = useCallback(async () => {
@@ -94,21 +113,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       // Ensure profile exists (only creates if doesn't exist)
       await upsertProfile(session.user)
-      // Always fetch fresh data from database to get latest updates
-      const { data: profile, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', session.user.id)
-        .maybeSingle()
+      // Always fetch fresh data from database to get latest updates via API
+      const profileResult = await usersApi.getUserById(session.user.id)
       
-      if (error) {
+      if (profileResult.error) {
         // No sensitive info in logs
         // Fallback to upsertProfile result if fetch fails
         const fallback = await upsertProfile(session.user)
         setUser(fallback)
       } else {
+        const profile = profileResult.data
         // Check if user is blocked - if yes, sign them out immediately
-        if (profile && profile.is_blocked === true) {
+        if (profile && (profile as any).is_blocked === true) {
           await supabase.auth.signOut()
           setUser(null)
           setLoading(false)
@@ -142,14 +158,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return
       }
       
-      // Check if user email exists in admin_users table
-      const { data: adminData } = await supabase
-        .from('admin_users')
-        .select('email')
-        .eq('email', user.email.toLowerCase())
-        .maybeSingle()
-      
-      setIsAdminUser(!!adminData)
+      // Check if user email exists in admin_users table via API
+      const result = await superadminApi.checkAdminByEmail(user.email.toLowerCase())
+      setIsAdminUser(!!result.data)
     }
     
     checkAdminStatus()

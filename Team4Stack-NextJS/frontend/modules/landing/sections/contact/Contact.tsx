@@ -1,7 +1,6 @@
 'use client'
 
 import React, { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase/client';
 import { CONTACT_PHONE_NUMBERS, getWhatsAppUrl } from '@/lib/utils/constants';
 
 // Helper function to validate and convert Google Maps URL to embed format
@@ -116,25 +115,23 @@ const Contact: React.FC = () => {
     }
   }, [contactSettings.mapSrc]);
 
-  // Load admin settings from site_settings (keys prefixed contact_*) with realtime updates
+  // Load admin settings from site_settings (keys prefixed contact_*) via API
   useEffect(() => {
     const load = async () => {
       try {
-        const { data, error } = await supabase
-          .from('site_settings')
-          .select('key,value')
-          .in('key', [
-            'contact_address',
-            'contact_website',
-            'contact_phone',
-            'contact_map_src',
-            'contact_primary_name',
-            'contact_primary_tagline',
-            'contact_whatsapp',
-            'contact_socials_json'
-          ]);
-        if (!error && data) {
-          const kv: Record<string, string> = Object.fromEntries((data as any[]).map(r => [r.key, r.value]));
+        const { landingApi } = await import('@/lib/api')
+        const result = await landingApi.getSiteSettings([
+          'contact_address',
+          'contact_website',
+          'contact_phone',
+          'contact_map_src',
+          'contact_primary_name',
+          'contact_primary_tagline',
+          'contact_whatsapp',
+          'contact_socials_json'
+        ])
+        if (result.data) {
+          const kv: Record<string, string> = Object.fromEntries((result.data as any[]).map(r => [r.key, r.value]));
           let socials: Array<{ name: string; href: string }> = [];
           try { socials = kv['contact_socials_json'] ? JSON.parse(kv['contact_socials_json']) : []; } catch {}
           setContactSettings({
@@ -155,11 +152,7 @@ const Contact: React.FC = () => {
       }
     };
     load();
-    const channel = supabase
-      .channel('site_settings_contact_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'site_settings' }, () => load())
-      .subscribe();
-    return () => { try { supabase.removeChannel(channel); } catch {} };
+    // Note: Realtime subscriptions removed - data is fetched on mount only
   }, []);
 
   const openWhatsApp = () => {

@@ -1,7 +1,6 @@
 'use client'
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import HeroDesktop from './HeroDesktop';
 // Mobile component commented out temporarily
@@ -71,25 +70,22 @@ const Hero: React.FC = () => {
     } catch {}
   }, []);
 
-  // Load dynamic counters, animated texts, and bullet points from site_settings
+  // Load dynamic counters, animated texts, and bullet points from site_settings via API
   useEffect(() => {
-    let channel: ReturnType<typeof supabase.channel> | null = null;
     const loadCounts = async () => {
       try {
-        const [proj, serv, cour, settings] = await Promise.all([
-          supabase.from('projects').select('id', { count: 'exact', head: true }),
-          supabase.from('services').select('id', { count: 'exact', head: true }),
-          supabase.from('courses').select('id', { count: 'exact', head: true }),
-          supabase
-            .from('site_settings')
-            .select('key,value')
-            .in('key', ['hero_projects_count', 'hero_services_count', 'hero_courses_count', 'hero_animated_texts', 'hero_bullet_points'])
+        const { landingApi, coursesApi } = await import('@/lib/api')
+        const [projectsResult, servicesResult, coursesResult, settingsResult] = await Promise.all([
+          landingApi.getProjects().then(r => ({ count: r.data?.length || 0 })),
+          landingApi.getServices().then(r => ({ count: r.data?.length || 0 })),
+          coursesApi.getAllCourses().then(r => ({ count: r.data?.length || 0 })),
+          landingApi.getSiteSettings(['hero_projects_count', 'hero_services_count', 'hero_courses_count', 'hero_animated_texts', 'hero_bullet_points'])
         ]);
-        const projCount = proj.count ?? 0;
-        const servCount = serv.count ?? 0;
-        const courCount = cour.count ?? 0;
+        const projCount = projectsResult.count || 0;
+        const servCount = servicesResult.count || 0;
+        const courCount = coursesResult.count || 0;
         const map: Record<string, string> = {};
-        (settings.data || []).forEach((r: any) => {
+        (settingsResult.data || []).forEach((r: any) => {
           map[r.key] = r.value;
         });
         setProjectsCount(Number.isFinite(parseInt(map['hero_projects_count'])) ? parseInt(map['hero_projects_count']) : projCount);
@@ -120,21 +116,7 @@ const Hero: React.FC = () => {
       }
     };
     loadCounts();
-    // realtime updates for counts and content
-    channel = supabase
-      .channel('hero_counts')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, () => loadCounts())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'services' }, () => loadCounts())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'courses' }, () => loadCounts())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'site_settings' }, (payload) => {
-        const k = (payload.new as any)?.key as string | undefined;
-        if (!k || !k.startsWith('hero_')) return;
-        loadCounts();
-      })
-      .subscribe();
-    return () => {
-      try { channel && supabase.removeChannel(channel); } catch {}
-    };
+    // Note: Realtime subscriptions removed - data is fetched on mount only
   }, []);
 
   // Handle mouse events for tilt effect

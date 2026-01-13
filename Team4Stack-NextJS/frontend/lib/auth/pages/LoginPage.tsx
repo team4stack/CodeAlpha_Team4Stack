@@ -69,13 +69,10 @@ const LoginPage: React.FC = () => {
         return
       }
 
-      // Step 2: SUPABASE TABLE CHECK (SECOND - Can be compromised, but still checked)
-      // Multi-layer security: Both environment variable AND Supabase table must pass
-      const { data: adminCheck, error: adminCheckError } = await supabase
-        .from('admin_users')
-        .select('email')
-        .eq('email', loginEmail)
-        .maybeSingle()
+      // Step 2: API TABLE CHECK (SECOND - Can be compromised, but still checked)
+      // Multi-layer security: Both environment variable AND API check must pass
+      const { superadminApi } = await import('@/lib/api')
+      const adminCheckResult = await superadminApi.checkAdminByEmail(loginEmail)
 
       // If there's an error checking admin_users, deny access
       if (adminCheckError) {
@@ -88,7 +85,7 @@ const LoginPage: React.FC = () => {
       // CRITICAL: If email is NOT in admin_users table, deny immediately
       // Normal users ka email admin_users mein nahi hoga
       // Only manually added admins will be in admin_users table
-      if (!adminCheck || !adminCheck.email) {
+      if (!adminCheckResult.data || !adminCheckResult.data.email) {
         // Email not in admin_users table - this is a normal user
         // Deny access immediately - do not proceed with password verification
         setError('Invalid email or password.')

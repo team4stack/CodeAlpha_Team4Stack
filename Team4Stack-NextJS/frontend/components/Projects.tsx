@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
-import { ProjectData, fetchYouTubeVideoData } from '../utils/youtube';
-import { CONTACT_PHONE_NUMBERS } from '../utils/constants';
-import { supabase } from '../utils/supabaseClient';
+import { ProjectData, fetchYouTubeVideoData } from '@/lib/utils/youtube';
+import { CONTACT_PHONE_NUMBERS } from '@/lib/utils/constants';
+import { landingApi } from '@/lib/api';
 
 const Projects: React.FC = () => {
   const { isDarkMode } = useTheme();
@@ -43,7 +43,7 @@ const Projects: React.FC = () => {
     setUsingSupabase(true);
 
     // Debug environment variables
-    const apiKey = import.meta.env.VITE_YOUTUBE_API_KEY;
+    const apiKey = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY;
     setDebugInfo({
       apiKeyStatus: apiKey ? `SET (length: ${apiKey.length})` : 'NOT SET'
     });
@@ -55,13 +55,14 @@ const Projects: React.FC = () => {
       try {
         if (useSupabase) {
           try {
-            const { data, error } = await supabase
-              .from('projects')
-              .select('id,title,description,image_url,video_id,github_url,order_index')
-              .order('order_index', { ascending: true, nullsFirst: false })
-              .order('id', { ascending: false });
-            if (error) throw error;
-            const rows = data || [];
+            const result = await landingApi.getProjects();
+            if (result.error) {
+              console.error('Error loading projects:', result.error);
+              setProjects([]);
+              setLoading(false);
+              return;
+            }
+            const rows = (result.data as any[]) || [];
             if (rows.length > 0) {
               // For each row, fetch YouTube details and merge with DB values (DB overrides when provided)
               const mappedPromises = rows.map(async (row: any): Promise<ProjectData> => {
@@ -102,8 +103,8 @@ const Projects: React.FC = () => {
         // We are Supabase-only; no demo fallback
         
       } catch (error) {
-        if (import.meta.env.DEV) {
-        console.error('Error fetching project data:', error);
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Error fetching project data:', error);
         }
         setProjects([]);
       } finally {
@@ -112,16 +113,8 @@ const Projects: React.FC = () => {
     };
 
     fetchAllProjects();
-    // Realtime updates for projects
-    const channel = supabase.channel('projects_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, () => {
-        fetchAllProjects();
-      })
-      .subscribe();
-
-    return () => {
-      try { supabase.removeChannel(channel); } catch {}
-    };
+    // Note: Realtime updates removed - data now comes from backend API
+    // If needed, implement polling or WebSocket from backend in the future
   }, []);
 
   // additional projects are merged during load; no toggle needed

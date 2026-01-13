@@ -7,8 +7,16 @@ export const superadminApi = {
     return apiClient.get('/superadmin/admins');
   },
 
+  checkAdminByEmail: async (email: string) => {
+    return apiClient.get(`/superadmin/admins/check/${encodeURIComponent(email)}`);
+  },
+
   createAdminUser: async (admin: any) => {
     return apiClient.post('/superadmin/admins', admin);
+  },
+
+  updateAdminUser: async (id: number, admin: any) => {
+    return apiClient.put(`/superadmin/admins/${id}`, admin);
   },
 
   deleteAdminUser: async (id: number) => {

@@ -109,13 +109,13 @@ const AdmissionForm: React.FC = () => {
         setLoadingCourses(true);
         
         // Load all courses
-        const { data, error } = await coursesApi.getAllCourses();
+        const result = await coursesApi.getAllCourses();
 
-        if (error) {
-          console.error('Error loading courses:', error);
+        if (result.error) {
+          console.error('Error loading courses:', result.error);
           setAvailableCourses([]);
-        } else if (data && data.length > 0) {
-          setAvailableCourses(data.map((c: any) => ({ id: c.id, title: c.title || c.name })));
+        } else if (result.data && result.data.length > 0) {
+          setAvailableCourses(result.data.map((c: any) => ({ id: c.id, title: c.title || c.name })));
         } else {
           // Fallback to default courses if no courses in database
           setAvailableCourses([
@@ -126,11 +126,17 @@ const AdmissionForm: React.FC = () => {
         
         // Load enrolled and rejected courses for logged-in user
         if (user && user.email) {
-          const { data: applicationData } = await coursesApi.getAdmissionForms({
+          const result = await coursesApi.getAdmissionForms({
             email: user.email.toLowerCase().trim()
           });
           
-          if (applicationData) {
+          if (result.error) {
+            console.error('Error loading admission forms:', result.error);
+            // Continue without blocking - user can still submit new applications
+          }
+          
+          const applicationData = result.data || [];
+          if (applicationData && applicationData.length > 0) {
             const enrolled = new Set<string>();
             const rejected = new Set<string>();
             
@@ -363,7 +369,7 @@ const AdmissionForm: React.FC = () => {
       };
       
       // Store data via API (image is NOT uploaded, only flag is saved)
-      const { error } = await coursesApi.createAdmissionForm({
+      const result = await coursesApi.createAdmissionForm({
         name: sanitizedData.name,
         father_name: sanitizedData.fatherName,
         phone: sanitizedData.phone,
@@ -379,7 +385,7 @@ const AdmissionForm: React.FC = () => {
         viewed: false
       });
       
-      if (error) {
+      if (result.error) {
         // No sensitive info in logs
         throw new Error('Failed to store data in database');
       }

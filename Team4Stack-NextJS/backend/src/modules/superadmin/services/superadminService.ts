@@ -22,9 +22,30 @@ export class SuperAdminService {
     return data;
   }
 
+  async updateAdminUser(id: number, admin: Partial<AdminUser>): Promise<AdminUser> {
+    const { data, error } = await supabaseAdmin
+      .from('admin_users')
+      .update({ ...admin, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+
   async deleteAdminUser(id: number): Promise<void> {
     const { error } = await supabaseAdmin.from('admin_users').delete().eq('id', id);
     if (error) throw error;
+  }
+
+  async checkAdminByEmail(email: string): Promise<AdminUser | null> {
+    const { data, error } = await supabaseAdmin
+      .from('admin_users')
+      .select('*')
+      .eq('email', email.toLowerCase().trim())
+      .maybeSingle();
+    if (error) throw error;
+    return data;
   }
 
   // Audit Logs

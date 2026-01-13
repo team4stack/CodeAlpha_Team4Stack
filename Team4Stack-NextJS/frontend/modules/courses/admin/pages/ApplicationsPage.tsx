@@ -48,12 +48,17 @@ const ApplicationsPage: React.FC = () => {
       setError(null)
       
       // Get all admission forms
-      const { data, error: err } = await coursesApi.getAdmissionForms()
+      const result = await coursesApi.getAdmissionForms()
       
-      if (err) throw new Error(err)
+      if (result.error) {
+        setError(result.error)
+        setRows([])
+        setLoading(false)
+        return
+      }
       
       // Filter based on status
-      let filteredData = data || []
+      let filteredData = result.data || []
       if (filter === 'pending') {
         filteredData = filteredData.filter((app: any) => {
           const hasNewApprovals = app.approved_1 !== undefined || app.approved_2 !== undefined
@@ -90,7 +95,7 @@ const ApplicationsPage: React.FC = () => {
       // Check blocked status for each application and calculate overall approved status
       const applicationsWithBlockStatus = await Promise.all(
         (filteredData as ApplicationRow[]).map(async (app) => {
-          const { data: userData } = await usersApi.getUserByEmail(app.email.toLowerCase().trim())
+          const userResult = await usersApi.getUserByEmail(app.email.toLowerCase().trim())
           
           // Calculate overall approved status based on individual course approvals
           // Backward compatibility: if old approved field exists and new fields don't, use old field
@@ -114,7 +119,7 @@ const ApplicationsPage: React.FC = () => {
           
           return {
             ...app,
-            is_blocked: userData?.data?.is_blocked || false,
+            is_blocked: userResult?.data?.is_blocked || false,
             approved: hasApproved ? true : (allRejected ? false : null) // null means pending
           }
         })
@@ -145,31 +150,35 @@ const ApplicationsPage: React.FC = () => {
       const rejectionField = `rejection_message_${courseNumber}` as 'rejection_message_1' | 'rejection_message_2'
       
       // Update admission form - approve specific course
-      const { error: err } = await coursesApi.updateAdmissionForm(id, {
+      const result = await coursesApi.updateAdmissionForm(id, {
         [updateField]: true,
         [rejectionField]: null,
         viewed: true
       })
       
-      if (err) throw new Error(err)
+      if (result.error) {
+        setError(result.error)
+        toast.error(result.error)
+        return
+      }
 
       // Check if user exists, if not create one
-      const { data: existingUser } = await usersApi.getUserByEmail(email.toLowerCase().trim())
+      const userResult = await usersApi.getUserByEmail(email.toLowerCase().trim())
 
-      if (!existingUser?.data) {
+      if (!userResult?.data) {
         // Create user account for student portal access
-        const { error: userErr } = await usersApi.upsertUser({
+        const createResult = await usersApi.upsertUser({
           email: email.toLowerCase().trim(),
           username: email.split('@')[0].toLowerCase(),
           is_blocked: false
         })
 
-        if (userErr) {
-          console.error('Error creating user:', userErr)
+        if (createResult.error) {
+          console.error('Error creating user:', createResult.error)
         }
       } else {
         // Ensure user is not blocked
-        await usersApi.updateUser(existingUser.data.id, { is_blocked: false })
+        await usersApi.updateUser(userResult.data.id, { is_blocked: false })
       }
       
       // Update local state
@@ -222,13 +231,17 @@ const ApplicationsPage: React.FC = () => {
       const updateField = `approved_${rejectingCourseNumber}` as 'approved_1' | 'approved_2'
       const rejectionField = `rejection_message_${rejectingCourseNumber}` as 'rejection_message_1' | 'rejection_message_2'
       
-      const { error: err } = await coursesApi.updateAdmissionForm(rejectingId, {
+      const result = await coursesApi.updateAdmissionForm(rejectingId, {
         [updateField]: false,
         [rejectionField]: rejectionMessage.trim(),
         viewed: true
       })
       
-      if (err) throw new Error(err)
+      if (result.error) {
+        setError(result.error)
+        toast.error(result.error)
+        return
+      }
       
       // Update local state
       setRows(rows.map(r => {
@@ -294,37 +307,31 @@ const ApplicationsPage: React.FC = () => {
     if (!blockingEmail) return
     
     try {
-      // Check if user exists, if not create one with blocked status
-      const { data: existingUser } = await supabase
-        .from('users')
-        .select('id, email, is_blocked')
-        .eq('email', blockingEmail.toLowerCase().trim())
-        .maybeSingle()
+      // Check if user exists, if not create one with blocked status via API
+      const existingUserResult = await usersApi.getUserByEmail(blockingEmail.toLowerCase().trim())
 
-      if (!existingUser) {
-        // Create user with blocked status
-        const { error: createErr } = await supabase
-          .from('users')
-          .insert([
-            {
-              email: blockingEmail.toLowerCase().trim(),
-              username: blockingEmail.split('@')[0].toLowerCase(),
-              is_blocked: true,
-              created_at: new Date().toISOString()
-            }
-          ])
+      if (!existingUserResult.data) {
+        // Create user with blocked status via API
+        const createResult = await usersApi.upsertUser({
+          email: blockingEmail.toLowerCase().trim(),
+          username: blockingEmail.split('@')[0].toLowerCase(),
+          is_blocked: true,
+          created_at: new Date().toISOString()
+        })
 
-        if (createErr && createErr.code !== '23505') { // Ignore duplicate key error
-          throw createErr
+        if (createResult.error) {
+          // Ignore duplicate key error (user already exists)
+          if (!createResult.error.includes('duplicate') && !createResult.error.includes('23505')) {
+            throw new Error(createResult.error)
+          }
         }
       } else {
-        // Update existing user to blocked
-        const { error: userErr } = await supabase
-          .from('users')
-          .update({ is_blocked: true })
-          .eq('email', blockingEmail.toLowerCase().trim())
+        // Update existing user to blocked via API
+        const updateResult = await usersApi.updateUser(existingUserResult.data.id, { is_blocked: true })
         
-        if (userErr) throw userErr
+        if (updateResult.error) {
+          throw new Error(updateResult.error)
+        }
       }
 
       // Update admission form status with block message

@@ -4,7 +4,6 @@ import React, { useRef, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase/client';
 
 type NavbarLink = {
   name: string;
@@ -120,11 +119,9 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({ isOpen, onClose, on
   useEffect(() => {
     const loadNavbarLinks = async () => {
       try {
-        const { data } = await supabase
-          .from('site_settings')
-          .select('value')
-          .eq('key', 'navbar_links')
-          .single();
+        const { landingApi } = await import('@/lib/api')
+        const result = await landingApi.getSiteSettings(['navbar_links'])
+        const data = result.data?.find((s: any) => s.key === 'navbar_links')
         
         if (data?.value) {
           try {
@@ -138,18 +135,7 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({ isOpen, onClose, on
     };
 
     loadNavbarLinks();
-
-    // Real-time subscription
-    const channel = supabase
-      .channel('navbar_links_mobile')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'site_settings', filter: 'key=eq.navbar_links' }, () => {
-        loadNavbarLinks();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    // Note: Realtime subscriptions removed - data is fetched on mount only
   }, []);
 
   // Handle navigation item click

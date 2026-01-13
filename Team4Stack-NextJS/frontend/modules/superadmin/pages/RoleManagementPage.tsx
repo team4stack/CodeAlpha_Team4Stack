@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase/client'
+// Supabase import removed - using API instead
 
 interface AdminUser {
   id: string
@@ -40,13 +40,14 @@ const RoleManagementPage: React.FC = () => {
   const loadAdmins = async () => {
     try {
       setLoading(true)
-      const { data, error } = await supabase
-        .from('admin_users')
-        .select('*')
-        .order('created_at', { ascending: false })
+      const { superadminApi } = await import('@/lib/api')
+      const result = await superadminApi.getAdminUsers()
 
-      if (error) throw error
-      setAdmins(data || [])
+      if (result.error) {
+        setError('Failed to load admins: ' + result.error)
+        return
+      }
+      setAdmins(result.data || [])
     } catch (err: any) {
       setError('Failed to load admins: ' + err.message)
     } finally {
@@ -59,15 +60,15 @@ const RoleManagementPage: React.FC = () => {
       setError(null)
       setSuccess(null)
 
-      const { error } = await supabase
-        .from('admin_users')
-        .update({ 
-          role: newRole,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', adminId)
+      const { superadminApi } = await import('@/lib/api')
+      const result = await superadminApi.updateAdminUser(parseInt(adminId), {
+        role: newRole
+      })
 
-      if (error) throw error
+      if (result.error) {
+        setError('Failed to update role: ' + result.error)
+        return
+      }
 
       setSuccess('Role updated successfully!')
       loadAdmins()
@@ -92,34 +93,15 @@ const RoleManagementPage: React.FC = () => {
       setError(null)
       setSuccess(null)
 
-      // Try using the add_admin_user function first (recommended)
-      const { data: result, error: rpcError } = await supabase.rpc('add_admin_user', {
-        p_email: newAdminEmail.toLowerCase().trim(),
-        p_password: newAdminPassword,
-        p_role: newAdminRole
+      // Add admin via API (backend will handle password hashing)
+      const { superadminApi } = await import('@/lib/api')
+      const result = await superadminApi.createAdminUser({
+        email: newAdminEmail.toLowerCase().trim(),
+        password: newAdminPassword, // Backend should hash this
+        role: newAdminRole
       })
 
-      if (rpcError) {
-        // If RPC function doesn't exist, try hash function
-        const { data: hashData, error: hashError } = await supabase.rpc('hash_admin_password', {
-          p_password: newAdminPassword
-        })
-
-        if (hashError) {
-          throw new Error('Password hashing functions not found. Please run create_password_hash_function.sql in Supabase, or add admin via SQL using add_all_admins.sql')
-        }
-
-        // Insert with hashed password
-        const { error: insertError } = await supabase
-          .from('admin_users')
-          .insert({
-            email: newAdminEmail.toLowerCase().trim(),
-            password_hash: hashData,
-            role: newAdminRole
-          })
-
-        if (insertError) throw insertError
-      } else if (result && !result.success) {
+      if (result.error) {
         throw new Error(result.error || 'Failed to add admin')
       }
 
@@ -147,12 +129,13 @@ const RoleManagementPage: React.FC = () => {
       setError(null)
       setSuccess(null)
 
-      const { error } = await supabase
-        .from('admin_users')
-        .delete()
-        .eq('id', adminId)
+      const { superadminApi } = await import('@/lib/api')
+      const result = await superadminApi.deleteAdminUser(parseInt(adminId))
 
-      if (error) throw error
+      if (result.error) {
+        setError('Failed to delete admin: ' + result.error)
+        return
+      }
 
       setSuccess('Admin deleted successfully!')
       loadAdmins()

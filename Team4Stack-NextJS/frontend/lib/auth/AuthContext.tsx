@@ -140,14 +140,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return
       }
       
-      // Check if user email exists in admin_users table
-      const { data: adminData } = await supabase
-        .from('admin_users')
-        .select('email')
-        .eq('email', user.email.toLowerCase())
-        .maybeSingle()
-      
-      setIsAdminUser(!!adminData)
+      // Check if user email exists in admin_users table via API
+      const { superadminApi } = await import('@/lib/api')
+      const result = await superadminApi.checkAdminByEmail(user.email.toLowerCase())
+      setIsAdminUser(!!result.data)
     }
     
     checkAdminStatus()

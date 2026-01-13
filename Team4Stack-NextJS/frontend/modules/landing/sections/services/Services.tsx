@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { CONTACT_PHONE_NUMBERS, FIVERR_PROFILE_URL } from '@/lib/utils/constants';
-import { supabase } from '@/lib/supabase/client';
 
 // Handle ESC key for modal
 const useEscapeKey = (callback: () => void, isActive: boolean) => {
@@ -32,17 +31,22 @@ const Services: React.FC = () => {
   const [selectedService, setSelectedService] = useState<{ id: string; title: string; description?: string; emoji?: string; gradient_color?: string; contact?: string } | null>(null);
 
   useEffect(() => {
-    // Always try Supabase first; fallback to static grid if empty/error
+    // Load services via API
     const loadServices = async () => {
       try {
-        const { data, error } = await supabase
-          .from('services')
-          .select('id,title,description,image_url,emoji,gradient_color,active,order_index,contact')
-          .eq('active', true)
-          .order('order_index', { ascending: true, nullsFirst: false })
-          .order('id', { ascending: false });
-        if (!error && data) {
-          setDbServices(data as any);
+        const { landingApi } = await import('@/lib/api')
+        const result = await landingApi.getServices()
+        if (result.data) {
+          // Filter active services and sort
+          const activeServices = result.data
+            .filter((s: any) => s.active === true)
+            .sort((a: any, b: any) => {
+              if (a.order_index !== b.order_index) {
+                return (a.order_index || 0) - (b.order_index || 0)
+              }
+              return (b.id || 0) - (a.id || 0)
+            })
+          setDbServices(activeServices as any)
         }
       } catch (err) {
         if (process.env.NODE_ENV === 'development') {
@@ -52,21 +56,7 @@ const Services: React.FC = () => {
     };
 
     loadServices();
-
-    // Real-time subscription for services changes
-    const channel = supabase
-      .channel('services-changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'services' },
-        () => {
-          loadServices();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    // Note: Realtime subscriptions removed - data is fetched on mount only
   }, []);
 
   // Handle ESC key for modal

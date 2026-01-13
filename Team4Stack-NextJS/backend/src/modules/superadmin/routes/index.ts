@@ -5,7 +5,9 @@ const router = Router();
 
 // Admin Users
 router.get('/admins', superadminController.getAdminUsers);
+router.get('/admins/check/:email', superadminController.checkAdminByEmail);
 router.post('/admins', superadminController.createAdminUser);
+router.put('/admins/:id', superadminController.updateAdminUser);
 router.delete('/admins/:id', superadminController.deleteAdminUser);
 
 // Audit Logs

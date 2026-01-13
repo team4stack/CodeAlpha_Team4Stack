@@ -1,7 +1,6 @@
 'use client'
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/lib/supabase/client';
 
 // Define the review type
 interface Review {
@@ -32,38 +31,32 @@ const Reviews: React.FC = () => {
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
-  // Load reviews from Supabase
+  // Load reviews via API
   const loadReviews = useCallback(async () => {
     try {
       setLoading(true);
-      // Fetch total count of reviews
-      const { count, error: countError } = await supabase
-        .from('reviews')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'approved');
+      // Fetch reviews via API
+      const { landingApi } = await import('@/lib/api')
+      const result = await landingApi.getReviews('approved')
       
-      if (countError) {
-        throw countError;
+      if (result.error) {
+        throw new Error(result.error)
       }
       
-      setTotalReviews(count || 0);
+      // Get total count and paginated reviews
+      const allReviews = result.data || []
+      const approvedReviews = allReviews.filter((r: any) => r.status === 'approved')
+      setTotalReviews(approvedReviews.length)
       
-      // Fetch reviews (3 by default, 6 if showAll is true)
-      const limit = showAll ? perPage : 3;
-      const from = showAll ? (page - 1) * perPage : 0;
-      const to = showAll ? (page * perPage) - 1 : (limit - 1);
-      const { data, error } = await supabase
-        .from('reviews')
-        .select('*')
-        .eq('status', 'approved')
-        .order('created_at', { ascending: false })
-        .range(from, to);
+      // Client-side pagination
+      const limit = showAll ? perPage : 3
+      const from = showAll ? (page - 1) * perPage : 0
+      const to = showAll ? (page * perPage) : limit
+      const paginatedReviews = approvedReviews
+        .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(from, to)
       
-      if (error) {
-        throw error;
-      }
-      
-      setReviews(data || []);
+      setReviews(paginatedReviews)
     } catch (error) {
       // Error handled silently - user sees loading state
       if (process.env.NODE_ENV === 'development') {

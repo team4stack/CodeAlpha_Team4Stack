@@ -1,7 +1,6 @@
 'use client'
 
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase/client';
 import { useTheme } from '@/contexts/ThemeContext';
 import { CrazyMernEffect } from '@/components/effects';
 
@@ -68,34 +67,34 @@ const About: React.FC = () => {
     };
     (async () => {
       setIsLoading(true);
-      const { data } = await supabase
-        .from('team_members')
-        .select('name,role,description,primary_tag,image_url,profile_image_url,banner_image_url,portfolio_url,github_url,is_head,active,order_index,id')
-        .eq('active', true)
-        .order('is_head', { ascending: false })
-        .order('order_index', { ascending: true, nullsFirst: false })
-        .order('id', { ascending: true });
-      const mapped = (data || []).map((r: any) => ({
-        name: r.name,
-        role: r.role,
-        image: sanitizeImageUrl(r.profile_image_url || r.image_url || ''),
-        portfolio: r.portfolio_url || '#',
-        github: r.github_url || '#',
-        description: r.description || '',
-        primaryTag: r.primary_tag || undefined,
-        bannerImage: sanitizeImageUrl(r.banner_image_url || '' ) || undefined,
-      }));
-      setTeamMembers(mapped);
+      const { teamApi } = await import('@/lib/api')
+      const result = await teamApi.getTeamMembers()
+      if (result.data) {
+        // Filter active members and sort
+        const activeMembers = result.data
+          .filter((m: any) => m.active === true)
+          .sort((a: any, b: any) => {
+            if (a.is_head !== b.is_head) return b.is_head ? 1 : -1
+            if (a.order_index !== b.order_index) return (a.order_index || 0) - (b.order_index || 0)
+            return (a.id || 0) - (b.id || 0)
+          })
+        const mapped = activeMembers.map((r: any) => ({
+          name: r.name,
+          role: r.role,
+          image: sanitizeImageUrl(r.profile_image_url || r.image_url || ''),
+          portfolio: r.portfolio_url || '#',
+          github: r.github_url || '#',
+          description: r.description || '',
+          primaryTag: r.primary_tag || undefined,
+          bannerImage: sanitizeImageUrl(r.banner_image_url || '' ) || undefined,
+        }));
+        setTeamMembers(mapped);
+      }
 
-      // Fetch mentor profile (first active)
-      const { data: mentorRows } = await supabase
-        .from('mentor_profile')
-        .select('name,role,description,primary_tag,profile_image_url,banner_image_url,portfolio_url,github_url,active')
-        .eq('active', true)
-        .order('order_index', { ascending: true })
-        .limit(1);
-      if (mentorRows && mentorRows.length > 0) {
-        const m = mentorRows[0] as any;
+      // Fetch mentor profile (first active) via API
+      const mentorResult = await teamApi.getMentorProfiles()
+      if (mentorResult.data && mentorResult.data.length > 0) {
+        const m = mentorResult.data[0] as any;
         setMentor({
           name: m.name,
           role: m.role,

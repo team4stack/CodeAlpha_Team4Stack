@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { ProjectData, fetchYouTubeVideoData } from '@/lib/utils/youtube';
 import { CONTACT_PHONE_NUMBERS } from '@/lib/utils/constants';
-import { supabase } from '@/lib/supabase/client';
+import { landingApi } from '@/lib/api';
 
 const Projects: React.FC = () => {
   const { isDarkMode } = useTheme();
@@ -57,11 +57,8 @@ const Projects: React.FC = () => {
       try {
         if (useSupabase) {
           try {
-            const { data, error } = await supabase
-              .from('projects')
-              .select('id,title,description,image_url,video_id,github_url,order_index')
-              .order('order_index', { ascending: true, nullsFirst: false })
-              .order('id', { ascending: false });
+            const result = await landingApi.getProjects();
+            const { data, error } = result;
             if (error) throw error;
             const rows = data || [];
             if (rows.length > 0) {
@@ -114,16 +111,8 @@ const Projects: React.FC = () => {
     };
 
     fetchAllProjects();
-    // Realtime updates for projects
-    const channel = supabase.channel('projects_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, () => {
-        fetchAllProjects();
-      })
-      .subscribe();
-
-    return () => {
-      try { supabase.removeChannel(channel); } catch {}
-    };
+    // Note: Realtime updates removed - data now comes from backend API
+    // If needed, implement polling or WebSocket from backend in the future
   }, []);
 
   // additional projects are merged during load; no toggle needed

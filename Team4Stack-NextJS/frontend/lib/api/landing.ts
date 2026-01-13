@@ -64,6 +64,14 @@ export const landingApi = {
     return apiClient.post('/landing/settings', { key, value });
   },
 
+  upsertSiteSettings: async (entries: Array<{ key: string; value: string }>) => {
+    return apiClient.post('/landing/settings/bulk', { entries });
+  },
+
+  deleteSiteSettings: async (keys: string[]) => {
+    return apiClient.delete(`/landing/settings?keys=${keys.join(',')}`);
+  },
+
   // Support Requests
   getSupportRequests: async (filters?: { user_id?: string; status?: string; viewed?: boolean }) => {
     const params = new URLSearchParams();

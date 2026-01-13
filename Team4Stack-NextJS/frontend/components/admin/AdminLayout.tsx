@@ -54,15 +54,12 @@ const AdminLayout: React.FC = () => {
           return
         }
         
-        // Step 2: SUPABASE TABLE CHECK (SECOND - Can be compromised, but still checked)
-        // Multi-layer security: Both environment variable AND Supabase table must pass
-        const { data: adminData, error: adminError } = await supabase
-          .from('admin_users')
-          .select('email')
-          .eq('email', userEmail)
-          .maybeSingle()
+        // Step 2: API TABLE CHECK (SECOND - Can be compromised, but still checked)
+        // Multi-layer security: Both environment variable AND API check must pass
+        const { superadminApi } = await import('@/lib/api')
+        const adminResult = await superadminApi.checkAdminByEmail(userEmail)
 
-        if (adminError) {
+        if (adminResult.error) {
           // No sensitive info in logs
           sessionStorage.removeItem('admin_session')
           navigate('/adminsami/login', { replace: true })
@@ -73,7 +70,7 @@ const AdminLayout: React.FC = () => {
         // CRITICAL: If user email is NOT in admin_users table, deny access
         // Normal users ka email admin_users mein nahi hoga
         // Only manually added admins will be in admin_users table
-        if (!adminData || !adminData.email) {
+        if (!adminResult.data || !adminResult.data.email) {
           // This is a normal user trying to access admin panel
           // Remove session and redirect to login
           sessionStorage.removeItem('admin_session')

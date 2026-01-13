@@ -52,17 +52,20 @@ const OrdersManagementPage: React.FC = () => {
 
       // Load orders
       try {
-        const { data: ordersData, error: ordersError } = await stackstoreApi.getOrders({
+        const result = await stackstoreApi.getOrders({
           status: filterStatus !== 'all' ? filterStatus : undefined,
           payment_status: filterPayment !== 'all' ? filterPayment : undefined
         })
 
-        if (ordersError) {
-          throw new Error(ordersError)
+        if (result.error) {
+          setError(result.error)
+          setOrders([])
+          setLoading(false)
+          return
         }
 
         // Filter by search query on client side
-        let filteredOrders = ordersData?.data || []
+        let filteredOrders = result.data || []
         if (searchQuery.trim()) {
           filteredOrders = filteredOrders.filter((o: Order) => 
             o.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -87,12 +90,12 @@ const OrdersManagementPage: React.FC = () => {
           const usersMap: Record<string, User> = {}
           await Promise.all(
             userIds.map(async (userId) => {
-              const { data: userData } = await usersApi.getUserById(userId)
-              if (userData?.data) {
+              const userResult = await usersApi.getUserById(userId)
+              if (userResult?.data) {
                 usersMap[userId] = {
-                  id: userData.data.id,
-                  email: userData.data.email || null,
-                  name: userData.data.name || null
+                  id: userResult.data.id,
+                  email: userResult.data.email || null,
+                  name: userResult.data.name || null
                 }
               }
             })
@@ -106,11 +109,11 @@ const OrdersManagementPage: React.FC = () => {
           const productsMap: Record<string, Product> = {}
           await Promise.all(
             productIds.map(async (productId) => {
-              const { data: productData } = await stackstoreApi.getProductById(productId)
-              if (productData?.data) {
+              const productResult = await stackstoreApi.getProductById(productId)
+              if (productResult?.data) {
                 productsMap[productId] = {
-                  id: productData.data.id,
-                  name: productData.data.name
+                  id: productResult.data.id,
+                  name: productResult.data.name
                 }
               }
             })
@@ -141,11 +144,14 @@ const OrdersManagementPage: React.FC = () => {
       setError(null)
       setSuccess(null)
 
-      const { error: updateError } = await stackstoreApi.updateOrder(orderId, {
+      const result = await stackstoreApi.updateOrder(orderId, {
         status: newStatus
       })
 
-      if (updateError) throw new Error(updateError)
+      if (result.error) {
+        setError(result.error)
+        return
+      }
 
       setSuccess('Order status updated successfully!')
       loadData()
@@ -160,11 +166,14 @@ const OrdersManagementPage: React.FC = () => {
       setError(null)
       setSuccess(null)
 
-      const { error: updateError } = await stackstoreApi.updateOrder(orderId, {
+      const result = await stackstoreApi.updateOrder(orderId, {
         payment_status: newPaymentStatus
       })
 
-      if (updateError) throw new Error(updateError)
+      if (result.error) {
+        setError(result.error)
+        return
+      }
 
       setSuccess('Payment status updated successfully!')
       loadData()

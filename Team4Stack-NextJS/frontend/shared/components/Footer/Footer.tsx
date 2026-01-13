@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
 import './Footer.css';
 
 interface FooterLink {
@@ -31,12 +30,10 @@ const Footer: React.FC = () => {
   useEffect(() => {
     const loadFooterData = async () => {
       try {
-        // Load footer links
-        const { data: linksData } = await supabase
-          .from('site_settings')
-          .select('key, value')
-          .eq('key', 'footer_links_json')
-          .maybeSingle();
+        // Load footer links via API
+        const { landingApi } = await import('@/lib/api')
+        const linksResult = await landingApi.getSiteSettings(['footer_links_json'])
+        const linksData = linksResult.data?.find((s: any) => s.key === 'footer_links_json')
 
         if (linksData?.value) {
           try {
@@ -51,40 +48,12 @@ const Footer: React.FC = () => {
           }
         }
 
-        // Load social links
-        const { data: socialData } = await supabase
-          .from('site_settings')
-          .select('key, value')
-          .in('key', ['footer_socials_json', 'footer_about_text'])
-          .maybeSingle();
+        // Load social links via API
+        const socialResult = await landingApi.getSiteSettings(['footer_socials_json', 'footer_about_text'])
+        const socialData = socialResult.data || []
 
-        if (socialData) {
+        if (socialData && Array.isArray(socialData)) {
           socialData.forEach((row: any) => {
-            if (row.key === 'footer_socials_json' && row.value) {
-              try {
-                const parsed = JSON.parse(row.value);
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                  setSocialLinks(parsed);
-                }
-              } catch (e) {
-                if (process.env.NODE_ENV === 'development') {
-                  console.error('Error parsing footer socials JSON:', e);
-                }
-              }
-            } else if (row.key === 'footer_about_text' && row.value) {
-              setAboutText(row.value);
-            }
-          });
-        }
-
-        // Load from multiple rows
-        const { data: allData } = await supabase
-          .from('site_settings')
-          .select('key, value')
-          .in('key', ['footer_socials_json', 'footer_about_text']);
-
-        if (allData) {
-          allData.forEach((row: any) => {
             if (row.key === 'footer_socials_json' && row.value) {
               try {
                 const parsed = JSON.parse(row.value);
@@ -109,22 +78,7 @@ const Footer: React.FC = () => {
     };
 
     loadFooterData();
-
-    const channel = supabase
-      .channel('footer_data')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'site_settings', 
-        filter: 'key=in.(footer_links_json,footer_socials_json,footer_about_text)' 
-      }, () => {
-        loadFooterData();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    // Note: Realtime subscriptions removed - data is fetched on mount only
   }, []);
 
   const slugMap: Record<string, string> = {

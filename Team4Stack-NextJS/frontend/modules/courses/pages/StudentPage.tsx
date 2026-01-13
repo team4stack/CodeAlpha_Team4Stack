@@ -6,7 +6,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import StudentNavbar from '@/navigation/StudentNavbar';
 import { ProgressBar } from '../components';
-import { supabase } from '@/lib/supabase/client';
+import { coursesApi } from '@/lib/api';
 
 interface Course {
   id: string;
@@ -40,14 +40,10 @@ const StudentPage: React.FC = () => {
       try {
         // Check for rejected application
         if (user.email) {
-          const { data: applicationData } = await supabase
-            .from('admission_form')
-            .select('rejection_message, approved')
-            .eq('email', user.email.toLowerCase().trim())
-            .eq('approved', false)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
+          const result = await coursesApi.getAdmissionForms({
+            email: user.email.toLowerCase().trim()
+          });
+          const applicationData = result.data?.find((app: any) => app.approved === false);
 
           if (applicationData && applicationData.rejection_message) {
             setRejectionMessage(applicationData.rejection_message);
@@ -64,11 +60,11 @@ const StudentPage: React.FC = () => {
           return;
         }
 
-        const { data: applications, error: appError } = await supabase
-          .from('admission_form')
-          .select('course_name, course_name_2, approved, approved_1, approved_2')
-          .eq('email', user.email.toLowerCase().trim())
-          .order('created_at', { ascending: false });
+        const result = await coursesApi.getAdmissionForms({
+          email: user.email.toLowerCase().trim()
+        });
+        const applications = result.data || [];
+        const appError = result.error ? new Error(result.error) : null;
 
         if (appError) {
           console.error('Error fetching applications:', appError);
@@ -128,14 +124,16 @@ const StudentPage: React.FC = () => {
           }
         });
 
-        // Fetch all courses from Supabase
-        const { data: allCourses, error: courseError } = await supabase
-          .from('courses')
-          .select('*')
-          .order('order_index', { ascending: true })
-          .order('id', { ascending: false });
-          
-        if (courseError) throw courseError;
+        // Fetch all courses from API
+        const coursesResult = await coursesApi.getAllCourses();
+        if (coursesResult.error) {
+          console.error('Error loading courses:', coursesResult.error);
+          setCourses([]);
+          setProgressMap({});
+          setLoading(false);
+          return;
+        }
+        const allCourses = coursesResult.data || [];
         
         // Filter courses: only show courses where title matches approved course_name
         const enrolledCourses = (allCourses || []).filter((course: any) => {
@@ -148,10 +146,8 @@ const StudentPage: React.FC = () => {
         setCourses(enrolledCourses);
         
         // Fetch progress records for current user
-        const { data: progressData } = await supabase
-          .from('progress_records')
-          .select('*')
-          .eq('user_id', user.id);
+        const progressResult = await coursesApi.getUserProgress(user.id);
+        const progressData = progressResult.data || [];
 
         const progressByCourse: Record<string, Progress> = {};
         if (progressData) {

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import StudentNavbar from '@/navigation/StudentNavbar';
-import { supabase } from '@/lib/supabase/client';
+import { coursesApi } from '@/lib/api';
 import toast from 'react-hot-toast';
 
 interface Video {
@@ -72,24 +72,23 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
       setError(null);
       
       // Fetch course
-      const { data: courseData, error: courseError } = await supabase
-        .from('courses')
-        .select('*')
-        .eq('id', courseId)
-        .single();
-        
-      if (courseError) throw courseError;
-      setCourse(courseData);
+      const courseResult = await coursesApi.getCourseById(parseInt(courseId));
+      if (courseResult.error) {
+        setError(courseResult.error);
+        setLoading(false);
+        return;
+      }
+      setCourse(courseResult.data || null);
       
       // Fetch videos ordered by order_index (admin's order)
-      const { data: videosData, error: videosError } = await supabase
-        .from('videos')
-        .select('*')
-        .eq('course_id', courseId)
-        .order('order_index', { ascending: true });
-        
-      if (videosError) throw videosError;
-      setVideos(videosData || []);
+      const videosResult = await coursesApi.getCourseVideos(parseInt(courseId));
+      if (videosResult.error) {
+        setError(videosResult.error);
+        setLoading(false);
+        return;
+      }
+      const videosData = videosResult.data || [];
+      setVideos(videosData);
       
       // Initialize video total durations from database
       const durationMap = new Map<number, number>();
@@ -107,14 +106,13 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
       }
       
       // Fetch progress records for current user
-      const { data: progressData, error: progressError } = await supabase
-        .from('progress_records')
-        .select('*')
-        .eq('course_id', courseId)
-        .eq('user_id', user.id);
-        
-      if (progressError) throw progressError;
-      setProgressRecords(progressData || []);
+      const progressResult = await coursesApi.getUserProgress(user.id, parseInt(courseId));
+      if (progressResult.error) {
+        console.error('Error loading progress:', progressResult.error);
+        // Continue without progress data
+      }
+      const progressData = progressResult.data || [];
+      setProgressRecords(progressData);
       
       // Track which videos have been watched and their watched time
       const watched = new Set<number>();
@@ -201,63 +199,28 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
       setVideoProgress(prev => new Map(prev).set(videoId, actualProgress)); // Preserve actual progress
       setVideoWatchedTime(prev => new Map(prev).set(videoId, finalWatchedTime)); // Preserve actual watched time
       
-      // Check if progress record exists
-      const { data: existingRecord, error: selectError } = await supabase
-        .from('progress_records')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('course_id', courseId)
-        .eq('video_id', videoId)
-        .maybeSingle();
-
-      if (selectError) {
-        console.error('Error checking existing record:', selectError);
-        throw selectError;
-      }
-
       // Update or insert progress record
-      if (existingRecord) {
-        const { error: updateError } = await supabase
-          .from('progress_records')
-          .update({ 
-            completed: true,
-            score: Math.round(finalWatchedTime) // Store actual watched time, rounded to integer
-          })
-          .eq('id', existingRecord.id);
-        
-        if (updateError) {
-          console.error('Error updating progress record:', updateError);
-          throw updateError;
-        }
-      } else {
-        const { error: insertError } = await supabase
-          .from('progress_records')
-          .insert({
-            user_id: user.id,
-            course_id: Number(courseId),
-            video_id: videoId,
-            completed: true,
-            score: Math.round(finalWatchedTime) // Store actual watched time, rounded to integer
-          });
-        
-        if (insertError) {
-          console.error('Error inserting progress record:', insertError);
-          throw insertError;
-        }
+      const progressResult = await coursesApi.updateProgress({
+        user_id: user.id,
+        course_id: Number(courseId),
+        video_id: videoId,
+        completed: true,
+        score: Math.round(finalWatchedTime) // Store actual watched time, rounded to integer
+      });
+      
+      if (progressResult.error) {
+        console.error('Error updating progress:', progressResult.error);
+        toast.error(progressResult.error);
+        return;
       }
       
       // Reload progress records
-      const { data: progressData, error: reloadError } = await supabase
-        .from('progress_records')
-        .select('*')
-        .eq('course_id', courseId)
-        .eq('user_id', user.id);
-      
-      if (reloadError) {
-        console.error('Error reloading progress records:', reloadError);
+      const reloadResult = await coursesApi.getUserProgress(user.id, parseInt(courseId));
+      if (reloadResult.error) {
+        console.error('Error reloading progress records:', reloadResult.error);
         // Don't throw here, just log - progress was already saved
       } else {
-        setProgressRecords(progressData || []);
+        setProgressRecords(reloadResult.data || []);
       }
       
       toast.success('Lecture marked as complete!');

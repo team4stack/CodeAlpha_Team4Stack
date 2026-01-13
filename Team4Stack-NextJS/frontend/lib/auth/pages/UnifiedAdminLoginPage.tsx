@@ -97,41 +97,19 @@ const UnifiedAdminLoginPage: React.FC = () => {
         return
       }
 
-      // Step 2: SUPABASE TABLE CHECK (SECOND - Can be compromised, but still checked)
-      // Multi-layer security: Both environment variable AND Supabase table must pass
-      // First try to select all columns to avoid column name issues
-      const { data: adminCheck, error: adminCheckError } = await supabase
-        .from('admin_users')
-        .select('*')
-        .eq('email', loginEmail)
-        .maybeSingle()
+      // Step 2: API TABLE CHECK (SECOND - Can be compromised, but still checked)
+      // Multi-layer security: Both environment variable AND API check must pass
+      const { superadminApi } = await import('@/lib/api')
+      const adminCheckResult = await superadminApi.checkAdminByEmail(loginEmail)
 
       // If there's an error checking admin_users, deny access
-      if (adminCheckError) {
+      if (adminCheckResult.error) {
         // Log error for debugging (only in development)
         if (process.env.NODE_ENV === 'development') {
-          console.error('Admin users query error:', {
-            message: adminCheckError.message,
-            details: adminCheckError.details,
-            hint: adminCheckError.hint,
-            code: adminCheckError.code,
-            fullError: adminCheckError,
-            errorType: typeof adminCheckError,
-            errorKeys: Object.keys(adminCheckError || {})
-          })
-          
-          // Check if admin_users table exists
-          const { error: tableCheckError } = await supabase
-            .from('admin_users')
-            .select('id')
-            .limit(1)
-          
-          if (tableCheckError) {
-            console.error('Table check error - admin_users table might not exist:', tableCheckError)
-          }
+          console.error('Admin users query error:', adminCheckResult.error)
         }
         // More user-friendly error message
-        setError(adminCheckError.message || 'Database connection error. Please try again.')
+        setError(adminCheckResult.error || 'Database connection error. Please try again.')
         setLoading(false)
         return
       }
@@ -139,7 +117,7 @@ const UnifiedAdminLoginPage: React.FC = () => {
       // CRITICAL: If email is NOT in admin_users table, deny immediately
       // Normal users ka email admin_users mein nahi hoga
       // Only manually added admins will be in admin_users table
-      if (!adminCheck || !adminCheck.email) {
+      if (!adminCheckResult.data || !adminCheckResult.data.email) {
         // Email not in admin_users table - this is a normal user
         // Deny access immediately - do not proceed with password verification
         setError('Invalid email or password.')

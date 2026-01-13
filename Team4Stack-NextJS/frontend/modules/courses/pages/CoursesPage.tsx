@@ -58,8 +58,8 @@ const CoursesPage: React.FC = () => {
   // Load courses from API
   useEffect(() => {
     (async () => {
-      const { data, error } = await coursesApi.getAllCourses();
-      if (!error && data) setDbCourses(data as any);
+      const result = await coursesApi.getAllCourses();
+      if (!result.error && result.data) setDbCourses(result.data as any);
     })();
   }, []);
 
@@ -80,19 +80,21 @@ const CoursesPage: React.FC = () => {
 
       // Check if user is an approved student and get all applications
       try {
-        const { data: applicationData, error } = await coursesApi.getAdmissionForms({
+        const result = await coursesApi.getAdmissionForms({
           email: user.email.toLowerCase().trim()
         });
 
-        if (error) {
-          console.error('Error checking student status:', error);
+        if (result.error) {
+          console.error('Error checking student status:', result.error);
           setIsApprovedStudent(false);
           setEnrolledCourses(new Set());
           return;
         }
 
+        const applicationData = result.data || [];
+
         // Check if user has at least one course approved
-        const hasAnyCourseApproved = applicationData?.some(app => {
+        const hasAnyCourseApproved = applicationData?.some((app: any) => {
           // Check if new per-course approval system is being used
           const hasNewApprovals = app.approved_1 !== undefined || app.approved_2 !== undefined
           
@@ -120,7 +122,7 @@ const CoursesPage: React.FC = () => {
 
         // Get course names from applications where at least one course is approved
         if (applicationData && applicationData.length > 0) {
-          const appsWithAnyApproved = applicationData.filter(app => {
+          const appsWithAnyApproved = applicationData.filter((app: any) => {
             const hasNewApprovals = app.approved_1 !== undefined || app.approved_2 !== undefined
             
             if (hasNewApprovals) {
@@ -157,7 +159,7 @@ const CoursesPage: React.FC = () => {
           });
           
           // Track rejected courses with their rejection messages
-          applicationData.forEach(app => {
+          applicationData.forEach((app: any) => {
             const hasNewApprovals = app.approved_1 !== undefined || app.approved_2 !== undefined
             
             if (hasNewApprovals) {

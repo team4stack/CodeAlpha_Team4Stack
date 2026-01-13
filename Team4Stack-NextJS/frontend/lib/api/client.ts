@@ -24,18 +24,46 @@ class ApiClient {
         },
       });
 
+      // Handle network errors (backend not running, CORS, etc.)
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch {
+          // If response is not JSON, try to get text
+          try {
+            const text = await response.text();
+            errorMessage = text || errorMessage;
+          } catch {
+            // Keep default error message
+          }
+        }
+        
+        // Return error instead of throwing
+        return {
+          success: false,
+          error: errorMessage,
+        };
       }
 
       const data = await response.json();
       return data;
     } catch (error: any) {
+      // Handle network errors (backend not running, connection refused, etc.)
       console.error('API Error:', error);
+      
+      // Check if it's a network error
+      if (error.message?.includes('fetch') || error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
+        return {
+          success: false,
+          error: 'Backend server is not running. Please start the backend server on port 5000.',
+        };
+      }
+      
       return {
         success: false,
-        error: error.message || 'An error occurred',
+        error: error.message || 'An error occurred while connecting to the API',
       };
     }
   }

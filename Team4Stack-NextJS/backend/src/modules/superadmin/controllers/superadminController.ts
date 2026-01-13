@@ -21,11 +21,31 @@ export class SuperAdminController {
     }
   };
 
+  updateAdminUser = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id } = req.params;
+      const admin = await superadminService.updateAdminUser(parseInt(id), req.body);
+      res.json({ success: true, data: admin });
+    } catch (error: any) {
+      next(error);
+    }
+  };
+
   deleteAdminUser = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
       await superadminService.deleteAdminUser(parseInt(id));
       res.json({ success: true, message: 'Admin user deleted successfully' });
+    } catch (error: any) {
+      next(error);
+    }
+  };
+
+  checkAdminByEmail = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { email } = req.params;
+      const admin = await superadminService.checkAdminByEmail(email);
+      res.json({ success: true, data: admin });
     } catch (error: any) {
       next(error);
     }
