@@ -1,0 +1,84 @@
+import { Request, Response, NextFunction } from 'express';
+import teamService from '../services/teamService';
+
+export class TeamController {
+  // Team Members
+  getTeamMembers = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const members = await teamService.getTeamMembers();
+      res.json({ success: true, data: members });
+    } catch (error: any) {
+      next(error);
+    }
+  };
+
+  createTeamMember = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const member = await teamService.createTeamMember(req.body);
+      res.status(201).json({ success: true, data: member });
+    } catch (error: any) {
+      next(error);
+    }
+  };
+
+  updateTeamMember = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id } = req.params;
+      const member = await teamService.updateTeamMember(parseInt(id), req.body);
+      res.json({ success: true, data: member });
+    } catch (error: any) {
+      next(error);
+    }
+  };
+
+  deleteTeamMember = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id } = req.params;
+      await teamService.deleteTeamMember(parseInt(id));
+      res.json({ success: true, message: 'Team member deleted successfully' });
+    } catch (error: any) {
+      next(error);
+    }
+  };
+
+  // Mentor Profiles
+  getMentorProfiles = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const mentors = await teamService.getMentorProfiles();
+      res.json({ success: true, data: mentors });
+    } catch (error: any) {
+      next(error);
+    }
+  };
+
+  createMentorProfile = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const mentor = await teamService.createMentorProfile(req.body);
+      res.status(201).json({ success: true, data: mentor });
+    } catch (error: any) {
+      next(error);
+    }
+  };
+
+  updateMentorProfile = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id } = req.params;
+      const mentor = await teamService.updateMentorProfile(parseInt(id), req.body);
+      res.json({ success: true, data: mentor });
+    } catch (error: any) {
+      next(error);
+    }
+  };
+
+  deleteMentorProfile = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id } = req.params;
+      await teamService.deleteMentorProfile(parseInt(id));
+      res.json({ success: true, message: 'Mentor profile deleted successfully' });
+    } catch (error: any) {
+      next(error);
+    }
+  };
+}
+
+export default new TeamController();
