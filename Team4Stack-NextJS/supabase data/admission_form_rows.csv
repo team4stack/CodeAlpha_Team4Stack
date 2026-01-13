@@ -1,7 +1,0 @@
-id,name,father_name,phone,email,address,course_name,message,gender,age,created_at,viewed,image_attached,rejection_message,approved
-6,Muhammad hasnain,"Zawar ",0312-6430166,hasnainwasli17@gmail.com,Teshil vehari district vehari city vehari,Mern stack,Hi,Male,19,2025-10-04 10:20:39.615+00,true,false,,
-7,Areeba Abid,Muhammad Abid,03003151555,kk34samikhan@gmail.com,vehari,manstack,work,Female,13,2025-10-04 14:08:43.622+00,true,false,,
-8,Muhammad Aftab Akram,"M Akram ",03087917014,ranaaftabakram982@gmail.com,Tehsil Mailsi District vehari PO 211/WB,"Web development ","I am interested in this course ",Male,18,2025-10-05 03:41:41.957+00,true,false,,
-9,Amna,Salman,03025865423,aqsabibi@gmail.com,Tehsil Mailsi District vehari PO 211/WB,"Web development ","I am interested ",Female,25,2025-10-15 12:26:11.226+00,true,false,,
-10,"FAZAL HUSSAIN ",Muhammad Nawaz,03075666734,fazalhussain8097@gmail.com,vehari check no 34,"MERN stack ",hlo,Male,22,2025-10-19 15:58:54.395+00,true,false,because not fee submit,false
-11,Saif Ullah Abid,Abid Hussain,03089050766,kk34samikhan@gmail.com,Check no 34WB Vehari,Mern Online,ghg,Male,51,2025-11-10 16:30:32.341+00,true,false,,true
