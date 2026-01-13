@@ -2,3 +2,7 @@
 export { apiClient } from './client';
 export { coursesApi } from './courses';
 export { landingApi } from './landing';
+export { stackstoreApi } from './stackstore';
+export { teamApi } from './team';
+export { superadminApi } from './superadmin';
+export { usersApi } from './users';

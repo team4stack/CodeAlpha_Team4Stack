@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase/client';
+import { coursesApi } from '@/lib/api';
 import CoursesNavbar from '@/navigation/CoursesNavbar';
 
 const CoursesPage: React.FC = () => {
@@ -55,16 +55,10 @@ const CoursesPage: React.FC = () => {
     }
   ]), []);
   
-  // Load courses from Supabase if enabled
+  // Load courses from API
   useEffect(() => {
-    const useSupabase = true;
-    if (!useSupabase) return;
     (async () => {
-      const { data, error } = await supabase
-        .from('courses')
-        .select('id,title,description,image_url,level,duration,price,note,features,gradient')
-        .order('order_index', { ascending: true })
-        .order('id', { ascending: false });
+      const { data, error } = await coursesApi.getAllCourses();
       if (!error && data) setDbCourses(data as any);
     })();
   }, []);
@@ -86,11 +80,9 @@ const CoursesPage: React.FC = () => {
 
       // Check if user is an approved student and get all applications
       try {
-        const { data: applicationData, error } = await supabase
-          .from('admission_form')
-          .select('approved, approved_1, approved_2, course_name, course_name_2, rejection_message_1, rejection_message_2, rejection_message')
-          .eq('email', user.email.toLowerCase().trim())
-          .order('created_at', { ascending: false });
+        const { data: applicationData, error } = await coursesApi.getAdmissionForms({
+          email: user.email.toLowerCase().trim()
+        });
 
         if (error) {
           console.error('Error checking student status:', error);

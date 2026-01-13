@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState, useCallback } from 'react'
-import { supabase } from '@/lib/supabase/client'
+import { stackstoreApi, usersApi } from '@/lib/api'
 import { useTheme } from '@/contexts/ThemeContext'
 
 type Order = {
@@ -52,68 +52,70 @@ const OrdersManagementPage: React.FC = () => {
 
       // Load orders
       try {
-        let query = supabase.from('orders').select('*', { count: 'exact' })
-
-        if (filterStatus !== 'all') {
-          query = query.eq('status', filterStatus)
-        }
-
-        if (filterPayment !== 'all') {
-          query = query.eq('payment_status', filterPayment)
-        }
-
-        if (searchQuery.trim()) {
-          query = query.or(`id.ilike.%${searchQuery}%,shipping_address.ilike.%${searchQuery}%`)
-        }
-
-        const { count } = await query
-        setTotalOrders(count || 0)
-
-        const { data: ordersData, error: ordersError } = await query
-          .order('created_at', { ascending: false })
-          .range((currentPage - 1) * ordersPerPage, currentPage * ordersPerPage - 1)
+        const { data: ordersData, error: ordersError } = await stackstoreApi.getOrders({
+          status: filterStatus !== 'all' ? filterStatus : undefined,
+          payment_status: filterPayment !== 'all' ? filterPayment : undefined
+        })
 
         if (ordersError) {
-          if (ordersError.code === 'PGRST116' || ordersError.message.includes('does not exist')) {
-            setOrders([])
-            return
-          }
-          throw ordersError
+          throw new Error(ordersError)
         }
-        setOrders(ordersData || [])
+
+        // Filter by search query on client side
+        let filteredOrders = ordersData?.data || []
+        if (searchQuery.trim()) {
+          filteredOrders = filteredOrders.filter((o: Order) => 
+            o.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            o.shipping_address?.toLowerCase().includes(searchQuery.toLowerCase())
+          )
+        }
+
+        // Sort and paginate
+        filteredOrders.sort((a: Order, b: Order) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )
+        setTotalOrders(filteredOrders.length)
+        const paginatedOrders = filteredOrders.slice(
+          (currentPage - 1) * ordersPerPage,
+          currentPage * ordersPerPage
+        )
+        setOrders(paginatedOrders)
 
         // Load users
-        const userIds = [...new Set(ordersData?.map((o: Order) => o.user_id) || [])]
+        const userIds = [...new Set(paginatedOrders.map((o: Order) => o.user_id).filter(Boolean) || [])]
         if (userIds.length > 0) {
-          const { data: usersData, error: usersError } = await supabase
-            .from('users')
-            .select('id, email, name')
-            .in('id', userIds)
-
-          if (!usersError && usersData) {
-            const usersMap: Record<string, User> = {}
-            usersData.forEach((user: User) => {
-              usersMap[user.id] = user
+          const usersMap: Record<string, User> = {}
+          await Promise.all(
+            userIds.map(async (userId) => {
+              const { data: userData } = await usersApi.getUserById(userId)
+              if (userData?.data) {
+                usersMap[userId] = {
+                  id: userData.data.id,
+                  email: userData.data.email || null,
+                  name: userData.data.name || null
+                }
+              }
             })
-            setUsers(usersMap)
-          }
+          )
+          setUsers(usersMap)
         }
 
         // Load products
-        const productIds = [...new Set(ordersData?.map((o: Order) => o.product_id).filter(Boolean) || [])]
+        const productIds = [...new Set(paginatedOrders.map((o: Order) => o.product_id).filter(Boolean) || [])]
         if (productIds.length > 0) {
-          const { data: productsData, error: productsError } = await supabase
-            .from('products')
-            .select('id, name')
-            .in('id', productIds)
-
-          if (!productsError && productsData) {
-            const productsMap: Record<string, Product> = {}
-            productsData.forEach((product: Product) => {
-              productsMap[product.id] = product
+          const productsMap: Record<string, Product> = {}
+          await Promise.all(
+            productIds.map(async (productId) => {
+              const { data: productData } = await stackstoreApi.getProductById(productId)
+              if (productData?.data) {
+                productsMap[productId] = {
+                  id: productData.data.id,
+                  name: productData.data.name
+                }
+              }
             })
-            setProducts(productsMap)
-          }
+          )
+          setProducts(productsMap)
         }
       } catch (err: any) {
         if (err.code === 'PGRST116' || err.message?.includes('does not exist')) {
@@ -131,18 +133,7 @@ const OrdersManagementPage: React.FC = () => {
 
   useEffect(() => {
     loadData()
-
-    // Real-time subscription
-    const channel = supabase
-      .channel('orders_realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
-        loadData()
-      })
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
+    // Note: Real-time subscriptions removed - using API calls instead
   }, [loadData])
 
   const handleStatusUpdate = async (orderId: string, newStatus: string) => {
@@ -150,12 +141,11 @@ const OrdersManagementPage: React.FC = () => {
       setError(null)
       setSuccess(null)
 
-      const { error: updateError } = await supabase
-        .from('orders')
-        .update({ status: newStatus, updated_at: new Date().toISOString() })
-        .eq('id', orderId)
+      const { error: updateError } = await stackstoreApi.updateOrder(orderId, {
+        status: newStatus
+      })
 
-      if (updateError) throw updateError
+      if (updateError) throw new Error(updateError)
 
       setSuccess('Order status updated successfully!')
       loadData()
@@ -170,12 +160,11 @@ const OrdersManagementPage: React.FC = () => {
       setError(null)
       setSuccess(null)
 
-      const { error: updateError } = await supabase
-        .from('orders')
-        .update({ payment_status: newPaymentStatus, updated_at: new Date().toISOString() })
-        .eq('id', orderId)
+      const { error: updateError } = await stackstoreApi.updateOrder(orderId, {
+        payment_status: newPaymentStatus
+      })
 
-      if (updateError) throw updateError
+      if (updateError) throw new Error(updateError)
 
       setSuccess('Payment status updated successfully!')
       loadData()

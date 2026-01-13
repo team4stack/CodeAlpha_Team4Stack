@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { supabase } from '@/lib/supabase/client'
+import { landingApi, coursesApi, teamApi } from '@/lib/api'
 import { retryWithBackoff } from '@/lib/utils/retry'
 
 type Row = { id?: number; title?: string; description?: string; role_text?: string; image_url?: string; is_head?: boolean; profile_image_url?: string; banner_image_url?: string; portfolio_url?: string; github_url?: string; primary_tag?: string; order_index?: number; active?: boolean; level?: string; duration?: string; price?: string; note?: string; features?: string; gradient?: string; emoji?: string; gradient_color?: string; contact?: string }
@@ -220,38 +220,72 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
   const load = useCallback(async () => {
       setLoading(true)
       setError(null)
-      const query = isReviews
-        ? supabase
-            .from(table)
-            .select('id,name,address,rating,comment,created_at,status,order_index,align')
-            .order('order_index', { ascending: true, nullsFirst: false })
-            .order('created_at', { ascending: false })
-        : isTeamLike
-          ? supabase
-              .from(table)
-              .select('id,name,role,description,image_url,profile_image_url,banner_image_url,portfolio_url,github_url,primary_tag,is_head,order_index,active')
-              .order('is_head', { ascending: false })
-              .order('order_index', { ascending: true })
-              .order('id', { ascending: false })
-         : isCourses
-            ? supabase.from(table).select('id,title,description,image_url,level,duration,price,note,features,gradient,order_index,active').order('order_index', { ascending: true }).order('id', { ascending: false })
-          : isServices
-            ? supabase.from(table).select('id,title,description,image_url,emoji,gradient_color,order_index,active,contact').order('order_index', { ascending: true, nullsFirst: false }).order('id', { ascending: false })
-          : (isContact || isFooter || isHero)
-              ? supabase
-                  .from('site_settings')
-                  .select('key,value')
-                  .in('key', [
-                    ...(isContact ? ['contact_address','contact_website','contact_phone','contact_map_src','contact_primary_name','contact_primary_tagline','contact_whatsapp','contact_socials_json'] : []),
-                    ...(isFooter ? ['footer_about_text','footer_socials_json','footer_version','footer_links_json'] : []),
-                    ...(isHero ? ['hero_projects_count','hero_services_count','hero_courses_count','hero_animated_texts','hero_bullet_points','navbar_links'] : [])
-                  ])
-              : isSupport
-                ? supabase.from('support_requests').select('id,reason,email,subject,message,user_id,status,viewed,created_at,updated_at').order('created_at', { ascending: false })
-                : isProjects
-                  ? supabase.from(table).select('id,title,description,image_url,order_index,video_id,github_url').order('order_index', { ascending: true, nullsFirst: false }).order('id', { ascending: false })
-                  : supabase.from(table).select('*').order('id', { ascending: false })
-      const { data, error } = await retryWithBackoff(async () => await query)
+      
+      let data: any = null
+      let error: any = null
+      
+      try {
+        if (isReviews) {
+          const result = await retryWithBackoff(async () => await landingApi.getReviews())
+          data = result.data || []
+          // Sort by order_index and created_at
+          data.sort((a: any, b: any) => {
+            if (a.order_index !== b.order_index) {
+              return (a.order_index || 999) - (b.order_index || 999)
+            }
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          })
+        } else if (isTeamLike) {
+          const result = table === 'team_members' 
+            ? await retryWithBackoff(async () => await teamApi.getTeamMembers())
+            : await retryWithBackoff(async () => await teamApi.getMentorProfiles())
+          data = result.data || []
+          // Sort by is_head, order_index, id
+          data.sort((a: any, b: any) => {
+            if (a.is_head !== b.is_head) return b.is_head ? 1 : -1
+            if (a.order_index !== b.order_index) return (a.order_index || 999) - (b.order_index || 999)
+            return (b.id || 0) - (a.id || 0)
+          })
+        } else if (isCourses) {
+          const result = await retryWithBackoff(async () => await coursesApi.getAllCourses())
+          data = result.data || []
+          data.sort((a: any, b: any) => {
+            if (a.order_index !== b.order_index) return (a.order_index || 999) - (b.order_index || 999)
+            return (b.id || 0) - (a.id || 0)
+          })
+        } else if (isServices) {
+          const result = await retryWithBackoff(async () => await landingApi.getServices())
+          data = result.data || []
+          data.sort((a: any, b: any) => {
+            if (a.order_index !== b.order_index) return (a.order_index || 999) - (b.order_index || 999)
+            return (b.id || 0) - (a.id || 0)
+          })
+        } else if (isContact || isFooter || isHero) {
+          const keys = [
+            ...(isContact ? ['contact_address','contact_website','contact_phone','contact_map_src','contact_primary_name','contact_primary_tagline','contact_whatsapp','contact_socials_json'] : []),
+            ...(isFooter ? ['footer_about_text','footer_socials_json','footer_version','footer_links_json'] : []),
+            ...(isHero ? ['hero_projects_count','hero_services_count','hero_courses_count','hero_animated_texts','hero_bullet_points','navbar_links'] : [])
+          ]
+          const result = await retryWithBackoff(async () => await landingApi.getSiteSettings(keys))
+          data = result.data || []
+        } else if (isSupport) {
+          const result = await retryWithBackoff(async () => await landingApi.getSupportRequests())
+          data = result.data || []
+          data.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        } else if (isProjects) {
+          const result = await retryWithBackoff(async () => await landingApi.getProjects())
+          data = result.data || []
+          data.sort((a: any, b: any) => {
+            if (a.order_index !== b.order_index) return (a.order_index || 999) - (b.order_index || 999)
+            return (b.id || 0) - (a.id || 0)
+          })
+        } else {
+          // Fallback for other tables - try to use appropriate API
+          error = new Error('Unknown content type')
+        }
+      } catch (err: any) {
+        error = err
+      }
       if (error) {
         if (process.env.NODE_ENV === 'development') {
         console.error('Error loading data:', error)

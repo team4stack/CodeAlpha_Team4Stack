@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useForm, SubmitHandler } from 'react-hook-form';
-import { supabase } from '@/lib/supabase/client';
+import { coursesApi } from '@/lib/api';
 import { CONTACT_PHONE_NUMBERS, CONTACT_EMAIL, getWhatsAppUrl } from '@/lib/utils/constants';
 import { devError } from '@/lib/utils/devUtils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -109,17 +109,13 @@ const AdmissionForm: React.FC = () => {
         setLoadingCourses(true);
         
         // Load all courses
-        const { data, error } = await supabase
-          .from('courses')
-          .select('id, title')
-          .order('order_index', { ascending: true })
-          .order('id', { ascending: false });
+        const { data, error } = await coursesApi.getAllCourses();
 
         if (error) {
           console.error('Error loading courses:', error);
           setAvailableCourses([]);
         } else if (data && data.length > 0) {
-          setAvailableCourses(data);
+          setAvailableCourses(data.map((c: any) => ({ id: c.id, title: c.title || c.name })));
         } else {
           // Fallback to default courses if no courses in database
           setAvailableCourses([
@@ -130,11 +126,9 @@ const AdmissionForm: React.FC = () => {
         
         // Load enrolled and rejected courses for logged-in user
         if (user && user.email) {
-          const { data: applicationData } = await supabase
-            .from('admission_form')
-            .select('course_name, course_name_2, approved, approved_1, approved_2, rejection_message_1, rejection_message_2, rejection_message')
-            .eq('email', user.email.toLowerCase().trim())
-            .order('created_at', { ascending: false });
+          const { data: applicationData } = await coursesApi.getAdmissionForms({
+            email: user.email.toLowerCase().trim()
+          });
           
           if (applicationData) {
             const enrolled = new Set<string>();
@@ -368,27 +362,22 @@ const AdmissionForm: React.FC = () => {
         age: sanitizeInput(data.age)
       };
       
-      // Store data in Supabase (image is NOT uploaded, only flag is saved)
-      const { error } = await supabase
-        .from('admission_form')
-        .insert([
-          {
-            name: sanitizedData.name,
-            father_name: sanitizedData.fatherName,
-            phone: sanitizedData.phone,
-            email: sanitizedData.email,
-            cnic: sanitizedData.cnic,
-            address: sanitizedData.address,
-            course_name: sanitizedData.courseName,
-            course_name_2: sanitizedData.courseName2 || null,
-            message: sanitizedData.message,
-            gender: sanitizedData.gender,
-            age: parseInt(sanitizedData.age, 10),
-            image_attached: !!paymentScreenshot, // Store flag only, not the image
-            viewed: false,
-            created_at: new Date()
-          }
-        ]);
+      // Store data via API (image is NOT uploaded, only flag is saved)
+      const { error } = await coursesApi.createAdmissionForm({
+        name: sanitizedData.name,
+        father_name: sanitizedData.fatherName,
+        phone: sanitizedData.phone,
+        email: sanitizedData.email,
+        cnic: sanitizedData.cnic,
+        address: sanitizedData.address,
+        course_name: sanitizedData.courseName,
+        course_name_2: sanitizedData.courseName2 || null,
+        message: sanitizedData.message,
+        gender: sanitizedData.gender,
+        age: parseInt(sanitizedData.age, 10),
+        image_attached: !!paymentScreenshot, // Store flag only, not the image
+        viewed: false
+      });
       
       if (error) {
         // No sensitive info in logs

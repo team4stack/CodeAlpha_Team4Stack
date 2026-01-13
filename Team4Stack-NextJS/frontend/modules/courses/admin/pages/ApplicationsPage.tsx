@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
-import { supabase } from '@/lib/supabase/client'
+import { coursesApi, usersApi } from '@/lib/api'
 
 type ApplicationRow = {
   id: number
@@ -46,31 +46,51 @@ const ApplicationsPage: React.FC = () => {
   const load = async () => {
     try {
       setError(null)
-      let query = supabase
-        .from('admission_form')
-        .select('*')
-        .order('created_at', { ascending: false })
       
+      // Get all admission forms
+      const { data, error: err } = await coursesApi.getAdmissionForms()
+      
+      if (err) throw new Error(err)
+      
+      // Filter based on status
+      let filteredData = data || []
       if (filter === 'pending') {
-        query = query.or('approved.is.null,approved.eq.false')
+        filteredData = filteredData.filter((app: any) => {
+          const hasNewApprovals = app.approved_1 !== undefined || app.approved_2 !== undefined
+          if (hasNewApprovals) {
+            return !(app.approved_1 === true || app.approved_2 === true) && 
+                   !(app.approved_1 === false && app.approved_2 === false)
+          }
+          return app.approved === null || app.approved === false
+        })
       } else if (filter === 'approved') {
-        query = query.eq('approved', true)
+        filteredData = filteredData.filter((app: any) => {
+          const hasNewApprovals = app.approved_1 !== undefined || app.approved_2 !== undefined
+          if (hasNewApprovals) {
+            return app.approved_1 === true || app.approved_2 === true
+          }
+          return app.approved === true
+        })
       } else if (filter === 'rejected') {
-        query = query.eq('approved', false).not('approved', 'is', null)
+        filteredData = filteredData.filter((app: any) => {
+          const hasNewApprovals = app.approved_1 !== undefined || app.approved_2 !== undefined
+          if (hasNewApprovals) {
+            return (app.approved_1 === false || app.approved_2 === false) && 
+                   !(app.approved_1 === true || app.approved_2 === true)
+          }
+          return app.approved === false
+        })
       }
       
-      const { data, error: err } = await query
-      
-      if (err) throw err
+      // Sort by created_at descending
+      filteredData.sort((a: any, b: any) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )
       
       // Check blocked status for each application and calculate overall approved status
       const applicationsWithBlockStatus = await Promise.all(
-        ((data as ApplicationRow[]) || []).map(async (app) => {
-          const { data: userData } = await supabase
-            .from('users')
-            .select('is_blocked')
-            .eq('email', app.email.toLowerCase().trim())
-            .maybeSingle()
+        (filteredData as ApplicationRow[]).map(async (app) => {
+          const { data: userData } = await usersApi.getUserByEmail(app.email.toLowerCase().trim())
           
           // Calculate overall approved status based on individual course approvals
           // Backward compatibility: if old approved field exists and new fields don't, use old field
@@ -94,7 +114,7 @@ const ApplicationsPage: React.FC = () => {
           
           return {
             ...app,
-            is_blocked: userData?.is_blocked || false,
+            is_blocked: userData?.data?.is_blocked || false,
             approved: hasApproved ? true : (allRejected ? false : null) // null means pending
           }
         })
@@ -115,18 +135,8 @@ const ApplicationsPage: React.FC = () => {
 
   useEffect(() => {
     load()
-
-    // Real-time subscription
-    const channel = supabase
-      .channel('applications_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'admission_form' }, () => {
-        load()
-      })
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
+    // Note: Real-time subscriptions removed - using API polling instead
+    // You can add polling if needed: setInterval(load, 5000)
   }, [filter])
 
   const approveApplication = async (id: number, email: string, courseNumber: 1 | 2) => {
@@ -135,46 +145,31 @@ const ApplicationsPage: React.FC = () => {
       const rejectionField = `rejection_message_${courseNumber}` as 'rejection_message_1' | 'rejection_message_2'
       
       // Update admission form - approve specific course
-      const { error: err } = await supabase
-        .from('admission_form')
-        .update({ 
-          [updateField]: true, 
-          [rejectionField]: null,
-          viewed: true 
-        })
-        .eq('id', id)
+      const { error: err } = await coursesApi.updateAdmissionForm(id, {
+        [updateField]: true,
+        [rejectionField]: null,
+        viewed: true
+      })
       
-      if (err) throw err
+      if (err) throw new Error(err)
 
       // Check if user exists, if not create one
-      const { data: existingUser } = await supabase
-        .from('users')
-        .select('id, email')
-        .eq('email', email.toLowerCase().trim())
-        .maybeSingle()
+      const { data: existingUser } = await usersApi.getUserByEmail(email.toLowerCase().trim())
 
-      if (!existingUser) {
+      if (!existingUser?.data) {
         // Create user account for student portal access
-        const { error: userErr } = await supabase
-          .from('users')
-          .insert([
-            {
-              email: email.toLowerCase().trim(),
-              username: email.split('@')[0].toLowerCase(),
-              is_blocked: false,
-              created_at: new Date().toISOString()
-            }
-          ])
+        const { error: userErr } = await usersApi.upsertUser({
+          email: email.toLowerCase().trim(),
+          username: email.split('@')[0].toLowerCase(),
+          is_blocked: false
+        })
 
-        if (userErr && userErr.code !== '23505') { // Ignore duplicate key error
+        if (userErr) {
           console.error('Error creating user:', userErr)
         }
       } else {
         // Ensure user is not blocked
-        await supabase
-          .from('users')
-          .update({ is_blocked: false })
-          .eq('email', email.toLowerCase().trim())
+        await usersApi.updateUser(existingUser.data.id, { is_blocked: false })
       }
       
       // Update local state
@@ -227,16 +222,13 @@ const ApplicationsPage: React.FC = () => {
       const updateField = `approved_${rejectingCourseNumber}` as 'approved_1' | 'approved_2'
       const rejectionField = `rejection_message_${rejectingCourseNumber}` as 'rejection_message_1' | 'rejection_message_2'
       
-      const { error: err } = await supabase
-        .from('admission_form')
-        .update({ 
-          [updateField]: false, 
-          [rejectionField]: rejectionMessage.trim(),
-          viewed: true
-        })
-        .eq('id', rejectingId)
+      const { error: err } = await coursesApi.updateAdmissionForm(rejectingId, {
+        [updateField]: false,
+        [rejectionField]: rejectionMessage.trim(),
+        viewed: true
+      })
       
-      if (err) throw err
+      if (err) throw new Error(err)
       
       // Update local state
       setRows(rows.map(r => {
