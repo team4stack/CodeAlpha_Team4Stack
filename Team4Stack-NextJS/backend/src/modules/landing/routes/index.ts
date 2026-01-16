@@ -24,6 +24,8 @@ router.delete('/services/:id', landingController.deleteService);
 // Site Settings
 router.get('/settings', landingController.getSiteSettings);
 router.post('/settings', landingController.upsertSiteSetting);
+router.post('/settings/bulk', landingController.upsertSiteSettings);
+router.delete('/settings', landingController.deleteSiteSettings);
 
 // Support Requests
 router.get('/support', landingController.getSupportRequests);

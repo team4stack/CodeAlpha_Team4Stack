@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import StatCard from '../../../../components/admin/shared/StatCard'
-import { supabase } from '@/lib/supabase/client'
+import { stackstoreApi } from '@/lib/api'
 
 const StackStoreAdminDashboard: React.FC = () => {
   const router = useRouter()
@@ -24,51 +24,25 @@ const StackStoreAdminDashboard: React.FC = () => {
       try {
        setLoading(true)
 
-        // Fetch all stats in parallel with error handling
-        const fetchCount = async (table: string, filter?: { column: string; value: any }) => {
-          try {
-            let query = supabase.from(table).select('*', { count: 'exact', head: true })
-            if (filter) {
-              query = query.eq(filter.column, filter.value)
-            }
-            const { count, error } = await query
-            if (error) {
-              // Table might not exist, return 0
-              if (error.code === 'PGRST116' || error.message.includes('does not exist')) {
-                return 0
-              }
-              throw error
-            }
-            return count || 0
-          } catch (err: any) {
-            // If table doesn't exist, return 0
-            if (err.code === 'PGRST116' || err.message?.includes('does not exist')) {
-              return 0
-            }
-            console.warn(`Error fetching ${table}:`, err)
-            return 0
-          }
-        }
-
-        const [
-          totalProducts,
-          totalCategories,
-          totalOrders,
-          totalSellers,
-          pendingOrders,
-          completedOrders,
-          activeProducts,
-          inactiveProducts,
-        ] = await Promise.all([
-          fetchCount('products'),
-          fetchCount('categories'),
-          fetchCount('orders'),
-          fetchCount('sellers'),
-          fetchCount('orders', { column: 'status', value: 'pending' }),
-          fetchCount('orders', { column: 'status', value: 'completed' }),
-          fetchCount('products', { column: 'active', value: true }),
-          fetchCount('products', { column: 'active', value: false }),
+        // Fetch all stats via API
+        const [productsResult, categoriesResult, ordersResult] = await Promise.all([
+          stackstoreApi.getProducts().catch(() => ({ data: [] as any[] })),
+          stackstoreApi.getCategories().catch(() => ({ data: [] as any[] })),
+          stackstoreApi.getOrders().catch(() => ({ data: [] as any[] }))
         ])
+
+        const allProducts = Array.isArray(productsResult.data) ? productsResult.data : []
+        const allCategories = Array.isArray(categoriesResult.data) ? categoriesResult.data : []
+        const allOrders = Array.isArray(ordersResult.data) ? ordersResult.data : []
+
+        const totalProducts = allProducts.length
+        const totalCategories = allCategories.length
+        const totalOrders = allOrders.length
+        const totalSellers = 0 // Sellers table might not have API endpoint yet
+        const pendingOrders = allOrders.filter((o: any) => o.status === 'pending').length
+        const completedOrders = allOrders.filter((o: any) => o.status === 'completed').length
+        const activeProducts = allProducts.filter((p: any) => p.active === true).length
+        const inactiveProducts = allProducts.filter((p: any) => p.active === false).length
 
         setStats({
           totalProducts,

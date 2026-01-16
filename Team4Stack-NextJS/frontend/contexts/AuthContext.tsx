@@ -105,7 +105,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loadSession = useCallback(async () => {
     setLoading(true)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
+      // Check if Supabase is properly configured (not placeholder)
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      
+      // If Supabase keys are missing, skip auth (for admin-only mode)
+      if (!supabaseUrl || !supabaseKey || supabaseUrl.includes('placeholder')) {
+        setUser(null)
+        setLoading(false)
+        return
+      }
+
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      
+      // If session check fails, don't sign out - just set user to null
+      if (sessionError) {
+        console.warn('Session check failed:', sessionError.message)
+        setUser(null)
+        setLoading(false)
+        return
+      }
+
       if (!session?.user) {
         setUser(null)
         setLoading(false)
@@ -134,6 +154,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const mapped = mapProfile(session.user, profile)
         setUser(mapped)
       }
+    } catch (err: any) {
+      // Handle any errors gracefully - don't crash the app
+      console.warn('Error loading session:', err.message)
+      setUser(null)
     } finally {
       setLoading(false)
     }
@@ -141,10 +165,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     loadSession()
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, _session) => {
-      loadSession()
-    })
-    return () => { sub.subscription.unsubscribe() }
+    
+    // Only subscribe to auth changes if Supabase is properly configured
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    
+    if (supabaseUrl && supabaseKey && !supabaseUrl.includes('placeholder')) {
+      const { data: sub } = supabase.auth.onAuthStateChange((_event, _session) => {
+        // Only reload session if we have a valid session or explicit sign out
+        if (_event === 'SIGNED_OUT' || _event === 'SIGNED_IN' || _event === 'TOKEN_REFRESHED') {
+          loadSession()
+        }
+      })
+      return () => { sub?.subscription?.unsubscribe() }
+    }
   }, [loadSession])
 
   // Check if user requires username (logged in but no username set)

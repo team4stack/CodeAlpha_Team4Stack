@@ -1,8 +1,8 @@
 'use client'
 
 import React, { useEffect, useState, useCallback } from 'react'
-import { supabase } from '@/lib/supabase/client'
 import { useTheme } from '@/contexts/ThemeContext'
+import { coursesApi } from '@/lib/api'
 import toast from 'react-hot-toast'
 
 type Video = {
@@ -55,26 +55,20 @@ const VideosManagementPage: React.FC = () => {
       setLoading(true)
       setError(null)
 
-      // Load courses with video counts
-      const { data: coursesData, error: coursesError } = await supabase
-        .from('courses')
-        .select('id, title')
-        .order('order_index', { ascending: true })
-        .order('id', { ascending: false })
+      // Load courses with video counts via API
+      const coursesResult = await coursesApi.getAllCourses()
+      if (coursesResult.error) throw new Error(coursesResult.error)
+      const coursesData = coursesResult.data || []
 
-      if (coursesError) throw coursesError
-
-      // Get video count for each course
+      // Get video count for each course via API
       const coursesWithCounts = await Promise.all(
-        (coursesData || []).map(async (course) => {
-          const { count } = await supabase
-            .from('videos')
-            .select('*', { count: 'exact', head: true })
-            .eq('course_id', course.id)
+        coursesData.map(async (course: any) => {
+          const videosResult = await coursesApi.getCourseVideos(parseInt(course.id))
+          const videoCount = videosResult.data?.length || 0
           
           return {
             ...course,
-            video_count: count || 0
+            video_count: videoCount
           }
         })
       )
@@ -99,21 +93,22 @@ const VideosManagementPage: React.FC = () => {
       setLoading(true)
       setError(null)
 
-      let query = supabase
-        .from('videos')
-        .select('*')
-        .eq('course_id', filterCourse)
+      // Load videos via API
+      const videosResult = await coursesApi.getCourseVideos(parseInt(filterCourse))
+      if (videosResult.error) throw new Error(videosResult.error)
+      
+      let videosData = videosResult.data || []
 
+      // Filter by search query if provided
       if (searchQuery.trim()) {
-        query = query.or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
+        const searchLower = searchQuery.toLowerCase()
+        videosData = videosData.filter((video: any) => 
+          video.title?.toLowerCase().includes(searchLower) ||
+          video.description?.toLowerCase().includes(searchLower)
+        )
       }
 
-      const { data: videosData, error: videosError } = await query
-        .order('order_index', { ascending: true })
-        .order('id', { ascending: false })
-
-      if (videosError) throw videosError
-      setVideos(videosData || [])
+      setVideos(videosData)
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to load videos'
       setError(errorMessage)
@@ -131,24 +126,7 @@ const VideosManagementPage: React.FC = () => {
     }
   }, [filterCourse, loadCourses, loadVideos])
 
-  // Separate effect for real-time subscription
-  useEffect(() => {
-    const channel = supabase
-      .channel('videos_realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'videos' }, () => {
-        if (filterCourse) {
-          loadVideos()
-          loadCourses() // Refresh counts
-        } else {
-          loadCourses()
-        }
-      })
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [filterCourse, loadCourses, loadVideos])
+  // Note: Real-time subscriptions removed - using backend API
 
   const handleCourseSelect = (courseId: string) => {
     setFilterCourse(courseId)
@@ -207,35 +185,29 @@ const VideosManagementPage: React.FC = () => {
       setSuccess(null)
 
       if (editingVideo) {
-        // Update existing video
-        const { error: updateError } = await supabase
-          .from('videos')
-          .update({
-            course_id: formData.course_id,
-            title: formData.title,
-            description: formData.description || null,
-            video_url: formData.video_url || null,
-            order_index: formData.order_index || formData.order,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', editingVideo.id)
+        // Update existing video via API
+        const updateResult = await coursesApi.updateVideo(parseInt(editingVideo.id), {
+          course_id: parseInt(formData.course_id),
+          title: formData.title,
+          description: formData.description || null,
+          video_url: formData.video_url || null,
+          order_index: formData.order_index || formData.order
+        })
 
-        if (updateError) throw updateError
+        if (updateResult.error) throw new Error(updateResult.error)
         toast.success('Video updated successfully!')
         setSuccess('Video updated successfully!')
       } else {
-        // Create new video
-        const { error: insertError } = await supabase
-          .from('videos')
-          .insert({
-            course_id: formData.course_id,
-            title: formData.title,
-            description: formData.description || null,
-            video_url: formData.video_url || null,
-            order_index: formData.order_index || formData.order
-          })
+        // Create new video via API
+        const createResult = await coursesApi.createVideo({
+          course_id: parseInt(formData.course_id),
+          title: formData.title,
+          description: formData.description || null,
+          video_url: formData.video_url || null,
+          order_index: formData.order_index || formData.order
+        })
 
-        if (insertError) throw insertError
+        if (createResult.error) throw new Error(createResult.error)
         toast.success('Video added successfully!')
         setSuccess('Video added successfully!')
       }
@@ -261,12 +233,9 @@ const VideosManagementPage: React.FC = () => {
       setError(null)
       setSuccess(null)
 
-      const { error: deleteError } = await supabase
-        .from('videos')
-        .delete()
-        .eq('id', videoId)
-
-      if (deleteError) throw deleteError
+      // Delete video via API
+      const deleteResult = await coursesApi.deleteVideo(parseInt(videoId))
+      if (deleteResult.error) throw new Error(deleteResult.error)
 
       toast.success('Video deleted successfully!')
       setSuccess('Video deleted successfully!')

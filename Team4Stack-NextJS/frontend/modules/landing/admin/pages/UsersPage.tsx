@@ -1,8 +1,8 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase/client'
 import { useTheme } from '@/contexts/ThemeContext'
+import { superadminApi } from '@/lib/api'
 
 type Row = { id: string; name: string | null; email: string | null; avatar_url: string | null; is_blocked: boolean | null; created_at: string }
 
@@ -14,16 +14,27 @@ const UsersPage: React.FC = () => {
 
   const load = async () => {
     setLoading(true); setError(null)
-    const { data, error } = await supabase.from('users').select('*').order('created_at', { ascending: false })
-    if (error) setError(error.message)
-    setRows(data || [])
-    setLoading(false)
+    try {
+      const result = await superadminApi.getUsers()
+      if (result.error) {
+        setError(result.error)
+      } else {
+        // Sort by created_at descending
+        const sortedData = (result.data || []).sort((a: any, b: any) => 
+          new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+        )
+        setRows(sortedData)
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to load users')
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
     load()
-    const ch = supabase.channel('users_realtime').on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => load()).subscribe()
-    return () => { try { supabase.removeChannel(ch) } catch {} }
+    // Note: Real-time subscriptions removed - using backend API
   }, [])
 
   return (
@@ -70,15 +81,16 @@ const UsersPage: React.FC = () => {
                           const action = newBlockedStatus ? 'block' : 'unblock'
                           const ok = window.confirm(`Are you sure you want to ${action} this user?`)
                           if (!ok) return
-                          const { error } = await supabase
-                            .from('users')
-                            .update({ is_blocked: newBlockedStatus })
-                            .eq('id', r.id)
-                          if (error) {
-                            setError(error.message)
-                          } else {
-                            setError(null)
-                            load()
+                          try {
+                            const result = await superadminApi.updateUser(r.id, { is_blocked: newBlockedStatus })
+                            if (result.error) {
+                              setError(result.error)
+                            } else {
+                              setError(null)
+                              load()
+                            }
+                          } catch (err: any) {
+                            setError(err.message || 'Failed to update user')
                           }
                         }}
                         className={`px-4 py-2 rounded-lg text-sm font-bold shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-300 ${
@@ -97,9 +109,16 @@ const UsersPage: React.FC = () => {
                         onClick={async () => {
                           const ok = window.confirm('Delete this user?')
                           if (!ok) return
-                          const { error } = await supabase.from('users').delete().eq('id', r.id)
-                          if (error) setError(error.message)
-                          else load()
+                          try {
+                            const result = await superadminApi.deleteUser(r.id)
+                            if (result.error) {
+                              setError(result.error)
+                            } else {
+                              load()
+                            }
+                          } catch (err: any) {
+                            setError(err.message || 'Failed to delete user')
+                          }
                         }}
                       >
                         Delete

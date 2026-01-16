@@ -70,18 +70,7 @@ const Navbar: React.FC = () => {
     };
 
     loadNavbarLinks();
-
-    // Real-time subscription
-    const channel = supabase
-      .channel('navbar_links')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'site_settings', filter: 'key=eq.navbar_links' }, () => {
-        loadNavbarLinks();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    // Note: Real-time subscriptions removed - using backend API
   }, []);
 
   // Close mobile menu when resizing to desktop

@@ -50,21 +50,7 @@ const Services: React.FC = () => {
     };
 
     loadServices();
-
-    // Real-time subscription for services changes
-    const channel = supabase
-      .channel('services-changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'services' },
-        () => {
-          loadServices();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    // Note: Real-time subscriptions removed - using backend API
   }, []);
 
   // Handle ESC key for modal

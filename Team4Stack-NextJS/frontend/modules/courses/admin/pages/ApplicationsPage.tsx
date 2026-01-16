@@ -175,10 +175,15 @@ const ApplicationsPage: React.FC = () => {
 
         if (createResult.error) {
           console.error('Error creating user:', createResult.error)
+          // Don't fail the approval if user creation fails - just log it
+          toast.error(`Application approved, but failed to create user account: ${createResult.error}`)
         }
       } else {
         // Ensure user is not blocked
-        await usersApi.updateUser(userResult.data.id, { is_blocked: false })
+        const updateResult = await usersApi.updateUser(userResult.data.id, { is_blocked: false })
+        if (updateResult.error) {
+          console.error('Error updating user:', updateResult.error)
+        }
       }
       
       // Update local state

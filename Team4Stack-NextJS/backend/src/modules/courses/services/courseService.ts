@@ -185,6 +185,36 @@ export class CourseService {
     return data || [];
   }
 
+  // Get all progress records (for admin)
+  async getAllProgress(filters?: { courseId?: string; userId?: string; completed?: boolean }): Promise<ProgressRecord[]> {
+    try {
+      let query = supabaseAdmin
+        .from('progress_records')
+        .select('*');
+
+      if (filters?.courseId) {
+        query = query.eq('course_id', filters.courseId);
+      }
+      if (filters?.userId) {
+        query = query.eq('user_id', filters.userId);
+      }
+      if (filters?.completed !== undefined) {
+        query = query.eq('completed', filters.completed);
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching progress records:', error);
+        throw error;
+      }
+      return data || [];
+    } catch (error: any) {
+      console.error('getAllProgress error:', error);
+      throw error;
+    }
+  }
+
   // Update progress
   async updateProgress(progress: Partial<ProgressRecord>): Promise<ProgressRecord> {
     const { data, error } = await supabaseAdmin

@@ -68,18 +68,7 @@ const UsersManagementPage: React.FC = () => {
 
   useEffect(() => {
     loadUsers()
-
-    // Real-time subscription
-    const channel = supabase
-      .channel('users_realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => {
-        loadUsers()
-      })
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
+    // Note: Real-time subscriptions removed - using backend API
   }, [loadUsers])
 
   const handleBlockToggle = async (userId: string, currentStatus: boolean) => {

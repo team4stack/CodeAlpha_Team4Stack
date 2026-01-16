@@ -28,15 +28,8 @@ const AdminHeader: React.FC = () => {
     }
     load()
     const t = setInterval(() => setNow(new Date().toLocaleString()), 1000)
-    // Realtime update on settings change
-    const ch = supabase
-      .channel('admin_header_avatar')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'site_settings', filter: 'key=eq.admin_avatar_url' }, (payload) => {
-        const v = (payload.new as any)?.value as string | undefined
-        if (v) setAvatarUrl(sanitize(v))
-      })
-      .subscribe()
-    return () => { try { supabase.removeChannel(ch) } catch {} ; clearInterval(t) }
+    // Note: Real-time subscriptions removed - using backend API
+    return () => { clearInterval(t) }
   }, [])
 
   const prettyTitle = () => {

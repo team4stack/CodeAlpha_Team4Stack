@@ -94,18 +94,7 @@ const AuditLogsPage: React.FC = () => {
 
   useEffect(() => {
     loadLogs()
-
-    // Real-time subscription (if table exists)
-    const channel = supabase
-      .channel('audit_logs_realtime')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'audit_logs' }, () => {
-        loadLogs()
-      })
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
+    // Note: Real-time subscriptions removed - using backend API
   }, [loadLogs])
 
   const getActionColor = (action: string) => {

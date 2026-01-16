@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from 'react'
 import ProfileAvatar from '../../../shared/components/ProfileAvatar';
-import { supabase } from '@/lib/supabase/client'
 import { usePathname } from 'next/navigation'
+import { landingApi } from '@/lib/api'
 
 const AdminHeader: React.FC = () => {
   const [avatarUrl, setAvatarUrl] = useState<string>('')
@@ -20,24 +20,20 @@ const AdminHeader: React.FC = () => {
       return url
     }
     const load = async () => {
-      const { data } = await supabase
-        .from('site_settings')
-        .select('key,value')
-        .eq('key', 'admin_avatar_url')
-        .maybeSingle()
-      if (data?.value) setAvatarUrl(sanitize(data.value))
+      try {
+        const result = await landingApi.getSiteSettings(['admin_avatar_url'])
+        if (result.data && Array.isArray(result.data)) {
+          const setting = result.data.find((s: any) => s.key === 'admin_avatar_url')
+          if (setting?.value) setAvatarUrl(sanitize(setting.value))
+        }
+      } catch (err) {
+        // Ignore errors
+      }
     }
     load()
     const t = setInterval(() => setNow(new Date().toLocaleString()), 1000)
-    // Realtime update on settings change
-    const ch = supabase
-      .channel('admin_header_avatar')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'site_settings', filter: 'key=eq.admin_avatar_url' }, (payload) => {
-        const v = (payload.new as any)?.value as string | undefined
-        if (v) setAvatarUrl(sanitize(v))
-      })
-      .subscribe()
-    return () => { try { supabase.removeChannel(ch) } catch {} ; clearInterval(t) }
+    // Note: Real-time subscriptions removed - using backend API
+    return () => { clearInterval(t) }
   }, [])
 
   const prettyTitle = () => {

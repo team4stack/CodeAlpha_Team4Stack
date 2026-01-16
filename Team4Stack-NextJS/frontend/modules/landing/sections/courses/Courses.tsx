@@ -1,7 +1,6 @@
 'use client'
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { supabase } from '@/lib/supabase/client';
 
 const Courses: React.FC = () => {
   const [noticeOpen, setNoticeOpen] = useState(false);
@@ -43,17 +42,18 @@ const Courses: React.FC = () => {
     }
   ]), []);
   
-  // Load courses from Supabase if enabled
+  // Load courses via API
   useEffect(() => {
-    const useSupabase = true;
-    if (!useSupabase) return;
     (async () => {
-      const { data, error } = await supabase
-        .from('courses')
-        .select('id,title,description,image_url,level,duration,price,note,features,gradient')
-        .order('order_index', { ascending: true })
-        .order('id', { ascending: false });
-      if (!error && data) setDbCourses(data as any);
+      try {
+        const { coursesApi } = await import('@/lib/api');
+        const result = await coursesApi.getAllCourses();
+        if (!result.error && result.data) {
+          setDbCourses(result.data as any);
+        }
+      } catch (err) {
+        console.error('Error loading courses:', err);
+      }
     })();
   }, []);
   const openBooking = (courseTitle: string) => {

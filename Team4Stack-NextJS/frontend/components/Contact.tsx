@@ -237,11 +237,7 @@ const Contact: React.FC = () => {
       }
     };
     load();
-    const channel = supabase
-      .channel('site_settings_contact_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'site_settings' }, () => load())
-      .subscribe();
-    return () => { try { supabase.removeChannel(channel); } catch {} };
+    // Note: Real-time subscriptions removed - using backend API
   }, []);
 
   // Prefill course name from selection (set by Courses Book Now)

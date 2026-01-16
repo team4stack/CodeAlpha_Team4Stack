@@ -442,12 +442,9 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
                   // Update database if duration is different (don't reload to avoid re-render)
                   if (selectedVideo.duration !== duration) {
                     (async () => {
-                      const { error } = await supabase
-                        .from('videos')
-                        .update({ duration: Math.floor(duration) })
-                        .eq('id', selectedVideoId);
-                      if (error) {
-                        console.log('Could not update video duration:', error);
+                      const result = await coursesApi.updateVideo(parseInt(selectedVideoId), { duration: Math.floor(duration) });
+                      if (result.error) {
+                        console.log('Could not update video duration:', result.error);
                       }
                     })();
                   }
@@ -598,16 +595,13 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
         if (currentVideo && (!currentVideo.duration || currentVideo.duration !== totalSeconds)) {
           // Optionally update database, but don't block UI
           (async () => {
-            const { error } = await supabase
-              .from('videos')
-              .update({ duration: totalSeconds })
-              .eq('id', selectedVideoId);
+            const result = await coursesApi.updateVideo(parseInt(selectedVideoId), { duration: totalSeconds });
             
-            if (!error) {
+            if (!result.error) {
               // Reload videos to get updated duration
               loadCourseData();
             } else {
-              console.log('Could not update video duration:', error);
+              console.log('Could not update video duration:', result.error);
             }
           })();
         }

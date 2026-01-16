@@ -1,8 +1,8 @@
 'use client'
 
 import React, { useEffect, useState, useCallback } from 'react'
-import { supabase } from '@/lib/supabase/client'
 import { useTheme } from '@/contexts/ThemeContext'
+import { coursesApi } from '@/lib/api'
 
 type ProgressRecord = {
   id: string
@@ -85,42 +85,35 @@ const StudentProgressPage: React.FC = () => {
       setLoading(true)
       setError(null)
 
-      // Load courses
-      const { data: coursesData, error: coursesError } = await supabase
-        .from('courses')
-        .select('id, title')
-        .order('order_index', { ascending: true })
-        .order('id', { ascending: false })
+      // Load courses via API
+      const coursesResult = await coursesApi.getAllCourses()
+      if (coursesResult.error) throw new Error(coursesResult.error)
+      const coursesData = coursesResult.data || []
+      // Map to only id and title for this component
+      setCourses(coursesData.map((c: any) => ({ id: c.id, title: c.title || c.name })))
 
-      if (coursesError) throw coursesError
-      setCourses(coursesData || [])
+      // Load progress records via API
+      const progressResult = await coursesApi.getAllProgress(
+        filterCourse !== 'all' ? { courseId: filterCourse } : undefined
+      )
+      if (progressResult.error) throw new Error(progressResult.error)
+      setProgressRecords(progressResult.data || [])
+      const progressData = progressResult.data || []
 
-      // Load progress records
-      let query = supabase
-        .from('progress_records')
-        .select('*')
-
-      if (filterCourse !== 'all') {
-        query = query.eq('course_id', filterCourse)
-      }
-
-      const { data: progressData, error: progressError } = await query
-        .order('created_at', { ascending: false })
-
-      if (progressError) throw progressError
-      setProgressRecords(progressData || [])
-
-      // Load users
+      // Load users via API
       const userIds = [...new Set(progressData?.map((p: ProgressRecord) => p.user_id) || [])]
       if (userIds.length > 0) {
-        const { data: usersData, error: usersError } = await supabase
-          .from('users')
-          .select('id, email, name')
-          .in('id', userIds)
-
-        if (usersError) throw usersError
+        const { usersApi } = await import('@/lib/api');
+        const usersResult = await Promise.all(
+          userIds.map(async (userId) => {
+            const result = await usersApi.getUserById(userId);
+            return result.data;
+          })
+        );
+        const usersData = usersResult.filter(Boolean) as User[];
+        
         const usersMap: Record<string, User> = {}
-        usersData?.forEach((user: User) => {
+        usersData.forEach((user: User) => {
           usersMap[user.id] = user
         })
         setUsers(usersMap)
@@ -148,8 +141,8 @@ const StudentProgressPage: React.FC = () => {
       }
 
       // Calculate student-wise progress (always show students view)
+      // Load all students with approved courses from admission_form via API
       {
-        // Load all students with approved courses from admission_form via API
         const { coursesApi } = await import('@/lib/api');
         const allAppsResult = await coursesApi.getAdmissionForms();
         
@@ -189,15 +182,11 @@ const StudentProgressPage: React.FC = () => {
         })
         const applicationsData = Array.from(uniqueAppsMap.values())
 
-        if (appsError) {
-          console.error('Error loading applications:', appsError)
-          setError('Failed to load student applications: ' + (appsError.message || 'Unknown error'))
-        } else {
-          // Get all unique user emails who have approved courses
-          const studentEmails = new Set<string>()
-          const studentEnrollments: Record<string, Set<string>> = {} // email -> Set of course names
+        // Get all unique user emails who have approved courses
+        const studentEmails = new Set<string>()
+        const studentEnrollments: Record<string, Set<string>> = {} // email -> Set of course names
 
-          applicationsData?.forEach((app: any) => {
+        applicationsData?.forEach((app: any) => {
             if (!app.email) return
             
             const hasNewApprovals = app.approved_1 !== undefined || app.approved_2 !== undefined
@@ -230,51 +219,55 @@ const StudentProgressPage: React.FC = () => {
             }
           })
 
-          // Get user IDs for these emails
-          const { data: usersData, error: usersError } = await supabase
-            .from('users')
-            .select('id, email, name')
-            .in('email', Array.from(studentEmails))
-
-          if (usersError) {
-            console.error('Error loading users:', usersError)
-          } else {
-            // Get video counts per course
-            const { data: videosData, error: videosError } = await supabase
-              .from('videos')
-              .select('id, course_id')
-            
-            const videosByCourse: Record<string, number> = {}
-            videosData?.forEach((video: any) => {
-              if (video.course_id) {
-                const courseId = String(video.course_id)
-                videosByCourse[courseId] = (videosByCourse[courseId] || 0) + 1
-              }
+          // Get user IDs for these emails via API
+          const { usersApi } = await import('@/lib/api');
+          const usersResult = await Promise.all(
+            Array.from(studentEmails).map(async (email) => {
+              const result = await usersApi.getUserByEmail(email);
+              return result.data;
             })
+          );
+          const usersData = usersResult.filter(Boolean);
 
-            // Extract CNIC numbers from applications (do this early, before roll number generation)
-            // CNIC is mandatory, so it should always be present
-            const cnicMap: Record<string, string> = {} // email -> cnic
-            applicationsData?.forEach((app: any) => {
-              if (app.email) {
-                const userEmail = app.email.toLowerCase().trim()
-                // Use CNIC from application if available, keep first one found
-                if (app.cnic && !cnicMap[userEmail]) {
-                  cnicMap[userEmail] = app.cnic
-                }
+          // Get video counts per course via API - get videos for all courses
+          const videosByCourse: Record<string, number> = {}
+          const videosPromises = coursesData.map(async (course: any) => {
+            const videosResult = await coursesApi.getCourseVideos(parseInt(course.id));
+            return videosResult.data || [];
+          });
+          const allVideosArrays = await Promise.all(videosPromises);
+          const videosData = allVideosArrays.flat();
+          
+          videosData.forEach((video: any) => {
+            if (video.course_id) {
+              const courseId = String(video.course_id)
+              videosByCourse[courseId] = (videosByCourse[courseId] || 0) + 1
+            }
+          })
+
+          // Extract CNIC numbers from applications (do this early, before roll number generation)
+          // CNIC is mandatory, so it should always be present
+          const cnicMap: Record<string, string> = {} // email -> cnic
+          applicationsData?.forEach((app: any) => {
+            if (app.email) {
+              const userEmail = app.email.toLowerCase().trim()
+              // Use CNIC from application if available, keep first one found
+              if (app.cnic && !cnicMap[userEmail]) {
+                cnicMap[userEmail] = app.cnic
               }
-            })
+            }
+          })
 
-            // Generate roll numbers for each student per course
-            // Roll number format: T4S-{courseId}-{sequence}
-            const rollNumberMap: Record<string, Record<string, string>> = {} // email -> courseId -> rollNumber
-            const courseSequenceCount: Record<string, number> = {} // courseId -> count
-            const processedStudentCourses: Set<string> = new Set() // email-courseId combination
-            
-            // Collect all approved courses first, then generate roll numbers
-            const approvedCourseList: Array<{ email: string; courseId: string; appId: string }> = []
-            
-            applicationsData?.forEach((app: any) => {
+          // Generate roll numbers for each student per course
+          // Roll number format: T4S-{courseId}-{sequence}
+          const rollNumberMap: Record<string, Record<string, string>> = {} // email -> courseId -> rollNumber
+          const courseSequenceCount: Record<string, number> = {} // courseId -> count
+          const processedStudentCourses: Set<string> = new Set() // email-courseId combination
+          
+          // Collect all approved courses first, then generate roll numbers
+          const approvedCourseList: Array<{ email: string; courseId: string; appId: string }> = []
+          
+          applicationsData?.forEach((app: any) => {
               if (!app.email) return
               const userEmail = app.email.toLowerCase().trim()
               
@@ -307,146 +300,143 @@ const StudentProgressPage: React.FC = () => {
                   }
                 }
               }
-            })
+          })
+          
+          // Generate roll numbers for each unique student-course combination
+          approvedCourseList.forEach(({ email, courseId, appId }) => {
+            const key = `${email}-${courseId}`
             
-            // Generate roll numbers for each unique student-course combination
-            approvedCourseList.forEach(({ email, courseId, appId }) => {
-              const key = `${email}-${courseId}`
+            if (!processedStudentCourses.has(key)) {
+              processedStudentCourses.add(key)
               
-              if (!processedStudentCourses.has(key)) {
-                processedStudentCourses.add(key)
-                
-                if (!rollNumberMap[email]) {
-                  rollNumberMap[email] = {}
-                }
-                
-                // Initialize sequence count for this course if not exists
-                if (!courseSequenceCount[courseId]) {
-                  courseSequenceCount[courseId] = 0
-                }
-                
-                // Generate roll number if not already exists
-                if (!rollNumberMap[email][courseId]) {
-                  courseSequenceCount[courseId]++
-                  const sequence = String(courseSequenceCount[courseId]).padStart(3, '0')
-                  rollNumberMap[email][courseId] = `T4S-${courseId}-${sequence}`
-                  
-                  // Save roll number to database via API (update the application)
-                  const { coursesApi } = await import('@/lib/api');
-                  coursesApi.updateAdmissionForm(appId, { roll_number: rollNumberMap[email][courseId] })
-                    .then(() => {})
-                    .catch(() => {})
-                }
+              if (!rollNumberMap[email]) {
+                rollNumberMap[email] = {}
               }
-            })
-
-            // Build student progress data
-            const studentProgressData: StudentProgress[] = (usersData || []).map((user: User) => {
-              const userEmail = (user.email || '').toLowerCase().trim()
-              const enrolledCourseNames = Array.from(studentEnrollments[userEmail] || [])
               
-              // Find course IDs for enrolled course names
-              const enrolledCourses = enrolledCourseNames.map((courseName) => {
-                const course = coursesData?.find(
-                  c => (c.title || c.name || '').toLowerCase().trim() === courseName.toLowerCase().trim()
-                )
-                return course ? { courseId: course.id, courseName: course.title || course.name || courseName } : null
-              }).filter(Boolean) as { courseId: string; courseName: string }[]
+              // Initialize sequence count for this course if not exists
+              if (!courseSequenceCount[courseId]) {
+                courseSequenceCount[courseId] = 0
+              }
               
-              // Get roll number (use first enrolled course's roll number as primary)
-              const primaryRollNumber = enrolledCourses.length > 0 
-                ? rollNumberMap[userEmail]?.[String(enrolledCourses[0].courseId)] 
-                : undefined
-              
-              // Get CNIC number
-              const studentCnic = cnicMap[userEmail] || undefined
-
-              // Calculate progress for each enrolled course
-              const courseProgress = enrolledCourses.map(({ courseId, courseName }) => {
-                // Ensure courseId is string for comparison
-                const courseIdStr = String(courseId)
-                const totalVideos = videosByCourse[courseIdStr] || 0
+              // Generate roll number if not already exists
+              if (!rollNumberMap[email][courseId]) {
+                courseSequenceCount[courseId]++
+                const sequence = String(courseSequenceCount[courseId]).padStart(3, '0')
+                rollNumberMap[email][courseId] = `T4S-${courseId}-${sequence}`
                 
-                // Filter progress records - match both course_id and user_id, and completed status
-                // Note: video_id should not be null for completed videos
-                const courseProgressRecords = progressData?.filter(
-                  (p: ProgressRecord) => {
-                    const pCourseId = String(p.course_id)
-                    const pUserId = String(p.user_id)
-                    const uId = String(user.id)
-                    // Match course_id, user_id, completed=true, and video_id exists
-                    return pCourseId === courseIdStr && pUserId === uId && p.completed === true && p.video_id != null
-                  }
-                ) || []
-                
-                const completedVideos = courseProgressRecords.length
-                const progressPercentage = totalVideos > 0 ? Math.round((completedVideos / totalVideos) * 100) : 0
+                // Save roll number to database via API (update the application)
+                coursesApi.updateAdmissionForm(appId, { roll_number: rollNumberMap[email][courseId] })
+                  .then(() => {})
+                  .catch(() => {})
+              }
+            }
+          })
 
-                // Debug logging (can be removed later)
-                if (completedVideos > 0 || totalVideos > 0) {
-                  console.log(`Progress for ${user.email} - ${courseName}:`, {
-                    courseId: courseIdStr,
-                    totalVideos,
-                    completedVideos,
-                    progressPercentage,
-                    progressRecordsCount: courseProgressRecords.length,
-                    allProgressForCourse: progressData?.filter((p: ProgressRecord) => String(p.course_id) === courseIdStr).length
-                  })
+          // Build student progress data
+          const studentProgressData: StudentProgress[] = (usersData || []).map((user: User) => {
+            const userEmail = (user.email || '').toLowerCase().trim()
+            const enrolledCourseNames = Array.from(studentEnrollments[userEmail] || [])
+            
+            // Find course IDs for enrolled course names
+            const enrolledCourses = enrolledCourseNames.map((courseName) => {
+              const course = coursesData?.find(
+                c => (c.title || c.name || '').toLowerCase().trim() === courseName.toLowerCase().trim()
+              )
+              return course ? { courseId: course.id, courseName: course.title || course.name || courseName } : null
+            }).filter(Boolean) as { courseId: string; courseName: string }[]
+            
+            // Get roll number (use first enrolled course's roll number as primary)
+            const primaryRollNumber = enrolledCourses.length > 0 
+              ? rollNumberMap[userEmail]?.[String(enrolledCourses[0].courseId)] 
+              : undefined
+            
+            // Get CNIC number
+            const studentCnic = cnicMap[userEmail] || undefined
+
+            // Calculate progress for each enrolled course
+            const courseProgress = enrolledCourses.map(({ courseId, courseName }) => {
+              // Ensure courseId is string for comparison
+              const courseIdStr = String(courseId)
+              const totalVideos = videosByCourse[courseIdStr] || 0
+              
+              // Filter progress records - match both course_id and user_id, and completed status
+              // Note: video_id should not be null for completed videos
+              const courseProgressRecords = progressData?.filter(
+                (p: ProgressRecord) => {
+                  const pCourseId = String(p.course_id)
+                  const pUserId = String(p.user_id)
+                  const uId = String(user.id)
+                  // Match course_id, user_id, completed=true, and video_id exists
+                  return pCourseId === courseIdStr && pUserId === uId && p.completed === true && p.video_id != null
                 }
+              ) || []
+              
+              const completedVideos = courseProgressRecords.length
+              const progressPercentage = totalVideos > 0 ? Math.round((completedVideos / totalVideos) * 100) : 0
 
-                return {
-                  courseId,
-                  courseName,
+              // Debug logging (can be removed later)
+              if (completedVideos > 0 || totalVideos > 0) {
+                console.log(`Progress for ${user.email} - ${courseName}:`, {
+                  courseId: courseIdStr,
                   totalVideos,
                   completedVideos,
-                  progressPercentage
-                }
-              })
-
-              const totalVideosCompleted = courseProgress.reduce((sum, cp) => sum + cp.completedVideos, 0)
-              const totalVideos = courseProgress.reduce((sum, cp) => sum + cp.totalVideos, 0)
-              const overallProgress = totalVideos > 0 ? Math.round((totalVideosCompleted / totalVideos) * 100) : 0
+                  progressPercentage,
+                  progressRecordsCount: courseProgressRecords.length,
+                  allProgressForCourse: progressData?.filter((p: ProgressRecord) => String(p.course_id) === courseIdStr).length
+                })
+              }
 
               return {
-                userId: user.id,
-                userName: user.name || 'Unknown',
-                userEmail: user.email || 'No email',
-                rollNumber: primaryRollNumber,
-                cnic: studentCnic,
-                enrolledCourses: courseProgress,
-                totalCourses: enrolledCourses.length,
-                totalVideosCompleted
+                courseId,
+                courseName,
+                totalVideos,
+                completedVideos,
+                progressPercentage
               }
-            }).filter(sp => sp.totalCourses > 0) // Only show students with enrolled courses
+            })
 
-            // Sort by total videos completed (descending)
-            studentProgressData.sort((a, b) => b.totalVideosCompleted - a.totalVideosCompleted)
-            setStudentProgress(studentProgressData)
+            const totalVideosCompleted = courseProgress.reduce((sum, cp) => sum + cp.completedVideos, 0)
+            const totalVideos = courseProgress.reduce((sum, cp) => sum + cp.totalVideos, 0)
+            const overallProgress = totalVideos > 0 ? Math.round((totalVideosCompleted / totalVideos) * 100) : 0
+
+            return {
+              userId: user.id,
+              userName: user.name || 'Unknown',
+              userEmail: user.email || 'No email',
+              rollNumber: primaryRollNumber,
+              cnic: studentCnic,
+              enrolledCourses: courseProgress,
+              totalCourses: enrolledCourses.length,
+              totalVideosCompleted
+            }
+          }).filter(sp => sp.totalCourses > 0) // Only show students with enrolled courses
+
+          // Sort by total videos completed (descending)
+          studentProgressData.sort((a, b) => b.totalVideosCompleted - a.totalVideosCompleted)
+          setStudentProgress(studentProgressData)
+          
+          // Create student list for list view
+          const listData: StudentListItem[] = studentProgressData.map((sp) => {
+            const totalVideos = sp.enrolledCourses.reduce((sum, cp) => sum + cp.totalVideos, 0)
+            const overallProgress = totalVideos > 0 ? Math.round((sp.totalVideosCompleted / totalVideos) * 100) : 0
             
-            // Create student list for list view
-            const listData: StudentListItem[] = studentProgressData.map((sp) => {
-              const totalVideos = sp.enrolledCourses.reduce((sum, cp) => sum + cp.totalVideos, 0)
-              const overallProgress = totalVideos > 0 ? Math.round((sp.totalVideosCompleted / totalVideos) * 100) : 0
-              
-              return {
-                userId: sp.userId,
-                userName: sp.userName,
-                userEmail: sp.userEmail,
-                rollNumber: sp.rollNumber || 'N/A',
-                totalCourses: sp.totalCourses,
-                totalVideosCompleted: sp.totalVideosCompleted,
-                overallProgress
-              }
-            })
-            // Sort by roll number for better organization
-            listData.sort((a, b) => {
-              if (a.rollNumber === 'N/A' && b.rollNumber !== 'N/A') return 1
-              if (a.rollNumber !== 'N/A' && b.rollNumber === 'N/A') return -1
-              return a.rollNumber.localeCompare(b.rollNumber)
-            })
-            setStudentList(listData)
-          }
-        }
+            return {
+              userId: sp.userId,
+              userName: sp.userName,
+              userEmail: sp.userEmail,
+              rollNumber: sp.rollNumber || 'N/A',
+              totalCourses: sp.totalCourses,
+              totalVideosCompleted: sp.totalVideosCompleted,
+              overallProgress
+            }
+          })
+          // Sort by roll number for better organization
+          listData.sort((a, b) => {
+            if (a.rollNumber === 'N/A' && b.rollNumber !== 'N/A') return 1
+            if (a.rollNumber !== 'N/A' && b.rollNumber === 'N/A') return -1
+            return a.rollNumber.localeCompare(b.rollNumber)
+          })
+          setStudentList(listData)
       }
     } catch (err: any) {
       setError('Failed to load progress data: ' + err.message)
@@ -457,18 +447,7 @@ const StudentProgressPage: React.FC = () => {
 
   useEffect(() => {
     loadData()
-
-    // Real-time subscription
-    const channel = supabase
-      .channel('progress_realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'progress_records' }, () => {
-        loadData()
-      })
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
+    // Note: Real-time subscriptions removed - using backend API with polling if needed
   }, [loadData])
 
   const getUserInfo = (userId: string) => {

@@ -144,6 +144,29 @@ export class LandingService {
     return data;
   }
 
+  async upsertSiteSettings(entries: Array<{ key: string; value: string }>): Promise<SiteSetting[]> {
+    const settings = entries.map(entry => ({
+      key: entry.key,
+      value: entry.value,
+      updated_at: new Date().toISOString()
+    }));
+    const { data, error } = await supabaseAdmin
+      .from('site_settings')
+      .upsert(settings, { onConflict: 'key' })
+      .select();
+    if (error) throw error;
+    return data || [];
+  }
+
+  async deleteSiteSettings(keys: string[]): Promise<void> {
+    if (keys.length === 0) return;
+    const { error } = await supabaseAdmin
+      .from('site_settings')
+      .delete()
+      .in('key', keys);
+    if (error) throw error;
+  }
+
   // Support Requests
   async getSupportRequests(filters?: {
     user_id?: string;

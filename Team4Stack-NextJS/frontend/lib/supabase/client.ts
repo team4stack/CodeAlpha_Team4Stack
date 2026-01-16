@@ -17,12 +17,20 @@ if (!supabaseUrl || !supabaseKey) {
     console.warn('[Supabase] Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY. Authentication will not work. For auth, add these to .env.local');
   }
   
-  // Create a mock client that won't crash
+  // Create a mock client that won't crash (realtime disabled to prevent WebSocket errors)
   supabase = createClient('https://placeholder.supabase.co', 'placeholder-key', {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
       detectSessionInUrl: false,
+    },
+    realtime: {
+      params: {
+        eventsPerSecond: 0
+      }
+    },
+    global: {
+      headers: {}
     }
   });
 } else {

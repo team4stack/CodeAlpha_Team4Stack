@@ -1,7 +1,6 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase/client'
 import { seedDemoData, migrateWebsiteData, migrateMentorProfile } from '@/lib/utils/seedSupabase'
 import { retryWithBackoff } from '@/lib/utils/retry'
 
@@ -29,9 +28,11 @@ const SettingsPage: React.FC = () => {
   useEffect(() => {
     const load = async () => {
       setLoading(true)
-      const { data } = await retryWithBackoff(async () => {
-        return await supabase.from('site_settings').select('key,value')
-      }) as { data: KV[] | null }
+      const { landingApi } = await import('@/lib/api')
+      const result = await retryWithBackoff(async () => {
+        return await landingApi.getSiteSettings()
+      }) as { data?: KV[]; error?: string }
+      const data = result.data || null
       const map: Record<string, string> = {}
       ;(data as KV[] | null)?.forEach(r => { map[r.key] = r.value })
       setRows(map)
@@ -44,9 +45,11 @@ const SettingsPage: React.FC = () => {
     setSaving(true)
     setMsg(null)
     const payload = DEFAULT_KEYS.map(k => ({ key: k.key, value: rows[k.key] || '' }))
-    const { error } = await retryWithBackoff(async () => {
-      return await supabase.from('site_settings').upsert(payload)
-    }) as { error: { message: string } | null }
+    const { landingApi } = await import('@/lib/api')
+    const result = await retryWithBackoff(async () => {
+      return await landingApi.upsertSiteSettings(payload)
+    }) as { error?: string }
+    const error = result.error ? { message: result.error } : null
     setSaving(false)
     setMsg(error ? error.message : 'Saved!')
   }
@@ -119,9 +122,10 @@ const SettingsPage: React.FC = () => {
                   const key = `tab_label_${tabKey}`
                   const payload = [{ key, value: tabLabel }]
                   setSaving(true)
-                  const { error } = await retryWithBackoff(async () => await supabase.from('site_settings').upsert(payload)) as { error: { message: string } | null }
+                  const { landingApi } = await import('@/lib/api')
+                  const result = await retryWithBackoff(async () => await landingApi.upsertSiteSettings(payload)) as { error?: string }
                   setSaving(false)
-                  setMsg(error ? error.message : `Renamed ${tabKey} → ${tabLabel}`)
+                  setMsg(result.error ? result.error : `Renamed ${tabKey} → ${tabLabel}`)
                 }}>Apply</button>
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400">Pick one tab, type a new name, click Apply. Sidebar updates on refresh.</p>

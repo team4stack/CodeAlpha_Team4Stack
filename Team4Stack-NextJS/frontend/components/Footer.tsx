@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../utils/supabaseClient';
 import { CONTACT_EMAIL, getMailToUrl } from '../utils/constants';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { landingApi } from '@/lib/api';
 
 const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
@@ -138,22 +138,21 @@ const Footer: React.FC = () => {
   useEffect(() => {
     const loadFooterSettings = async () => {
       try {
-        const { data } = await supabase
-          .from('site_settings')
-          .select('key, value')
-          .in('key', ['footer_about_text', 'footer_socials_json', 'footer_version', 'footer_support_email']);
-
+        const result = await landingApi.getSiteSettings(['footer_about_text', 'footer_socials_json', 'footer_version', 'footer_support_email']);
+        
         const settings: any = {};
-        data?.forEach((row) => {
-          settings[row.key] = row.value;
-        });
+        if (result.data) {
+          result.data.forEach((row: any) => {
+            settings[row.key] = row.value;
+          });
+        }
 
         let socials: Array<{ name: string; href: string }> = [];
         if (settings.footer_socials_json) {
           try {
             socials = JSON.parse(settings.footer_socials_json);
           } catch (e) {
-            if (import.meta.env.DEV) {
+            if (process.env.NODE_ENV === 'development') {
               console.error('Error parsing footer socials JSON:', e);
             }
           }
@@ -166,25 +165,14 @@ const Footer: React.FC = () => {
           supportEmail: settings.footer_support_email || 'team4stack@gmail.com'
         });
       } catch (error) {
-        if (import.meta.env.DEV) {
+        if (process.env.NODE_ENV === 'development') {
           console.error('Error loading footer settings:', error);
         }
       }
     };
 
     loadFooterSettings();
-
-    // Subscribe to changes
-    const channel = supabase
-      .channel('footer_settings')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'site_settings', filter: 'key=in.(footer_about_text,footer_socials_json,footer_version,footer_support_email)' }, () => {
-        loadFooterSettings();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    // Note: Real-time subscriptions removed - using backend API
   }, []);
 
   const slugMap: Record<string, string> = {
@@ -370,28 +358,23 @@ const Footer: React.FC = () => {
               setSubmitMessage(null);
 
               try {
-                // Store support request in Supabase
-                const { error } = await supabase
-                  .from('support_requests')
-                  .insert({
-                    reason: supportReasons.find(r => r.value === supportForm.reason)?.label || supportForm.reason,
-                    email: supportForm.email,
-                    subject: supportForm.subject || getSubjectFromReason(supportForm.reason),
-                    message: supportForm.message,
-                    user_id: user?.id || null,
-                    status: 'pending',
-                    created_at: new Date().toISOString()
-                  });
+                // Store support request via API
+                const { landingApi } = await import('@/lib/api');
+                const result = await landingApi.createSupportRequest({
+                  reason: supportReasons.find(r => r.value === supportForm.reason)?.label || supportForm.reason,
+                  email: supportForm.email,
+                  subject: supportForm.subject || getSubjectFromReason(supportForm.reason),
+                  message: supportForm.message,
+                  user_id: user?.id || null,
+                  status: 'pending'
+                });
 
-                if (error) {
-                  // If table doesn't exist, fallback to mailto
-                  if (error.code === '42P01') {
-                    const emailBody = `Reason: ${supportReasons.find(r => r.value === supportForm.reason)?.label || supportForm.reason}\n\nFrom: ${supportForm.email}\n\n${supportForm.message}`;
-                    window.location.href = getMailToUrl(footerSettings.supportEmail, supportForm.subject || getSubjectFromReason(supportForm.reason), emailBody);
-                    setShowSupportModal(false);
-                    return;
-                  }
-                  throw error;
+                if (result.error) {
+                  // Fallback to mailto if API fails
+                  const emailBody = `Reason: ${supportReasons.find(r => r.value === supportForm.reason)?.label || supportForm.reason}\n\nFrom: ${supportForm.email}\n\n${supportForm.message}`;
+                  window.location.href = getMailToUrl(footerSettings.supportEmail, supportForm.subject || getSubjectFromReason(supportForm.reason), emailBody);
+                  setShowSupportModal(false);
+                  return;
                 }
 
                 setSubmitMessage({ type: 'success', text: 'Support request submitted successfully! We will contact you soon.' });
@@ -403,7 +386,7 @@ const Footer: React.FC = () => {
                   setSubmitMessage(null);
                 }, 2000);
               } catch (error: any) {
-                // Fallback to mailto if database insert fails
+                // Fallback to mailto if API call fails
                 const emailBody = `Reason: ${supportReasons.find(r => r.value === supportForm.reason)?.label || supportForm.reason}\n\nFrom: ${supportForm.email}\n\n${supportForm.message}`;
                 window.location.href = getMailToUrl(footerSettings.supportEmail, supportForm.subject || getSubjectFromReason(supportForm.reason), emailBody);
                 setShowSupportModal(false);

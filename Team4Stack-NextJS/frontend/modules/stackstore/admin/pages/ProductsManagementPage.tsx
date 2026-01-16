@@ -1,8 +1,8 @@
 'use client'
 
 import React, { useEffect, useState, useCallback } from 'react'
-import { supabase } from '@/lib/supabase/client'
 import { useTheme } from '@/contexts/ThemeContext'
+import { stackstoreApi } from '@/lib/api'
 
 type Product = {
   id: string
@@ -50,54 +50,60 @@ const ProductsManagementPage: React.FC = () => {
       setLoading(true)
       setError(null)
 
-      // Load categories
+      // Load categories via API
       try {
-        const { data: categoriesData, error: categoriesError } = await supabase
-          .from('categories')
-          .select('id, name')
-          .order('name', { ascending: true })
-
-        if (categoriesError && categoriesError.code !== 'PGRST116') throw categoriesError
-        setCategories(categoriesData || [])
+        const categoriesResult = await stackstoreApi.getCategories()
+        if (categoriesResult.error) {
+          throw new Error(categoriesResult.error)
+        }
+        const sortedCategories = (categoriesResult.data || []).sort((a: any, b: any) => 
+          (a.name || '').localeCompare(b.name || '')
+        )
+        setCategories(sortedCategories)
       } catch (err) {
-        // Categories table might not exist
+        // Categories might not exist
         setCategories([])
       }
 
-      // Load products
+      // Load products via API
       try {
-        let query = supabase.from('products').select('*')
-
+        const filters: any = {}
         if (filterCategory !== 'all') {
-          query = query.eq('category_id', filterCategory)
+          filters.category_id = filterCategory
         }
-
         if (filterStatus === 'active') {
-          query = query.eq('active', true)
+          filters.active = true
         } else if (filterStatus === 'inactive') {
-          query = query.eq('active', false)
+          filters.active = false
         }
 
+        const productsResult = await stackstoreApi.getProducts(filters)
+        if (productsResult.error) {
+          throw new Error(productsResult.error)
+        }
+
+        let productsData = productsResult.data || []
+
+        // Client-side search filtering
         if (searchQuery.trim()) {
-          query = query.or(`name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
+          const searchLower = searchQuery.toLowerCase()
+          productsData = productsData.filter((p: any) => 
+            p.name?.toLowerCase().includes(searchLower) ||
+            p.description?.toLowerCase().includes(searchLower)
+          )
         }
 
-        const { data: productsData, error: productsError } = await query.order('created_at', { ascending: false })
+        // Sort by created_at descending
+        productsData.sort((a: any, b: any) => 
+          new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+        )
 
-        if (productsError) {
-          if (productsError.code === 'PGRST116' || productsError.message.includes('does not exist')) {
-            setProducts([])
-            return
-          }
-          throw productsError
-        }
-        setProducts(productsData || [])
+        setProducts(productsData)
       } catch (err: any) {
-        if (err.code === 'PGRST116' || err.message?.includes('does not exist')) {
-          setProducts([])
-          return
+        setProducts([])
+        if (err.message && !err.message.includes('does not exist')) {
+          throw err
         }
-        throw err
       }
     } catch (err: any) {
       setError('Failed to load data: ' + err.message)
@@ -108,18 +114,7 @@ const ProductsManagementPage: React.FC = () => {
 
   useEffect(() => {
     loadData()
-
-    // Real-time subscription
-    const channel = supabase
-      .channel('products_realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
-        loadData()
-      })
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
+    // Note: Real-time subscriptions removed - using backend API
   }, [loadData])
 
   const handleAdd = () => {

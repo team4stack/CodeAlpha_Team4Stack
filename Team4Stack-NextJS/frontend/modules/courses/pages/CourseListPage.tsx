@@ -106,14 +106,12 @@ const CourseListPage: React.FC = () => {
           }
         });
 
-        // Fetch all courses from Supabase
-        const { data: allCourses, error: courseError } = await supabase
-          .from('courses')
-          .select('*')
-          .order('order_index', { ascending: true })
-          .order('id', { ascending: false });
-          
-        if (courseError) throw courseError;
+        // Fetch all courses via API
+        const { coursesApi } = await import('@/lib/api');
+        const coursesResult = await coursesApi.getAllCourses();
+        
+        if (coursesResult.error) throw new Error(coursesResult.error);
+        const allCourses = coursesResult.data || [];
         
         // Filter courses: only show courses where title matches approved course_name
         const enrolledCourses = (allCourses || []).filter((course: any) => {
@@ -125,11 +123,12 @@ const CourseListPage: React.FC = () => {
         
         setCourses(enrolledCourses);
         
-        // Fetch progress records for current user
-        const { data: progressData } = await supabase
-          .from('progress_records')
-          .select('*')
-          .eq('user_id', user.id);
+        // Fetch progress records for current user via API
+        const progressResult = await coursesApi.getUserProgress(user.id);
+        if (progressResult.error) {
+          console.error('Error loading progress:', progressResult.error);
+        }
+        const progressData = progressResult.data || [];
 
         const progressByCourse: Record<string, Progress> = {};
         if (progressData) {

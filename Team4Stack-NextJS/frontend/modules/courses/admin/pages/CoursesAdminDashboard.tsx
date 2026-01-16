@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import StatCard from '../../../../components/admin/shared/StatCard'
-import { supabase } from '@/lib/supabase/client'
 
 const CoursesAdminDashboard: React.FC = () => {
   const router = useRouter()
@@ -23,36 +22,33 @@ const CoursesAdminDashboard: React.FC = () => {
   useEffect(() => {
     const loadStats = async () => {
       try {
-        // Fetch courses count
-        const { count: coursesCount } = await supabase
-          .from('courses')
-          .select('*', { count: 'exact', head: true })
-
-        // Fetch videos count
-        const { count: videosCount } = await supabase
-          .from('videos')
-          .select('*', { count: 'exact', head: true })
-
-        // Fetch progress records count
-        const { count: progressCount } = await supabase
-          .from('progress_records')
-          .select('*', { count: 'exact', head: true })
-
-        // Fetch unique students (users with progress)
-        const { data: progressData } = await supabase
-          .from('progress_records')
-          .select('user_id')
+        // Import API once
+        const { coursesApi } = await import('@/lib/api');
         
-        const uniqueStudents = new Set(progressData?.map(p => p.user_id) || []).size
+        // Fetch courses count via API
+        const coursesResult = await coursesApi.getAllCourses();
+        const coursesCount = coursesResult.data?.length || 0;
 
-        // Fetch completed courses (progress with completed = true)
-        const { count: completedCount } = await supabase
-          .from('progress_records')
-          .select('*', { count: 'exact', head: true })
-          .eq('completed', true)
+        // Fetch videos count via API - get all courses and sum their videos
+        let videosCount = 0;
+        const allCourses = coursesResult.data || [];
+        for (const course of allCourses) {
+          const videosResult = await coursesApi.getCourseVideos(parseInt(course.id));
+          videosCount += videosResult.data?.length || 0;
+        }
+
+        // Fetch all progress records via API
+        const allProgressResult = await coursesApi.getAllProgress();
+        const allProgress = allProgressResult.data || [];
+        const progressCount = allProgress.length;
+        
+        // Get unique students
+        const uniqueStudents = new Set(allProgress.map((p: any) => p.user_id)).size;
+        
+        // Count completed
+        const completedCount = allProgress.filter((p: any) => p.completed === true).length;
 
         // Fetch admission applications via API
-        const { coursesApi } = await import('@/lib/api');
         const allAppsResult = await coursesApi.getAdmissionForms();
         const allApps = allAppsResult.data || [];
         const applicationsCount = allApps.length;

@@ -142,6 +142,33 @@ export class LandingController {
     }
   };
 
+  upsertSiteSettings = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { entries } = req.body;
+      if (!Array.isArray(entries)) {
+        return res.status(400).json({ success: false, error: 'Entries must be an array' });
+      }
+      const settings = await landingService.upsertSiteSettings(entries);
+      res.json({ success: true, data: settings });
+    } catch (error: any) {
+      next(error);
+    }
+  };
+
+  deleteSiteSettings = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { keys } = req.query;
+      if (!keys) {
+        return res.status(400).json({ success: false, error: 'Keys parameter is required' });
+      }
+      const keyArray = (keys as string).split(',');
+      await landingService.deleteSiteSettings(keyArray);
+      res.json({ success: true, message: 'Site settings deleted successfully' });
+    } catch (error: any) {
+      next(error);
+    }
+  };
+
   // Support Requests
   getSupportRequests = async (req: Request, res: Response, next: NextFunction) => {
     try {

@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import StatCard from '../../../../components/admin/shared/StatCard'
 import QuickActions from '../../../../components/admin/shared/QuickActions'
-import { supabase } from '@/lib/supabase/client'
+import { landingApi, coursesApi, superadminApi } from '@/lib/api'
 
 type Activity = {
   id: string
@@ -43,45 +43,49 @@ const DashboardPage: React.FC = () => {
   useEffect(() => {
     const loadStats = async () => {
       try {
-        // Fetch all counts in parallel with error handling
-        const fetchCount = async (table: string, filter?: { column: string; value: any }) => {
-          try {
-            let query = supabase.from(table).select('id', { count: 'exact', head: true })
-            if (filter) {
-              query = query.eq(filter.column, filter.value)
-            }
-            const { count, error } = await query
-            if (error) {
-              if (process.env.NODE_ENV === 'development') {
-              console.warn(`Error counting ${table}:`, error.message)
-              }
-              return 0
-            }
-            return count || 0
-          } catch (err) {
-            if (process.env.NODE_ENV === 'development') {
-            console.warn(`Exception counting ${table}:`, err)
-            }
-            return 0
-          }
-        }
-
-        const [projects, services, reviews, courses, contacts, users, activeServices, inactiveServices, approvedReviews, supportRequests, pendingSupport, viewedSupport, blockedUsers, viewedForms] = await Promise.all([
-          fetchCount('projects'),
-          fetchCount('services'),
-          fetchCount('reviews'),
-          fetchCount('courses'),
-          fetchCount('admission_form'),
-          fetchCount('users'),
-          fetchCount('services', { column: 'active', value: true }),
-          fetchCount('services', { column: 'active', value: false }),
-          fetchCount('reviews', { column: 'status', value: 'approved' }),
-          fetchCount('support_requests'),
-          fetchCount('support_requests', { column: 'status', value: 'pending' }),
-          fetchCount('support_requests', { column: 'viewed', value: true }),
-          fetchCount('users', { column: 'is_blocked', value: true }),
-          fetchCount('admission_form', { column: 'viewed', value: true })
+        // Fetch all data via API and count on client side
+        const [projectsResult, servicesResult, reviewsResult, coursesResult, admissionFormsResult, usersResult, supportRequestsResult] = await Promise.all([
+          landingApi.getProjects().catch(() => ({ data: [] as any[] })),
+          landingApi.getServices().catch(() => ({ data: [] as any[] })),
+          landingApi.getReviews().catch(() => ({ data: [] as any[] })),
+          coursesApi.getAllCourses().catch(() => ({ data: [] as any[] })),
+          coursesApi.getAdmissionForms().catch(() => ({ data: [] as any[] })),
+          superadminApi.getUsers().catch(() => ({ data: [] as any[] })),
+          landingApi.getSupportRequests().catch(() => ({ data: [] as any[] }))
         ])
+
+        // Count projects
+        const projects = Array.isArray(projectsResult.data) ? projectsResult.data.length : 0
+
+        // Count services
+        const allServices = Array.isArray(servicesResult.data) ? servicesResult.data : []
+        const services = allServices.length
+        const activeServices = allServices.filter((s: any) => s.active === true).length
+        const inactiveServices = allServices.filter((s: any) => s.active === false).length
+
+        // Count reviews
+        const allReviews = Array.isArray(reviewsResult.data) ? reviewsResult.data : []
+        const reviews = allReviews.length
+        const approvedReviews = allReviews.filter((r: any) => r.status === 'approved').length
+
+        // Count courses
+        const courses = Array.isArray(coursesResult.data) ? coursesResult.data.length : 0
+
+        // Count admission forms
+        const allAdmissionForms = Array.isArray(admissionFormsResult.data) ? admissionFormsResult.data : []
+        const contacts = allAdmissionForms.length
+        const viewedForms = allAdmissionForms.filter((f: any) => f.viewed === true).length
+
+        // Count users
+        const allUsers = Array.isArray(usersResult.data) ? usersResult.data : []
+        const users = allUsers.length
+        const blockedUsers = allUsers.filter((u: any) => u.is_blocked === true).length
+
+        // Count support requests
+        const allSupportRequests = Array.isArray(supportRequestsResult.data) ? supportRequestsResult.data : []
+        const supportRequests = allSupportRequests.length
+        const pendingSupport = allSupportRequests.filter((r: any) => r.status === 'pending').length
+        const viewedSupport = allSupportRequests.filter((r: any) => r.viewed === true).length
 
         // Calculate unapproved reviews (total - approved)
         const unapprovedReviews = reviews - approvedReviews
@@ -126,36 +130,27 @@ const DashboardPage: React.FC = () => {
         // Fetch recent activity in parallel - optimized with error handling
         const activities: Activity[] = []
         
-        // Fetch each table separately with error handling
-        const fetchWithErrorHandling = async (table: string, select: string, orderBy: string, limit: number): Promise<any[] | null> => {
-          try {
-            const query = supabase.from(table).select(select).order(orderBy, { ascending: false }).limit(limit)
-            const result = await query
-            
-            if (result.error) {
-              // Log error but don't throw - allow other queries to continue
-              if (process.env.NODE_ENV === 'development') {
-              console.warn(`Error fetching ${table}:`, result.error.message)
-              }
-              return null
-            }
-            
-            const data = result.data as any;
-            return Array.isArray(data) ? data : null
-          } catch (err) {
-            if (process.env.NODE_ENV === 'development') {
-            console.warn(`Exception fetching ${table}:`, err)
-            }
-            return null
-          }
-        }
-
-        const [recentProjects, recentServices, recentReviews, recentCourses]: (any[] | null)[] = await Promise.all([
-          fetchWithErrorHandling('projects', 'id, title', 'id', 2),
-          fetchWithErrorHandling('services', 'id, title', 'id', 2),
-          fetchWithErrorHandling('reviews', 'id, name', 'id', 2),
-          fetchWithErrorHandling('courses', 'id, title', 'id', 2)
+        // Fetch each table via API
+        const [projectsResult, servicesResult, reviewsResult, coursesResult] = await Promise.all([
+          landingApi.getProjects().catch(() => ({ data: [] as any[] })),
+          landingApi.getServices().catch(() => ({ data: [] as any[] })),
+          landingApi.getReviews().catch(() => ({ data: [] as any[] })),
+          coursesApi.getAllCourses().catch(() => ({ data: [] as any[] }))
         ])
+
+        // Get recent items (sorted by id descending, limit 2)
+        const recentProjects = Array.isArray(projectsResult.data) 
+          ? projectsResult.data.sort((a: any, b: any) => (b.id || 0) - (a.id || 0)).slice(0, 2)
+          : []
+        const recentServices = Array.isArray(servicesResult.data)
+          ? servicesResult.data.sort((a: any, b: any) => (b.id || 0) - (a.id || 0)).slice(0, 2)
+          : []
+        const recentReviews = Array.isArray(reviewsResult.data)
+          ? reviewsResult.data.sort((a: any, b: any) => (b.id || 0) - (a.id || 0)).slice(0, 2)
+          : []
+        const recentCourses = Array.isArray(coursesResult.data)
+          ? coursesResult.data.sort((a: any, b: any) => (b.id || 0) - (a.id || 0)).slice(0, 2)
+          : []
 
         // Process projects
         if (recentProjects && Array.isArray(recentProjects)) {
@@ -237,13 +232,13 @@ const DashboardPage: React.FC = () => {
           }
         }
 
-        // Process support requests
+        // Process support requests via API
         try {
-          const { data: recentSupport } = await supabase
-            .from('support_requests')
-            .select('id,email,reason,created_at')
-            .order('created_at', { ascending: false })
-            .limit(5)
+          const supportResult = await landingApi.getSupportRequests()
+          const allSupport = Array.isArray(supportResult.data) ? supportResult.data : []
+          const recentSupport = allSupport
+            .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+            .slice(0, 5)
           
           if (recentSupport && Array.isArray(recentSupport)) {
             for (let i = 0; i < recentSupport.length; i++) {
@@ -264,7 +259,10 @@ const DashboardPage: React.FC = () => {
             }
           }
         } catch (err) {
-          // Table might not exist yet, ignore
+          // Ignore errors
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('Error loading support requests:', err)
+          }
         }
 
         // Sort by timestamp and take latest 5 only
@@ -282,43 +280,7 @@ const DashboardPage: React.FC = () => {
     // Load stats first (fast), then activity
     loadStats()
     loadActivity()
-
-    // Set up real-time subscriptions - optimized single channel
-    const dashboardChannel = supabase
-      .channel('dashboard_updates')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, () => {
-        loadStats()
-        loadActivity()
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'services' }, () => {
-        loadStats()
-        loadActivity()
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'reviews' }, () => {
-        loadStats()
-        loadActivity()
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'courses' }, () => {
-        loadStats()
-        loadActivity()
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'support_requests' }, () => {
-        loadStats()
-        loadActivity()
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => {
-        loadStats()
-        loadActivity()
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'admission_form' }, () => {
-        loadStats()
-        loadActivity()
-      })
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(dashboardChannel)
-    }
+    // Note: Real-time subscriptions removed - using backend API
   }, [])
 
   const getActivityIcon = (type: Activity['type']): string => {

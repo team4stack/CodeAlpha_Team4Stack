@@ -173,6 +173,22 @@ export class CourseController {
       next(error);
     }
   };
+
+  // Get all progress records (for admin)
+  getAllProgress = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { courseId, userId, completed } = req.query;
+      const filters: any = {};
+      if (courseId) filters.courseId = courseId as string;
+      if (userId) filters.userId = userId as string;
+      if (completed !== undefined) filters.completed = completed === 'true';
+
+      const progress = await courseService.getAllProgress(filters);
+      res.json({ success: true, data: progress });
+    } catch (error: any) {
+      next(error);
+    }
+  };
 }
 
 export default new CourseController();

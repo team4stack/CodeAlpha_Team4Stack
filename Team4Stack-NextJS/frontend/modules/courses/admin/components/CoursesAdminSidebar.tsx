@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { supabase } from '@/lib/supabase/client'
+import { landingApi } from '@/lib/api'
 
 const CoursesAdminSidebar: React.FC = () => {
   const pathname = usePathname()
@@ -11,13 +11,16 @@ const CoursesAdminSidebar: React.FC = () => {
 
   useEffect(() => {
     const load = async () => {
-      const { data } = await supabase
-        .from('site_settings')
-        .select('key,value')
-        .in('key', ['tab_label_courses'])
-      const map: Record<string,string> = {}
-      data?.forEach(r => { map[r.key] = r.value })
-      setLabels(map)
+      try {
+        const result = await landingApi.getSiteSettings(['tab_label_courses'])
+        if (result.data) {
+          const map: Record<string,string> = {}
+          result.data.forEach((r: any) => { map[r.key] = r.value })
+          setLabels(map)
+        }
+      } catch (error) {
+        console.error('Failed to load tab labels:', error)
+      }
     }
     load()
   }, [])

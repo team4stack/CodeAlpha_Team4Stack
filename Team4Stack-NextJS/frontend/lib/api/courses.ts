@@ -73,6 +73,17 @@ export const coursesApi = {
     return apiClient.delete(`/courses/admissions/${id}`);
   },
 
+  // Get all progress records (for admin)
+  getAllProgress: async (filters?: { courseId?: string; userId?: string; completed?: boolean }) => {
+    const params = new URLSearchParams();
+    if (filters?.courseId) params.append('courseId', filters.courseId);
+    if (filters?.userId) params.append('userId', filters.userId);
+    if (filters?.completed !== undefined) params.append('completed', String(filters.completed));
+    
+    const query = params.toString();
+    return apiClient.get(`/courses/progress${query ? `?${query}` : ''}`);
+  },
+
   // Get user progress
   getUserProgress: async (userId: string, courseId?: number) => {
     const query = courseId ? `?courseId=${courseId}` : '';

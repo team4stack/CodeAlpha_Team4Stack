@@ -54,13 +54,24 @@ export class UserService {
   }
 
   async upsertUser(user: Partial<User>): Promise<User> {
-    const { data, error } = await supabaseAdmin
-      .from('users')
-      .upsert(user, { onConflict: 'id' })
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
+    // Ensure email is lowercase and trimmed
+    if (user.email) {
+      user.email = user.email.toLowerCase().trim();
+    }
+    
+    // Check if user exists by email first
+    let existingUser: User | null = null;
+    if (user.email) {
+      existingUser = await this.getUserByEmail(user.email);
+    }
+    
+    if (existingUser) {
+      // Update existing user
+      return await this.updateUser(existingUser.id, user);
+    } else {
+      // Create new user
+      return await this.createUser(user);
+    }
   }
 
   async checkUsernameAvailability(username: string): Promise<boolean> {
