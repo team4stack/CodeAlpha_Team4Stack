@@ -19,6 +19,7 @@ const CoursesPage: React.FC = () => {
   const [rejectedCourses, setRejectedCourses] = useState<Map<string, string>>(new Map()); // course_name -> rejection_message
   const [showRejectionModal, setShowRejectionModal] = useState(false);
   const [selectedRejectionMessage, setSelectedRejectionMessage] = useState<string>('');
+  const [showAllCourses, setShowAllCourses] = useState(false);
 
   const courses = useMemo(() => ([
     {
@@ -35,7 +36,7 @@ const CoursesPage: React.FC = () => {
         'Certificate on completion',
         'Limited seats'
       ],
-      gradient: 'from-purple-blue-500 to-indigo-cyan-500'
+      gradient: 'from-orange-500 via-red-500 to-pink-500'
     },
     {
       key: 'online' as const,
@@ -51,7 +52,7 @@ const CoursesPage: React.FC = () => {
         'Assignments and projects',
         'Flexible timings'
       ],
-      gradient: 'from-green-teal-500 to-orange-pink-500'
+      gradient: 'from-emerald-500 via-teal-500 to-cyan-500'
     }
   ]), []);
   
@@ -335,13 +336,28 @@ const CoursesPage: React.FC = () => {
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 lg:gap-8 max-w-6xl mx-auto">
-            {(dbCourses.length > 0 ? dbCourses.map((c) => ({ key: String(c.id), title: c.title, level: c.level || '', description: c.description || '', duration: c.duration || '', price: c.price || '', note: c.note || '', features: Array.isArray((c as any).features) ? (c as any).features : [], gradient: c.gradient || '' })) : courses).map((course) => (
+            {(() => {
+              const allCourses = dbCourses.length > 0 
+                ? dbCourses.map((c) => ({ 
+                    key: String(c.id), 
+                    title: c.title, 
+                    level: c.level || '', 
+                    description: c.description || '', 
+                    duration: c.duration || '', 
+                    price: c.price || '', 
+                    note: c.note || '', 
+                    features: Array.isArray((c as any).features) ? (c as any).features : [], 
+                    gradient: c.gradient || '' 
+                  })) 
+                : courses;
+              const displayedCourses = showAllCourses ? allCourses : allCourses.slice(0, 4);
+              return displayedCourses.map((course) => (
               <div key={course.key} className="relative group">
                 {/* Course Card with Gradient Background - Enhanced Design */}
                 <div className={`relative h-full text-white hover:scale-[1.02] transition-all duration-500 hover:shadow-2xl rounded-2xl overflow-hidden ${
                   (course.gradient && course.gradient.trim().length > 0) 
                     ? `bg-gradient-to-br ${course.gradient}` 
-                    : 'bg-gradient-to-br from-purple-600/90 via-purple-700/90 to-cyan-600/90'
+                    : 'bg-gradient-to-br from-orange-500 via-red-500 to-pink-500'
                 } border border-white/20 backdrop-blur-sm shadow-xl`}>
                   {/* Decorative Elements */}
                   <div className="absolute top-0 right-0 w-32 h-32 sm:w-48 sm:h-48 md:w-64 md:h-64 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
@@ -418,21 +434,71 @@ const CoursesPage: React.FC = () => {
                         <span>Rejected</span>
                       </button>
                     ) : (
-                      <button 
-                        onClick={() => openBooking(course.title)}
-                        className="w-full mt-auto bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 text-white font-bold py-3 sm:py-4 rounded-lg sm:rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-white/20 flex items-center justify-center gap-2 group text-sm sm:text-base"
-                      >
-                        <span>Book Now</span>
-                        <svg className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                        </svg>
-                      </button>
+                      <div className="w-full mt-auto flex flex-row gap-3">
+                        <button 
+                          onClick={() => {
+                            const courseId = dbCourses.length > 0 
+                              ? dbCourses.find(c => c.title === course.title)?.id || course.key
+                              : course.key;
+                            router.push(`/courses/detail/${courseId}`);
+                          }}
+                          className="flex-1 bg-green-500/80 hover:bg-green-600/90 backdrop-blur-sm border border-green-400/50 !text-black font-extrabold py-3 sm:py-4 rounded-lg sm:rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-green-500/30 flex items-center justify-center gap-2 group text-sm sm:text-base relative z-10"
+                        >
+                          <svg className="w-4 h-4 sm:w-5 sm:h-5 !text-black drop-shadow-sm" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                          <span className="hidden sm:inline !text-black font-extrabold drop-shadow-sm">View Details</span>
+                          <span className="sm:hidden !text-black font-extrabold drop-shadow-sm">Details</span>
+                        </button>
+                        <button 
+                          onClick={() => openBooking(course.title)}
+                          className="flex-1 bg-green-500/80 hover:bg-green-600/90 backdrop-blur-sm border border-green-400/50 !text-black font-extrabold py-3 sm:py-4 rounded-lg sm:rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-green-500/30 flex items-center justify-center gap-2 group text-sm sm:text-base relative z-10"
+                        >
+                          <span className="!text-black font-extrabold drop-shadow-sm">Book Now</span>
+                          <svg className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform !text-black drop-shadow-sm" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                          </svg>
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
               </div>
-            ))}
+              ));
+            })()}
           </div>
+          {(() => {
+            const allCourses = dbCourses.length > 0 
+              ? dbCourses.map((c) => ({ 
+                  key: String(c.id), 
+                  title: c.title, 
+                  level: c.level || '', 
+                  description: c.description || '', 
+                  duration: c.duration || '', 
+                  price: c.price || '', 
+                  note: c.note || '', 
+                  features: Array.isArray((c as any).features) ? (c as any).features : [], 
+                  gradient: c.gradient || '' 
+                })) 
+              : courses;
+            if (allCourses.length > 4 && !showAllCourses) {
+              return (
+                <div className="flex justify-center mt-8 sm:mt-10">
+                  <button
+                    onClick={() => setShowAllCourses(true)}
+                    className="px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold rounded-lg sm:rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-green-500/30 flex items-center justify-center gap-2 text-sm sm:text-base"
+                  >
+                    <span>Show More Courses</span>
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                </div>
+              );
+            }
+            return null;
+          })()}
         </div>
       </section>
 

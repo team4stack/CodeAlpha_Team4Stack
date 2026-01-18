@@ -262,23 +262,23 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
         try {
           const { usersApi } = await import('@/lib/api')
           const result = await usersApi.getUserByUsername(email.toLowerCase().trim())
-          
+        
           if (!result.success || !result.data) {
-            setError('Username not found. Please use your email address.')
-            setLoading(false)
-            return
-          }
+          setError('Username not found. Please use your email address.')
+          setLoading(false)
+          return
+        }
           
           const userData = result.data
-          
-          // Check if user is blocked
-          if (userData.is_blocked === true) {
-            setError('Your account has been suspended. Please contact support.')
-            setLoading(false)
-            return
-          }
-          
-          loginEmail = userData.email.toLowerCase().trim()
+        
+        // Check if user is blocked
+        if (userData.is_blocked === true) {
+          setError('Your account has been suspended. Please contact support.')
+          setLoading(false)
+          return
+        }
+        
+        loginEmail = userData.email.toLowerCase().trim()
         } catch (err) {
           setError('Failed to verify username. Please use your email address.')
           setLoading(false)
@@ -291,9 +291,9 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
           const result = await usersApi.getUserByEmail(loginEmail)
           
           if (result.success && result.data && result.data.is_blocked === true) {
-            setError('Your account has been suspended. Please contact support.')
-            setLoading(false)
-            return
+          setError('Your account has been suspended. Please contact support.')
+          setLoading(false)
+          return
           }
         } catch (err) {
           // Continue with login attempt even if check fails
@@ -322,11 +322,11 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
           const result = await usersApi.getUserByEmail(loginEmail)
           
           if (result.success && result.data && result.data.is_blocked === true) {
-            // User was blocked, sign them out
-            await supabase.auth.signOut()
-            setError('Your account has been suspended. Please contact support.')
-            setLoading(false)
-            return
+          // User was blocked, sign them out
+          await supabase.auth.signOut()
+          setError('Your account has been suspended. Please contact support.')
+          setLoading(false)
+          return
           }
         } catch (err) {
           // Continue even if check fails
@@ -482,12 +482,12 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
       // Store OTP via API (using site_settings) or localStorage as fallback
       const storageKey = `otp_${email.toLowerCase().replace(/[^a-z0-9]/g, '_')}`
       const otpValue = JSON.stringify({
-        code: otpCode,
-        email: email.toLowerCase(),
-        expiresAt: expiresAt.toISOString(),
-        username: username.toLowerCase(),
-        password: password // Store password for account creation
-      })
+              code: otpCode,
+              email: email.toLowerCase(),
+              expiresAt: expiresAt.toISOString(),
+              username: username.toLowerCase(),
+              password: password // Store password for account creation
+            })
       
       try {
         // Try to store in site_settings via API
@@ -536,10 +536,10 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
         if (result.success && result.data && Array.isArray(result.data) && result.data.length > 0) {
           const setting = result.data.find((s: any) => s.key === storageKey)
           if (setting?.value) {
-            try {
+          try {
               otpData = JSON.parse(setting.value)
-            } catch (parseError) {
-              // Invalid JSON, try localStorage
+          } catch (parseError) {
+            // Invalid JSON, try localStorage
             }
           }
         }
