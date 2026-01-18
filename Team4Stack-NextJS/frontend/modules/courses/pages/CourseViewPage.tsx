@@ -228,16 +228,11 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
       // Auto-unlock next lecture if exists (handled by unlockedLectures useMemo)
       // Next lecture will be automatically unlocked when progress >= 90%
     } catch (err: any) {
-      console.error('Failed to mark video as completed:', err);
-      console.error('Error details:', {
-        message: err?.message,
-        code: err?.code,
-        details: err?.details,
-        hint: err?.hint,
-        fullError: err
-      });
-      const errorMessage = err?.message || err?.details || 'Failed to update progress';
-      toast.error(errorMessage);
+      // Use secure error handler to prevent exposing internal information
+      const { sanitizeError, logErrorSecurely } = await import('@/lib/utils/errorHandler');
+      logErrorSecurely(err, 'updateProgress');
+      const sanitized = sanitizeError(err);
+      toast.error(sanitized.message);
     }
   }, [user?.id, courseId, videoWatched, videoWatchedTime, videos, videoTotalDuration]);
 
@@ -417,7 +412,7 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
 
           // Hide the fallback iframe
           const iframeElement = element.parentElement?.querySelector('iframe');
-          if (iframeElement) {
+          if (iframeElement && (iframeElement as HTMLElement).style) {
             (iframeElement as HTMLElement).style.display = 'none';
           }
           
@@ -546,7 +541,7 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
               playerElement.classList.add('hidden');
             }
             const iframeElement = playerElement?.parentElement?.querySelector('iframe');
-            if (iframeElement) {
+            if (iframeElement && (iframeElement as HTMLElement).style) {
               (iframeElement as HTMLElement).style.display = 'block';
             }
             // Fallback to time-based estimation

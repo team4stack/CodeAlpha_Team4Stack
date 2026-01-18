@@ -362,12 +362,13 @@ const ApplicationsPage: React.FC = () => {
       
       toast.success('User has been blocked successfully!')
     } catch (err: any) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Error blocking user:', err)
-      }
-      const errorMsg = err.message || 'Failed to block user'
-      setError(errorMsg)
-      toast.error(errorMsg)
+      // Use secure error handler
+      const { sanitizeError, logErrorSecurely } = await import('@/lib/utils/errorHandler')
+      logErrorSecurely(err, 'blockUser')
+      
+      const sanitized = sanitizeError(err)
+      setError(sanitized.message)
+      toast.error(sanitized.message)
     }
   }
 
@@ -393,29 +394,13 @@ const ApplicationsPage: React.FC = () => {
       setSelectedApplication(null)
       toast.success('Application deleted successfully!')
     } catch (err: any) {
-      console.error('Error deleting application:', {
-        error: err,
-        message: err?.message,
-        details: err?.details,
-        hint: err?.hint,
-        code: err?.code,
-        fullError: JSON.stringify(err, null, 2)
-      })
+      // Use secure error handler to prevent exposing internal information
+      const { sanitizeError, logErrorSecurely } = await import('@/lib/utils/errorHandler')
+      logErrorSecurely(err, 'deleteApplication')
       
-      // Better error message handling
-      let errorMsg = 'Failed to delete application'
-      if (err?.message) {
-        errorMsg = err.message
-      } else if (err?.details) {
-        errorMsg = err.details
-      } else if (err?.hint) {
-        errorMsg = err.hint
-      } else if (typeof err === 'string') {
-        errorMsg = err
-      }
-      
-      setError(errorMsg)
-      toast.error(errorMsg)
+      const sanitized = sanitizeError(err)
+      setError(sanitized.message)
+      toast.error(sanitized.message)
     }
   }
 

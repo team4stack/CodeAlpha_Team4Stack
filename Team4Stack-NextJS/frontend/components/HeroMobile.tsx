@@ -107,9 +107,9 @@ const HeroMobile: React.FC<HeroMobileProps> = ({
               MERN Stack
             </div>
 
-            {/* Main heading */}
-            <div className="min-h-[5rem] flex items-start">
-              <h1 className="leading-tight font-extrabold tracking-tight text-4xl sm:text-5xl">
+            {/* Main heading - Fixed height to prevent layout shift when text wraps */}
+            <div className="h-[5rem] sm:h-[6rem] flex items-start overflow-hidden">
+              <h1 className="leading-tight font-extrabold tracking-tight text-4xl sm:text-5xl break-words hyphens-auto">
                 {useMemo(() => {
                 const palettes = [
                   'from-cyan-400 to-blue-500',
@@ -148,7 +148,7 @@ const HeroMobile: React.FC<HeroMobileProps> = ({
             </div>
 
             {/* CTAs */}
-            <div className="pt-0">
+            <div className="pt-0 mb-6">
               <div className="flex items-center gap-2 flex-wrap">
                 {!loading && (!user ? (
                   <button
@@ -172,14 +172,12 @@ const HeroMobile: React.FC<HeroMobileProps> = ({
                 ))}
                 <button
                   onClick={() => {
-                    const el = document.querySelector('[aria-label=\"Open StackStore (Coming soon)\"]') as HTMLElement | null;
-                    if (el) el.click();
-                    else window.location.hash = '#';
+                    window.location.href = '/courses';
                   }}
                   className="text-xs px-4 py-2 rounded-full bg-white/6 backdrop-blur-md text-white/90 border border-white/15"
-                  aria-label="Open StackStore"
+                  aria-label="Go to Student LMS"
                 >
-                  StackStore
+                  Student LMS
                 </button>
               </div>
             </div>

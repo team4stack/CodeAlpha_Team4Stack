@@ -13,11 +13,8 @@ const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
 let supabase: SupabaseClient;
 
 if (!supabaseUrl || !supabaseKey) {
-  if (process.env.NODE_ENV === 'development') {
-    console.warn('[Supabase] Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY. Authentication will not work. For auth, add these to .env.local');
-  }
-  
   // Create a mock client that won't crash (realtime disabled to prevent WebSocket errors)
+  // No console warnings - silent fail for security (no direct DB connections from frontend)
   supabase = createClient('https://placeholder.supabase.co', 'placeholder-key', {
     auth: {
       persistSession: false,

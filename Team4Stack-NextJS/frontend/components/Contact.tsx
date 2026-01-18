@@ -5,6 +5,34 @@ import { CONTACT_PHONE_NUMBERS, CONTACT_EMAIL, getWhatsAppUrl } from '../utils/c
 import { devWarn, devError } from '../utils/devUtils';
 import { useAuth } from '../context/AuthContext';
 
+// Social Icon Link Component with error handling
+const SocialIconLink: React.FC<{ href: string; name?: string; iconUrl: string; slug?: string }> = ({ href, name, iconUrl, slug }) => {
+  const [imageError, setImageError] = useState(false);
+  
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={name}
+      title={name}
+      className="w-10 h-10 rounded-lg bg-white/15 border border-white/25 hover:bg-white/25 flex items-center justify-center transition-all duration-300 hover:scale-110 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-white/20"
+    >
+      {slug && !imageError ? (
+        <img 
+          src={iconUrl} 
+          alt={name || 'Social icon'} 
+          className="w-5 h-5" 
+          loading="lazy"
+          onError={() => setImageError(true)}
+        />
+      ) : (
+        <span className="text-xs text-white/80">{name?.charAt(0) || '?'}</span>
+      )}
+    </a>
+  );
+};
+
 // Define the form data types
 interface FormData {
   name: string;
@@ -385,8 +413,11 @@ const Contact: React.FC = () => {
       });
       
       if (result.error) {
-        // No sensitive info in logs
-        throw new Error(result.error || 'Failed to store data in database');
+        // Use secure error handler
+        const { sanitizeError, logErrorSecurely } = await import('@/lib/utils/errorHandler')
+        const sanitized = sanitizeError(result.error)
+        logErrorSecurely(result.error, 'submitAdmissionForm')
+        throw new Error(sanitized.message);
       }
       
       // Generate printable summary
@@ -487,8 +518,11 @@ const Contact: React.FC = () => {
       setPaymentScreenshot(null);
       setFileError(null);
     } catch (error) {
-      devError('Form submission error:', error);
-      alert('An error occurred while submitting the form. Please try again.');
+      // Use secure error handler
+      const { sanitizeError, logErrorSecurely } = await import('@/lib/utils/errorHandler');
+      logErrorSecurely(error, 'submitAdmissionForm');
+      const sanitized = sanitizeError(error);
+      alert(sanitized.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -677,13 +711,13 @@ const Contact: React.FC = () => {
                     const slug = slugMap[s.name as keyof typeof slugMap];
                     const iconUrl = slug ? `https://cdn.simpleicons.org/${slug}` : '';
                     return (
-                      <a key={idx} href={s.href} target="_blank" rel="noopener noreferrer" aria-label={s.name} title={s.name} className="w-10 h-10 rounded-lg bg-white/15 border border-white/25 hover:bg-white/25 flex items-center justify-center transition-all duration-300 hover:scale-110 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-white/20">
-                        {slug ? (
-                          <img src={iconUrl} alt={s.name} className="w-5 h-5" loading="lazy" />
-                        ) : (
-                          <span className="text-xs text-white/80">{s.name?.charAt(0)}</span>
-                        )}
-                      </a>
+                      <SocialIconLink
+                        key={idx}
+                        href={s.href}
+                        name={s.name}
+                        iconUrl={iconUrl}
+                        slug={slug}
+                      />
                     );
                   })}
                 </div>

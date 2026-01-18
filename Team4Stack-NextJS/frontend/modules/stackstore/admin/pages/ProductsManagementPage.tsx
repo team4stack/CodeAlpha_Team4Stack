@@ -106,7 +106,10 @@ const ProductsManagementPage: React.FC = () => {
         }
       }
     } catch (err: any) {
-      setError('Failed to load data: ' + err.message)
+      const { sanitizeError, logErrorSecurely } = await import('@/lib/utils/errorHandler')
+      logErrorSecurely(err, 'loadData')
+      const sanitized = sanitizeError(err)
+      setError(sanitized.message)
     } finally {
       setLoading(false)
     }
@@ -186,7 +189,10 @@ const ProductsManagementPage: React.FC = () => {
       loadData()
       setTimeout(() => setSuccess(null), 3000)
     } catch (err: any) {
-      setError('Failed to save product: ' + err.message)
+      const { sanitizeError, logErrorSecurely } = await import('@/lib/utils/errorHandler')
+      logErrorSecurely(err, 'handleSave')
+      const sanitized = sanitizeError(err)
+      setError(sanitized.message)
     }
   }
 
@@ -210,7 +216,10 @@ const ProductsManagementPage: React.FC = () => {
       loadData()
       setTimeout(() => setSuccess(null), 3000)
     } catch (err: any) {
-      setError('Failed to delete product: ' + err.message)
+      const { sanitizeError, logErrorSecurely } = await import('@/lib/utils/errorHandler')
+      logErrorSecurely(err, 'handleDelete')
+      const sanitized = sanitizeError(err)
+      setError(sanitized.message)
     }
   }
 
@@ -230,7 +239,10 @@ const ProductsManagementPage: React.FC = () => {
       loadData()
       setTimeout(() => setSuccess(null), 3000)
     } catch (err: any) {
-      setError('Failed to update product status: ' + err.message)
+      const { sanitizeError, logErrorSecurely } = await import('@/lib/utils/errorHandler')
+      logErrorSecurely(err, 'handleToggleStatus')
+      const sanitized = sanitizeError(err)
+      setError(sanitized.message)
     }
   }
 

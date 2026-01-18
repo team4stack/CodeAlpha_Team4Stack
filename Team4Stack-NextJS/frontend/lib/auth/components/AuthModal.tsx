@@ -113,6 +113,17 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
   const signInOAuth = async (provider: 'google' | 'github') => {
     setError(null)
     try {
+      // Check if Supabase is properly configured
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseKey || supabaseUrl.includes('placeholder') || supabaseKey.includes('placeholder')) {
+        // No console warnings - silent fail for security
+        // Always show generic message to users (production-safe)
+        setError('Authentication service is temporarily unavailable. Please contact support.')
+        return
+      }
+      
       // Get the current site URL for redirect after OAuth
       // The redirectTo should be where user lands after OAuth completes
       const redirectUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
@@ -207,6 +218,18 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
       setLoading(true)
       setError(null)
       
+      // Check if Supabase is properly configured
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseKey || supabaseUrl.includes('placeholder') || supabaseKey.includes('placeholder')) {
+        // No console warnings - silent fail for security
+        // Always show generic message to users (production-safe)
+        setError('Authentication service is temporarily unavailable. Please try again later.')
+        setLoading(false)
+        return
+      }
+      
       if (!email || !password) {
         setError('Please enter both email and password')
         setLoading(false)
@@ -235,41 +258,45 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
       // Check if input is username or email
       let loginEmail = email.trim().toLowerCase()
       if (!email.includes('@')) {
-        // It's a username, find the email
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('email, is_blocked')
-          .eq('username', email.toLowerCase().trim())
-          .maybeSingle()
-        
-        // No sensitive info in logs
-        
-        if (!userData || !userData.email) {
-          setError('Username not found. Please use your email address.')
+        // It's a username, find the email via backend API
+        try {
+          const { usersApi } = await import('@/lib/api')
+          const result = await usersApi.getUserByUsername(email.toLowerCase().trim())
+          
+          if (!result.success || !result.data) {
+            setError('Username not found. Please use your email address.')
+            setLoading(false)
+            return
+          }
+          
+          const userData = result.data
+          
+          // Check if user is blocked
+          if (userData.is_blocked === true) {
+            setError('Your account has been suspended. Please contact support.')
+            setLoading(false)
+            return
+          }
+          
+          loginEmail = userData.email.toLowerCase().trim()
+        } catch (err) {
+          setError('Failed to verify username. Please use your email address.')
           setLoading(false)
           return
         }
-        
-        // Check if user is blocked
-        if (userData.is_blocked === true) {
-          setError('Your account has been suspended. Please contact support.')
-          setLoading(false)
-          return
-        }
-        
-        loginEmail = userData.email.toLowerCase().trim()
       } else {
-        // It's an email, check if user is blocked
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('is_blocked')
-          .eq('email', loginEmail)
-          .maybeSingle()
-        
-        if (userData && userData.is_blocked === true) {
-          setError('Your account has been suspended. Please contact support.')
-          setLoading(false)
-          return
+        // It's an email, check if user is blocked via backend API
+        try {
+          const { usersApi } = await import('@/lib/api')
+          const result = await usersApi.getUserByEmail(loginEmail)
+          
+          if (result.success && result.data && result.data.is_blocked === true) {
+            setError('Your account has been suspended. Please contact support.')
+            setLoading(false)
+            return
+          }
+        } catch (err) {
+          // Continue with login attempt even if check fails
         }
       }
       
@@ -290,18 +317,19 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
         setError('Invalid email or password.')
       } else if (signInData?.user) {
         // Double-check blocked status after successful auth (in case it was changed during login)
-        const { data: userData } = await supabase
-          .from('users')
-          .select('is_blocked')
-          .eq('email', loginEmail)
-          .maybeSingle()
-        
-        if (userData && userData.is_blocked === true) {
-          // User was blocked, sign them out
-          await supabase.auth.signOut()
-          setError('Your account has been suspended. Please contact support.')
-          setLoading(false)
-          return
+        try {
+          const { usersApi } = await import('@/lib/api')
+          const result = await usersApi.getUserByEmail(loginEmail)
+          
+          if (result.success && result.data && result.data.is_blocked === true) {
+            // User was blocked, sign them out
+            await supabase.auth.signOut()
+            setError('Your account has been suspended. Please contact support.')
+            setLoading(false)
+            return
+          }
+        } catch (err) {
+          // Continue even if check fails
         }
         
         // Success - session is automatically saved by Supabase
@@ -404,6 +432,19 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
   const signUpEmail = async () => {
     try {
       setLoading(true); setError(null); setSuccess(null)
+      
+      // Check if Supabase is properly configured
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseKey || supabaseUrl.includes('placeholder') || supabaseKey.includes('placeholder')) {
+        // No console warnings - silent fail for security
+        // Always show generic message to users (production-safe)
+        setError('Authentication service is temporarily unavailable. Please try again later.')
+        setLoading(false)
+        return
+      }
+      
       if (!email || !password || !confirmPassword) {
         setError('Please fill in all required fields')
         return
@@ -427,13 +468,9 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
         setError('Username must be 3-20 characters, lowercase letters, numbers, and underscores only')
         return
       }
-      // Check if username already exists
-      const { data: existingUser } = await supabase
-        .from('users')
-        .select('id')
-        .eq('username', username.toLowerCase())
-        .maybeSingle()
-      if (existingUser) {
+      // Check if username already exists via API
+      const usernameCheck = await usersApi.getUserByUsername(username.toLowerCase())
+      if (usernameCheck.success && usernameCheck.data) {
         setError('Username already taken. Please choose another one.')
         return
       }
@@ -442,43 +479,28 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
       const otpCode = generateOTP()
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000) // 10 minutes from now
       
-      // Store OTP in Supabase (using site_settings table or create a simple storage)
-      // We'll use a simple approach: store in localStorage temporarily and in Supabase
+      // Store OTP via API (using site_settings) or localStorage as fallback
+      const storageKey = `otp_${email.toLowerCase().replace(/[^a-z0-9]/g, '_')}`
+      const otpValue = JSON.stringify({
+        code: otpCode,
+        email: email.toLowerCase(),
+        expiresAt: expiresAt.toISOString(),
+        username: username.toLowerCase(),
+        password: password // Store password for account creation
+      })
+      
       try {
-        // Try to store in Supabase site_settings (if you have access)
-        // Store password securely for account creation after OTP verification
-        const { error: otpError } = await supabase
-          .from('site_settings')
-          .upsert({
-            key: `otp_${email.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
-            value: JSON.stringify({
-              code: otpCode,
-              email: email.toLowerCase(),
-              expiresAt: expiresAt.toISOString(),
-              username: username.toLowerCase(),
-              password: password // Store password for account creation
-            })
-          }, { onConflict: 'key' })
+        // Try to store in site_settings via API
+        const { landingApi } = await import('@/lib/api')
+        const result = await landingApi.upsertSiteSetting(storageKey, otpValue)
         
-        if (otpError) {
-          // Fallback: use localStorage if Supabase fails
-          localStorage.setItem(`otp_${email}`, JSON.stringify({
-            code: otpCode,
-            email: email.toLowerCase(),
-            expiresAt: expiresAt.toISOString(),
-            username: username.toLowerCase(),
-            password: password // Store temporarily for account creation
-          }))
+        if (result.error) {
+          // Fallback: use localStorage if API fails
+          localStorage.setItem(`otp_${email}`, otpValue)
         }
       } catch (e) {
         // Fallback to localStorage
-        localStorage.setItem(`otp_${email}`, JSON.stringify({
-          code: otpCode,
-          email: email.toLowerCase(),
-          expiresAt: expiresAt.toISOString(),
-          username: username.toLowerCase(),
-          password: password // Store password for account creation
-        }))
+        localStorage.setItem(`otp_${email}`, otpValue)
       }
       
       // Send OTP via EmailJS
@@ -502,27 +524,27 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
         return
       }
       
-      // Retrieve OTP from Supabase or localStorage
+      // Retrieve OTP from API or localStorage
       let otpData: any = null
       const storageKey = `otp_${email.toLowerCase().replace(/[^a-z0-9]/g, '_')}`
       
       try {
-        const { data, error: fetchError } = await supabase
-          .from('site_settings')
-          .select('value')
-          .eq('key', storageKey)
-          .maybeSingle()
+        const { landingApi } = await import('@/lib/api')
+        const result = await landingApi.getSiteSettings([storageKey])
         
-        // Check if data exists and no error (PGRST116 is "no rows" which is OK)
-        if (data?.value && !fetchError) {
-          try {
-            otpData = JSON.parse(data.value)
-          } catch (parseError) {
-            // Invalid JSON, try localStorage
+        // Check if data exists
+        if (result.success && result.data && Array.isArray(result.data) && result.data.length > 0) {
+          const setting = result.data.find((s: any) => s.key === storageKey)
+          if (setting?.value) {
+            try {
+              otpData = JSON.parse(setting.value)
+            } catch (parseError) {
+              // Invalid JSON, try localStorage
+            }
           }
         }
       } catch (e) {
-        // Supabase error, try localStorage
+        // API error, try localStorage
       }
       
       // Fallback to localStorage if Supabase didn't work
@@ -554,7 +576,8 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
         setError('Verification code has expired. Please request a new one.')
         // Clean up expired OTP
         try {
-          await supabase.from('site_settings').delete().eq('key', storageKey)
+          const { landingApi } = await import('@/lib/api')
+          await landingApi.deleteSiteSettings([storageKey])
         } catch {}
         localStorage.removeItem(`otp_${email}`)
         return
@@ -612,7 +635,8 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
       if (authData) {
         // Clean up OTP data
         try {
-          await supabase.from('site_settings').delete().eq('key', storageKey)
+          const { landingApi } = await import('@/lib/api')
+          await landingApi.deleteSiteSettings([storageKey])
         } catch {}
         localStorage.removeItem(`otp_${email}`)
         
@@ -692,14 +716,14 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
       const storageKey = `otp_${email.toLowerCase().replace(/[^a-z0-9]/g, '_')}`
       
       try {
-        const { data } = await supabase
-          .from('site_settings')
-          .select('value')
-          .eq('key', storageKey)
-          .single()
+        const { landingApi } = await import('@/lib/api')
+        const result = await landingApi.getSiteSettings([storageKey])
         
-        if (data?.value) {
-          storedData = JSON.parse(data.value)
+        if (result.success && result.data && Array.isArray(result.data) && result.data.length > 0) {
+          const setting = result.data.find((s: any) => s.key === storageKey)
+          if (setting?.value) {
+            storedData = JSON.parse(setting.value)
+          }
         }
       } catch (e) {
         const stored = localStorage.getItem(`otp_${email}`)
@@ -721,12 +745,8 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
       }
       
       try {
-        await supabase
-          .from('site_settings')
-          .upsert({
-            key: storageKey,
-            value: JSON.stringify(updatedData)
-          }, { onConflict: 'key' })
+        const { landingApi } = await import('@/lib/api')
+        await landingApi.upsertSiteSetting(storageKey, JSON.stringify(updatedData))
       } catch (e) {
         localStorage.setItem(`otp_${email}`, JSON.stringify(updatedData))
       }
@@ -745,6 +765,19 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
   const resetPassword = async () => {
     try {
       setLoading(true); setError(null); setSuccess(null)
+      
+      // Check if Supabase is properly configured
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseKey || supabaseUrl.includes('placeholder') || supabaseKey.includes('placeholder')) {
+        // No console warnings - silent fail for security
+        // Always show generic message to users (production-safe)
+        setError('Authentication service is temporarily unavailable. Please try again later.')
+        setLoading(false)
+        return
+      }
+      
       if (!email) {
         setError('Please enter your email address')
         return

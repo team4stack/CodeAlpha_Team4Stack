@@ -2,6 +2,34 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
+### Environment Variables
+
+Create a `.env.local` file in the `frontend` directory with the following variables:
+
+```env
+# Supabase Configuration (Required for Authentication)
+NEXT_PUBLIC_SUPABASE_URL=your-supabase-project-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+
+# Backend API URL (Optional - defaults to http://localhost:5000/api)
+NEXT_PUBLIC_API_URL=http://localhost:5000/api
+
+# Site URL (Optional - for OAuth redirects)
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+
+# EmailJS Configuration (Optional - for email verification)
+NEXT_PUBLIC_EMAILJS_SERVICE_ID=your-service-id
+NEXT_PUBLIC_EMAILJS_TEMPLATE_ID=your-template-id
+NEXT_PUBLIC_EMAILJS_PUBLIC_KEY=your-public-key
+
+# reCAPTCHA Site Key (Optional - for sign-in verification)
+NEXT_PUBLIC_RECAPTCHA_SITE_KEY=your-recaptcha-site-key
+```
+
+**Note**: Authentication requires Supabase configuration. Without it, users will see an error message when trying to sign in.
+
+### Development Server
+
 First, run the development server:
 
 ```bash

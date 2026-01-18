@@ -39,8 +39,25 @@ const Reviews: React.FC = () => {
       const { landingApi } = await import('@/lib/api')
       const result = await landingApi.getReviews('approved')
       
+      // Handle 429 rate limiting error gracefully
       if (result.error) {
-        throw new Error(result.error)
+        const errorLower = result.error.toLowerCase()
+        // Check if it's a rate limit error (case-insensitive)
+        if (errorLower.includes('429') || errorLower.includes('rate limit') || errorLower.includes('too many requests') || errorLower.includes('too many')) {
+          // Don't log as error - rate limiting is expected behavior, handle silently
+          // Keep existing reviews if any, or show empty state
+          setReviews((prev) => prev.length > 0 ? prev : [])
+          setTotalReviews((prev) => prev > 0 ? prev : 0)
+          return
+        }
+        // For other errors, log but don't crash
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Error loading reviews:', result.error);
+        }
+        // Keep existing reviews if any
+        setReviews((prev) => prev.length > 0 ? prev : [])
+        setTotalReviews((prev) => prev > 0 ? prev : 0)
+        return
       }
       
       // Get total count and paginated reviews
@@ -57,11 +74,14 @@ const Reviews: React.FC = () => {
         .slice(from, to)
       
       setReviews(paginatedReviews)
-    } catch (error) {
-      // Error handled silently - user sees loading state
+    } catch (error: any) {
+      // Handle errors gracefully - don't crash the component
       if (process.env.NODE_ENV === 'development') {
         console.error('Error loading reviews:', error);
       }
+      // Keep existing reviews if any, otherwise show empty state
+      setReviews((prev) => prev.length > 0 ? prev : [])
+      setTotalReviews((prev) => prev > 0 ? prev : 0)
     } finally {
       setLoading(false);
     }
@@ -101,22 +121,22 @@ const Reviews: React.FC = () => {
         throw new Error('Please fill in all required fields');
       }
 
-      // Insert the new review into Supabase
-      const { data, error } = await supabase
-        .from('reviews')
-        .insert([
-          {
-            name: newReview.name,
-            address: newReview.address,
-            rating: newReview.rating,
-            comment: newReview.comment,
-            status: 'pending'
-          }
-        ])
-        .select();
+      // Insert the new review via API
+      const { landingApi } = await import('@/lib/api')
+      const result = await landingApi.createReview({
+        name: newReview.name,
+        address: newReview.address,
+        rating: newReview.rating,
+        comment: newReview.comment,
+        status: 'pending'
+      })
 
-      if (error) {
-        throw error;
+      if (result.error) {
+        // Handle 429 rate limiting
+        if (result.error.includes('429') || result.error.includes('rate limit') || result.error.includes('Too Many Requests')) {
+          throw new Error('Too many requests. Please wait a moment and try again.');
+        }
+        throw new Error(result.error);
       }
 
       setSubmitSuccess(true);

@@ -10,6 +10,10 @@ export const usersApi = {
     return apiClient.get(`/users/email/${email}`);
   },
 
+  getUserByUsername: async (username: string) => {
+    return apiClient.get(`/users/username?username=${encodeURIComponent(username)}`);
+  },
+
   updateUser: async (id: string, user: any) => {
     return apiClient.put(`/users/${id}`, user);
   },

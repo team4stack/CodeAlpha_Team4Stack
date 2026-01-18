@@ -23,13 +23,17 @@ const About: React.FC = () => {
     if (selectedImage) {
       document.addEventListener('keydown', handleEscKey);
       // Prevent body scroll when modal is open
-      document.body.style.overflow = 'hidden';
+      if (document.body && document.body.style) {
+        document.body.style.overflow = 'hidden';
+      }
     }
 
     return () => {
       document.removeEventListener('keydown', handleEscKey);
       // Restore body scroll when modal is closed
-      document.body.style.overflow = 'unset';
+      if (document.body && document.body.style) {
+        document.body.style.overflow = 'unset';
+      }
     };
   }, [selectedImage]);
 
@@ -157,7 +161,9 @@ const About: React.FC = () => {
 
   const handlePortfolioClick = (e: React.MouseEvent<HTMLAnchorElement>, index: number, url: string) => {
     e.preventDefault();
-    document.body.style.overflow = 'hidden';
+    if (document.body && document.body.style) {
+      document.body.style.overflow = 'hidden';
+    }
     setLoadingPortfolio({index, name: teamMembers[index].name, top: 0, left: 0});
     setTimeout(() => {
       window.location.href = url;
@@ -167,7 +173,9 @@ const About: React.FC = () => {
   // Cleanup effect
   useEffect(() => {
     return () => {
-      document.body.style.overflow = '';
+      if (document.body && document.body.style) {
+        document.body.style.overflow = '';
+      }
     };
   }, []);
 

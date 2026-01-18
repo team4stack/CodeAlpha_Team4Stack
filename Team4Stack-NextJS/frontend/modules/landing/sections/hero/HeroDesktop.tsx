@@ -146,9 +146,9 @@ const HeroDesktop: React.FC<HeroDesktopProps> = ({
               MERN Stack
             </div>
 
-            {/* Main heading (animated, multi-color per word) */}
-            <div className="min-h-[6.5rem] xs:min-h-[7.5rem] sm:min-h-[9.5rem] md:min-h-[11.5rem] lg:min-h-[13.5rem] flex items-start">
-              <h1 className="leading-tight font-extrabold tracking-tight text-4xl sm:text-6xl md:text-7xl lg:text-8xl">
+            {/* Main heading (animated, multi-color per word) - Fixed height to prevent layout shift */}
+            <div className="h-[6.5rem] xs:h-[7.5rem] sm:h-[9.5rem] md:h-[11.5rem] lg:h-[13.5rem] flex items-start overflow-hidden">
+              <h1 className="leading-tight font-extrabold tracking-tight text-4xl sm:text-6xl md:text-7xl lg:text-8xl break-words">
                 {useMemo(() => {
                 const palettes = [
                   'from-cyan-400 to-blue-500',
@@ -187,7 +187,7 @@ const HeroDesktop: React.FC<HeroDesktopProps> = ({
             </div>
 
             {/* CTAs fixed in place on desktop; left aligned */}
-            <div className="pt-6 md:pt-0 md:absolute md:bottom-0 md:left-0">
+            <div className="pt-6 mb-6 md:mb-0 md:pt-0 md:absolute md:bottom-0 md:left-0">
               <div className="flex items-center gap-3">
                 {!loading && (!user ? (
                   <button
@@ -211,14 +211,12 @@ const HeroDesktop: React.FC<HeroDesktopProps> = ({
                 ))}
                 <button
                   onClick={() => {
-                    const el = document.querySelector('[aria-label=\"Open StackStore (Coming soon)\"]') as HTMLElement | null;
-                    if (el) el.click();
-                    else window.location.hash = '#';
+                    window.location.href = '/courses';
                   }}
                   className="text-sm sm:text-base px-6 py-2.5 md:px-7 md:py-3 rounded-full bg-white/6 backdrop-blur-md text-white/90 border border-white/15 hover:bg-white/10 transition"
-                  aria-label="Open StackStore"
+                  aria-label="Go to Student LMS"
                 >
-                  StackStore
+                  Student LMS
                 </button>
               </div>
             </div>

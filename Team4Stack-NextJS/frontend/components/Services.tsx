@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { CONTACT_PHONE_NUMBERS, FIVERR_PROFILE_URL } from '../utils/constants';
-import { supabase } from '../utils/supabaseClient';
+import { landingApi } from '../lib/api';
 
 // Handle ESC key for modal
 const useEscapeKey = (callback: () => void, isActive: boolean) => {
@@ -13,13 +13,19 @@ const useEscapeKey = (callback: () => void, isActive: boolean) => {
     };
     if (isActive) {
       document.addEventListener('keydown', handleEsc);
-      document.body.style.overflow = 'hidden';
+      if (document.body && document.body.style) {
+        document.body.style.overflow = 'hidden';
+      }
     } else {
-      document.body.style.overflow = 'unset';
+      if (document.body && document.body.style) {
+        document.body.style.overflow = 'unset';
+      }
     }
     return () => {
       document.removeEventListener('keydown', handleEsc);
-      document.body.style.overflow = 'unset';
+      if (document.body && document.body.style) {
+        document.body.style.overflow = 'unset';
+      }
     };
   }, [isActive, callback]);
 };
@@ -30,27 +36,31 @@ const Services: React.FC = () => {
   const [selectedService, setSelectedService] = useState<{ id: string; title: string; description?: string; emoji?: string; gradient_color?: string; contact?: string } | null>(null);
 
   useEffect(() => {
-    // Always try Supabase first; fallback to static grid if empty/error
+    // Load services via backend API
     const loadServices = async () => {
       try {
-        const { data, error } = await supabase
-          .from('services')
-          .select('id,title,description,image_url,emoji,gradient_color,active,order_index,contact')
-          .eq('active', true)
-          .order('order_index', { ascending: true, nullsFirst: false })
-          .order('id', { ascending: false });
-        if (!error && data) {
-          setDbServices(data as any);
+        const result = await landingApi.getServices();
+        if (result.success && result.data) {
+          // Filter active services and sort by order_index
+          const activeServices = (result.data as any[])
+            .filter((s: any) => s.active === true)
+            .sort((a: any, b: any) => {
+              // Sort by order_index first, then by id
+              if (a.order_index !== b.order_index) {
+                return (a.order_index || 0) - (b.order_index || 0);
+              }
+              return (b.id || 0) - (a.id || 0);
+            });
+          setDbServices(activeServices);
         }
       } catch (err) {
-        if (import.meta.env.DEV) {
-        console.error('Error loading services:', err);
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Error loading services:', err);
         }
       }
     };
 
     loadServices();
-    // Note: Real-time subscriptions removed - using backend API
   }, []);
 
   // Handle ESC key for modal

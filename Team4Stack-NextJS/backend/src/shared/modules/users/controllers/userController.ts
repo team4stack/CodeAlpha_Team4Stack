@@ -28,6 +28,19 @@ export class UserController {
     }
   };
 
+  getUserByUsername = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { username } = req.query;
+      if (!username) {
+        return res.status(400).json({ success: false, error: 'Username is required' });
+      }
+      const user = await userService.getUserByUsername(username as string);
+      res.json({ success: true, data: user });
+    } catch (error: any) {
+      next(error);
+    }
+  };
+
   updateUser = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;

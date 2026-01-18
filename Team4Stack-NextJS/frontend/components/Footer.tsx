@@ -4,6 +4,34 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { landingApi } from '@/lib/api';
 
+// Social Icon Link Component with error handling
+const SocialIconLink: React.FC<{ href: string; name?: string; iconUrl: string; slug?: string }> = ({ href, name, iconUrl, slug }) => {
+  const [imageError, setImageError] = useState(false);
+  
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={name}
+      title={name}
+      className="w-10 h-10 rounded-lg bg-white/15 border border-white/25 hover:bg-white/25 flex items-center justify-center transition-all duration-300 hover:scale-110 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-white/20"
+    >
+      {slug && !imageError ? (
+        <img 
+          src={iconUrl} 
+          alt={name || 'Social icon'} 
+          className="w-5 h-5" 
+          loading="lazy"
+          onError={() => setImageError(true)}
+        />
+      ) : (
+        <span className="text-xs text-white/80">{name?.charAt(0) || '?'}</span>
+      )}
+    </a>
+  );
+};
+
 const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
   const [logoLoaded, setLogoLoaded] = useState(false);
@@ -33,27 +61,34 @@ const Footer: React.FC = () => {
       // Save current scroll position
       const scrollY = window.scrollY;
       // Disable body scroll
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = '100%';
-      document.body.style.overflow = 'hidden';
+      if (document.body && document.body.style) {
+        document.body.style.position = 'fixed';
+        document.body.style.top = `-${scrollY}px`;
+        document.body.style.width = '100%';
+        document.body.style.overflow = 'hidden';
+      }
       
       return () => {
         // Re-enable body scroll without animation
         const savedScrollY = scrollY;
         // Temporarily disable smooth scroll on html element
         const html = document.documentElement;
-        const originalScrollBehavior = html.style.scrollBehavior;
-        html.style.scrollBehavior = 'auto';
+        if (!html || !document.body) return;
+        
+        const originalScrollBehavior = html.style?.scrollBehavior || '';
+        if (html.style) {
+          html.style.scrollBehavior = 'auto';
+        }
         
         // Also disable smooth scroll on body
-        const originalBodyScrollBehavior = document.body.style.scrollBehavior;
-        document.body.style.scrollBehavior = 'auto';
-        
-        document.body.style.position = '';
-        document.body.style.top = '';
-        document.body.style.width = '';
-        document.body.style.overflow = '';
+        const originalBodyScrollBehavior = document.body.style?.scrollBehavior || '';
+        if (document.body.style) {
+          document.body.style.scrollBehavior = 'auto';
+          document.body.style.position = '';
+          document.body.style.top = '';
+          document.body.style.width = '';
+          document.body.style.overflow = '';
+        }
         
         // Restore scroll position instantly without animation - use direct assignment
         // Force immediate scroll without any animation
@@ -77,8 +112,12 @@ const Footer: React.FC = () => {
         
         // Restore smooth scroll behavior after a brief moment
         setTimeout(() => {
-          html.style.scrollBehavior = originalScrollBehavior;
-          document.body.style.scrollBehavior = originalBodyScrollBehavior;
+          if (html && html.style) {
+            html.style.scrollBehavior = originalScrollBehavior;
+          }
+          if (document.body && document.body.style) {
+            document.body.style.scrollBehavior = originalBodyScrollBehavior;
+          }
         }, 50);
       };
     }
@@ -249,21 +288,13 @@ const Footer: React.FC = () => {
                 const slug = slugMap[social.name as keyof typeof slugMap];
                 const iconUrl = slug ? `https://cdn.simpleicons.org/${slug}` : '';
                 return (
-                  <a
+                  <SocialIconLink
                     key={idx}
                     href={social.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={social.name}
-                    title={social.name}
-                    className="w-10 h-10 rounded-lg bg-white/15 border border-white/25 hover:bg-white/25 flex items-center justify-center transition-all duration-300 hover:scale-110 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-white/20"
-                  >
-                    {slug ? (
-                      <img src={iconUrl} alt={social.name} className="w-5 h-5" loading="lazy" />
-                    ) : (
-                      <span className="text-xs text-white/80">{social.name?.charAt(0)}</span>
-                    )}
-                  </a>
+                    name={social.name}
+                    iconUrl={iconUrl}
+                    slug={slug}
+                  />
                 );
               })}
             </div>

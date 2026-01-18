@@ -3,10 +3,11 @@ import userController from '../controllers/userController';
 
 const router = Router();
 
-router.get('/:id', userController.getUserById);
+router.get('/check-username', userController.checkUsernameAvailability);
+router.get('/username', userController.getUserByUsername);
 router.get('/email/:email', userController.getUserByEmail);
+router.get('/:id', userController.getUserById);
 router.put('/:id', userController.updateUser);
 router.post('/upsert', userController.upsertUser);
-router.get('/check-username', userController.checkUsernameAvailability);
 
 export default router;

@@ -8,10 +8,9 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
 
 // Validate that we have the required configuration
+// No console warnings - silent fail for security (no direct DB connections from frontend)
 if (!supabaseUrl || !supabaseKey) {
-  if (process.env.NODE_ENV === 'development') {
-    console.error('[Supabase] Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY. Create a .env.local file with these values.');
-  }
+  // Silent fail - authentication will not work but no warnings shown
 }
 
 // Create a single instance of the Supabase client

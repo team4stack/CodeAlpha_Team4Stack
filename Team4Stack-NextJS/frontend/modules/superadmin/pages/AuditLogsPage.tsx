@@ -134,31 +134,12 @@ const AuditLogsPage: React.FC = () => {
       {/* Error Message */}
       {error && (
         <div className="bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl p-4">
-          {error}
-          {error.includes('does not exist') && (
-            <div className="mt-2 text-sm">
-              <p>To enable audit logging, create the <code className="bg-red-900/30 px-2 py-1 rounded">audit_logs</code> table in Supabase.</p>
-              <p className="mt-2">SQL to create table:</p>
-              <pre className="mt-2 p-3 bg-gray-900 rounded text-xs overflow-x-auto">
-                {`CREATE TABLE IF NOT EXISTS audit_logs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  admin_email TEXT NOT NULL,
-  action TEXT NOT NULL,
-  resource_type TEXT NOT NULL,
-  resource_id TEXT,
-  details JSONB,
-  ip_address TEXT,
-  user_agent TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_audit_logs_admin_email ON audit_logs(admin_email);
-CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
-CREATE INDEX IF NOT EXISTS idx_audit_logs_resource_type ON audit_logs(resource_type);
-CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at DESC);`}
-              </pre>
-            </div>
-          )}
+          <p className="font-semibold">Unable to load audit logs.</p>
+          <p className="text-sm mt-1 text-red-300">
+            {error.includes('does not exist') 
+              ? 'Audit logging is not configured. Please contact the administrator.'
+              : 'Please try again later or contact support if the problem persists.'}
+          </p>
         </div>
       )}
 
