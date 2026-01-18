@@ -100,8 +100,9 @@ const CoursesNavbar: React.FC = () => {
               </span>
             </button>
 
-            {/* Center Navigation Tabs */}
-            <div className="hidden md:flex items-center justify-center gap-1 sm:gap-2 lg:gap-4 flex-1">
+            {/* Right-side actions for courses area */}
+            <div className="flex items-center gap-1.5 sm:gap-3 ml-auto">
+              {/* Courses button - right aligned */}
               <button
                 type="button"
                 className={`btn-plain px-3 sm:px-4 py-2 text-sm sm:text-base font-medium transition-all duration-300 relative group focus:outline-none ${
@@ -116,10 +117,22 @@ const CoursesNavbar: React.FC = () => {
                 Courses
                 <span className="pointer-events-none absolute left-1/2 -bottom-0.5 w-0 h-px bg-gradient-to-r from-orange-400 to-red-500 rounded-full transition-all duration-300 group-hover:left-0 group-hover:w-full"></span>
               </button>
-            </div>
-
-            {/* Right-side actions for courses area */}
-            <div className="flex items-center gap-1.5 sm:gap-3">
+              
+              {/* Apply button */}
+              <button
+                type="button"
+                className={`btn-plain px-3 sm:px-4 py-2 text-sm sm:text-base font-medium transition-all duration-300 relative group focus:outline-none ${
+                  isScrolled
+                    ? (isDarkMode
+                        ? 'text-white/90 hover:text-white'
+                        : 'text-gray-800 hover:text-orange-600')
+                    : 'text-white hover:text-orange-300 font-medium'
+                }`}
+                onClick={() => router.push('/courses/apply')}
+              >
+                Apply
+                <span className="pointer-events-none absolute left-1/2 -bottom-0.5 w-0 h-px bg-gradient-to-r from-orange-400 to-red-500 rounded-full transition-all duration-300 group-hover:left-0 group-hover:w-full"></span>
+              </button>
               {!loading && (
                 user ? (
                   <div className="relative">

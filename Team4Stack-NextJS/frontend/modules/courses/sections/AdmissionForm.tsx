@@ -17,12 +17,10 @@ interface FormData {
   address: string;
   courseName: string; // Required course
   courseName2: string; // Optional course
-  /** Message - optional field */
-  message: string;
   /** Gender - required field */
   gender: string;
-  /** Age - required field */
-  age: string;
+  /** Date of Birth - required field */
+  dateOfBirth: string;
 }
 
 // Utility function to sanitize input strings
@@ -72,6 +70,7 @@ const AdmissionForm: React.FC = () => {
   const [loadingCourses, setLoadingCourses] = useState(true);
   const [enrolledCourses, setEnrolledCourses] = useState<Set<string>>(new Set());
   const [rejectedCourses, setRejectedCourses] = useState<Set<string>>(new Set());
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   // React Hook Form setup
   const {
@@ -91,10 +90,9 @@ const AdmissionForm: React.FC = () => {
       address: '',
       courseName: '', // Required
       courseName2: '', // Optional
-      message: '',
-      // Gender and age are required fields
+      // Gender and date of birth are required fields
       gender: '',
-      age: ''
+      dateOfBirth: ''
     }
   });
 
@@ -114,7 +112,7 @@ const AdmissionForm: React.FC = () => {
         if (result.error) {
           console.error('Error loading courses:', result.error);
           setAvailableCourses([]);
-        } else if (result.data && result.data.length > 0) {
+        } else if (result.data && Array.isArray(result.data) && result.data.length > 0) {
           setAvailableCourses(result.data.map((c: any) => ({ id: c.id, title: c.title || c.name })));
         } else {
           // Fallback to default courses if no courses in database
@@ -135,7 +133,7 @@ const AdmissionForm: React.FC = () => {
             // Continue without blocking - user can still submit new applications
           }
           
-          const applicationData = result.data || [];
+          const applicationData = Array.isArray(result.data) ? result.data : [];
           if (applicationData && applicationData.length > 0) {
             const enrolled = new Set<string>();
             const rejected = new Set<string>();
@@ -265,15 +263,24 @@ const AdmissionForm: React.FC = () => {
       newErrors.gender = 'Gender is required';
     }
     
-    // Age validation
-    if (!data.age) {
-      newErrors.age = 'Age is required';
+    // Date of Birth validation
+    if (!data.dateOfBirth) {
+      newErrors.dateOfBirth = 'Date of birth is required';
     } else {
-      const ageNum = parseInt(data.age.toString(), 10);
-      if (isNaN(ageNum) || ageNum < 13) {
-        newErrors.age = 'Must be at least 13 years old';
-      } else if (ageNum > 100) {
-        newErrors.age = 'Must be less than 100 years old';
+      const birthDate = new Date(data.dateOfBirth);
+      const today = new Date();
+      const age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      const actualAge = monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate()) ? age - 1 : age;
+      
+      if (isNaN(birthDate.getTime())) {
+        newErrors.dateOfBirth = 'Please enter a valid date';
+      } else if (actualAge < 13) {
+        newErrors.dateOfBirth = 'Must be at least 13 years old';
+      } else if (actualAge > 100) {
+        newErrors.dateOfBirth = 'Must be less than 100 years old';
+      } else if (birthDate > today) {
+        newErrors.dateOfBirth = 'Date of birth cannot be in the future';
       }
     }
     
@@ -363,9 +370,8 @@ const AdmissionForm: React.FC = () => {
         address: sanitizeInput(data.address),
         courseName: sanitizeInput(data.courseName),
         courseName2: data.courseName2 ? sanitizeInput(data.courseName2) : '',
-        message: sanitizeInput(data.message || ''),
         gender: data.gender === 'male' ? 'Male' : data.gender === 'female' ? 'Female' : 'Other',
-        age: sanitizeInput(data.age)
+        dateOfBirth: data.dateOfBirth || ''
       };
       
       // Store data via API (image is NOT uploaded, only flag is saved)
@@ -378,9 +384,8 @@ const AdmissionForm: React.FC = () => {
         address: sanitizedData.address,
         course_name: sanitizedData.courseName,
         course_name_2: sanitizedData.courseName2 || null,
-        message: sanitizedData.message,
         gender: sanitizedData.gender,
-        age: parseInt(sanitizedData.age, 10),
+        date_of_birth: sanitizedData.dateOfBirth,
         image_attached: !!paymentScreenshot, // Store flag only, not the image
         viewed: false
       });
@@ -399,14 +404,13 @@ const AdmissionForm: React.FC = () => {
         `CNIC: ${sanitizedData.cnic}`,
         `Address: ${sanitizedData.address}`,
         `Gender: ${sanitizedData.gender}`,
-        `Age: ${sanitizedData.age}`,
+        `Date of Birth: ${sanitizedData.dateOfBirth}`,
         `Course: ${sanitizedData.courseName}`,
-        ...(sanitizedData.message ? [`Message: ${sanitizedData.message}`] : [])
       ];
       const phoneNumber = CONTACT_PHONE_NUMBERS.primary;
       const timestamp = new Date().toLocaleString();
       const extraNote = encodeURIComponent('Please attach the PDF you downloaded from the website along with the payment screenshot.');
-      const msgEncoded = `New Course Inquiry%0AName: ${encodeURIComponent(sanitizedData.name)}%0AFather Name: ${encodeURIComponent(sanitizedData.fatherName)}%0APhone: ${encodeURIComponent(sanitizedData.phone)}%0AEmail: ${encodeURIComponent(sanitizedData.email)}%0AAddress: ${encodeURIComponent(sanitizedData.address)}%0AGender: ${encodeURIComponent(sanitizedData.gender)}%0AAge: ${encodeURIComponent(sanitizedData.age)}%0ACourse: ${encodeURIComponent(sanitizedData.courseName)}${sanitizedData.message ? `%0AMessage: ${encodeURIComponent(sanitizedData.message)}` : ''}%0A%0A${extraNote}`;
+      const msgEncoded = `New Course Inquiry%0AName: ${encodeURIComponent(sanitizedData.name)}%0AFather Name: ${encodeURIComponent(sanitizedData.fatherName)}%0APhone: ${encodeURIComponent(sanitizedData.phone)}%0AEmail: ${encodeURIComponent(sanitizedData.email)}%0AAddress: ${encodeURIComponent(sanitizedData.address)}%0AGender: ${encodeURIComponent(sanitizedData.gender)}%0ADate of Birth: ${encodeURIComponent(sanitizedData.dateOfBirth)}%0ACourse: ${encodeURIComponent(sanitizedData.courseName)}%0A%0A${extraNote}`;
       const waURL = getWhatsAppUrl(phoneNumber, decodeURIComponent(msgEncoded));
       const logoPath = '/Team4stack_Logo.png?v=8';
       let logoDataUrl = '';
@@ -497,24 +501,84 @@ const AdmissionForm: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black pt-20 md:pt-28 pb-12 px-4">
-      <div className="container-custom max-w-4xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            Admission <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-600">Form</span>
+    <div className="min-h-screen bg-gradient-to-br from-[#0a0f1f] via-[#0b1226] to-[#060b18] pt-20 md:pt-28 pb-12 px-4 relative overflow-hidden">
+      {/* Animated background elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-24 -left-24 w-[55vw] h-[55vw] rounded-full opacity-20 blur-3xl animate-pulse" style={{
+          background: 'radial-gradient(circle at 30% 30%, rgba(56,189,248,0.45), rgba(56,189,248,0) 60%)',
+          animationDuration: '4s'
+        }}></div>
+        <div className="absolute -bottom-28 -right-24 w-[60vw] h-[60vw] rounded-full opacity-15 blur-3xl animate-pulse" style={{
+          background: 'radial-gradient(circle at 70% 70%, rgba(168,85,247,0.45), rgba(168,85,247,0) 60%)',
+          animationDuration: '5s',
+          animationDelay: '1s'
+        }}></div>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[40vw] h-[40vw] rounded-full opacity-10 blur-3xl animate-pulse" style={{
+          background: 'radial-gradient(circle at 50% 50%, rgba(236,72,153,0.4), rgba(236,72,153,0) 60%)',
+          animationDuration: '6s',
+          animationDelay: '2s'
+        }}></div>
+        
+        {/* Animated grid pattern */}
+        <div className="absolute inset-0 opacity-5" style={{
+          backgroundImage: `linear-gradient(cyan 1px, transparent 1px), linear-gradient(90deg, cyan 1px, transparent 1px)`,
+          backgroundSize: '50px 50px',
+          animation: 'gridMove 20s linear infinite'
+        }}></div>
+      </div>
+
+      <div className="container-custom max-w-7xl mx-auto relative z-10 px-4 sm:px-6 lg:px-8">
+        {/* Modern Header */}
+        <div className="text-center mb-10 md:mb-12">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm mb-6">
+            <svg className="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <span className="text-sm text-white/80 font-medium">Course Application</span>
+          </div>
+          <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold text-white mb-4 leading-tight">
+            Admission <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500">Form</span>
           </h1>
-          <p className="text-xl text-gray-300">
-            Fill out the form below to apply for our courses
+          <p className="text-lg md:text-xl text-gray-300 max-w-2xl mx-auto leading-relaxed">
+            Join our MERN Stack training program. Fill out the form below to start your journey
           </p>
         </div>
 
-        <div className="card">
-          <h3 className="text-2xl font-bold mb-6 text-white text-center">Admission Form</h3>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Modern Glassmorphism Card */}
+        <div className="relative backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl shadow-2xl p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12 overflow-hidden w-full">
+          {/* Animated background elements behind card */}
+          <div className="absolute -inset-4 -z-10 overflow-hidden pointer-events-none">
+            {/* Floating orbs */}
+            <div className="absolute top-10 left-10 w-32 h-32 bg-cyan-500/20 rounded-full blur-3xl animate-pulse"></div>
+            <div className="absolute bottom-10 right-10 w-40 h-40 bg-purple-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-36 h-36 bg-pink-500/15 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
+            
+            {/* Animated gradient lines */}
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent animate-shimmer"></div>
+            <div className="absolute bottom-0 right-0 w-1 h-full bg-gradient-to-b from-transparent via-purple-500/30 to-transparent animate-shimmer" style={{ animationDelay: '0.5s' }}></div>
+          </div>
+          
+          {/* Card gradient overlay with animation */}
+          <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-purple-500/5 to-pink-500/5 pointer-events-none animate-gradient-shift"></div>
+          
+          {/* Card content */}
+          <div className="relative z-10">
+            <div className="flex items-center gap-3 mb-8 pb-6 border-b border-white/10">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500/20 to-purple-500/20 flex items-center justify-center border border-white/10">
+                <svg className="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
               <div>
-                <label htmlFor="name" className="block text-sm font-medium text-white mb-2">
-                  Full Name
+                <h3 className="text-2xl md:text-3xl font-bold text-white">Personal Information</h3>
+                <p className="text-sm text-gray-400 mt-1">Please provide your details below</p>
+              </div>
+            </div>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+              <div>
+                <label htmlFor="name" className="block text-sm font-semibold text-white/90 mb-2.5">
+                  Full Name <span className="text-red-400">*</span>
                 </label>
                 <input
                   type="text"
@@ -523,18 +587,23 @@ const AdmissionForm: React.FC = () => {
                     required: 'Full name is required',
                     minLength: { value: 2, message: 'Name must be at least 2 characters' }
                   })}
-                  className={`form-input ${errors.name ? 'border-red-500' : ''}`}
-                  placeholder="Your full name"
+                  className={`w-full px-4 py-3 rounded-xl bg-white/5 border ${errors.name ? 'border-red-500/50' : 'border-white/10'} text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all backdrop-blur-sm ${errors.name ? 'bg-red-500/10' : 'hover:bg-white/10'}`}
+                  placeholder="Enter your full name"
                   aria-invalid={!!errors.name}
                   aria-describedby={errors.name ? "name-error" : undefined}
                 />
                 {errors.name && (
-                  <p id="name-error" className="mt-1 text-xs sm:text-sm text-red-500 break-words">{errors.name.message}</p>
+                  <p id="name-error" className="mt-2 text-xs sm:text-sm text-red-400 break-words flex items-center gap-1">
+                    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    {errors.name.message}
+                  </p>
                 )}
               </div>
               <div>
-                <label htmlFor="fatherName" className="block text-sm font-medium text-white mb-2">
-                  Father Name
+                <label htmlFor="fatherName" className="block text-sm font-semibold text-white/90 mb-2.5">
+                  Father Name <span className="text-red-400">*</span>
                 </label>
                 <input
                   type="text"
@@ -543,21 +612,26 @@ const AdmissionForm: React.FC = () => {
                     required: 'Father name is required',
                     minLength: { value: 2, message: 'Father name must be at least 2 characters' }
                   })}
-                  className={`form-input ${errors.fatherName ? 'border-red-500' : ''}`}
-                  placeholder="Your father name"
+                  className={`w-full px-4 py-3 rounded-xl bg-white/5 border ${errors.fatherName ? 'border-red-500/50' : 'border-white/10'} text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all backdrop-blur-sm ${errors.fatherName ? 'bg-red-500/10' : 'hover:bg-white/10'}`}
+                  placeholder="Enter your father's name"
                   aria-invalid={!!errors.fatherName}
                   aria-describedby={errors.fatherName ? "fatherName-error" : undefined}
                 />
                 {errors.fatherName && (
-                  <p id="fatherName-error" className="mt-1 text-xs sm:text-sm text-red-500 break-words">{errors.fatherName.message}</p>
+                  <p id="fatherName-error" className="mt-2 text-xs sm:text-sm text-red-400 break-words flex items-center gap-1">
+                    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    {errors.fatherName.message}
+                  </p>
                 )}
               </div>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="phone" className="block text-sm font-medium text-white mb-2">
-                  Phone Number
+                <label htmlFor="phone" className="block text-sm font-semibold text-white/90 mb-2.5">
+                  Phone Number <span className="text-red-400">*</span>
                 </label>
                 <input
                   type="tel"
@@ -566,18 +640,23 @@ const AdmissionForm: React.FC = () => {
                     required: 'Phone number is required',
                     pattern: { value: /^[0-9+\-\s()]{10,15}$/, message: 'Please enter a valid phone number' }
                   })}
-                  className={`form-input ${errors.phone ? 'border-red-500' : ''}`}
+                  className={`w-full px-4 py-3 rounded-xl bg-white/5 border ${errors.phone ? 'border-red-500/50' : 'border-white/10'} text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all backdrop-blur-sm ${errors.phone ? 'bg-red-500/10' : 'hover:bg-white/10'}`}
                   placeholder="03xx-xxxxxxx"
                   aria-invalid={!!errors.phone}
                   aria-describedby={errors.phone ? "phone-error" : undefined}
                 />
                 {errors.phone && (
-                  <p id="phone-error" className="mt-1 text-xs sm:text-sm text-red-500 break-words">{errors.phone.message}</p>
+                  <p id="phone-error" className="mt-2 text-xs sm:text-sm text-red-400 break-words flex items-center gap-1">
+                    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    {errors.phone.message}
+                  </p>
                 )}
               </div>
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-white mb-2">
-                  Email Address
+                <label htmlFor="email" className="block text-sm font-semibold text-white/90 mb-2.5">
+                  Email Address <span className="text-red-400">*</span>
                 </label>
                 <input
                   type="email"
@@ -586,21 +665,26 @@ const AdmissionForm: React.FC = () => {
                     required: 'Email is required',
                     pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Please enter a valid email address' }
                   })}
-                  className={`form-input ${errors.email ? 'border-red-500' : ''}`}
+                  className={`w-full px-4 py-3 rounded-xl bg-white/5 border ${errors.email ? 'border-red-500/50' : 'border-white/10'} text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all backdrop-blur-sm ${errors.email ? 'bg-red-500/10' : 'hover:bg-white/10'}`}
                   placeholder="your@email.com"
                   aria-invalid={!!errors.email}
                   aria-describedby={errors.email ? "email-error" : undefined}
                 />
                 {errors.email && (
-                  <p id="email-error" className="mt-1 text-xs sm:text-sm text-red-500 break-words">{errors.email.message}</p>
+                  <p id="email-error" className="mt-2 text-xs sm:text-sm text-red-400 break-words flex items-center gap-1">
+                    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    {errors.email.message}
+                  </p>
                 )}
               </div>
             </div>
 
             {/* CNIC Row */}
             <div>
-              <label htmlFor="cnic" className="block text-sm font-medium text-white mb-2">
-                CNIC Number *
+              <label htmlFor="cnic" className="block text-sm font-semibold text-white/90 mb-2.5">
+                CNIC Number <span className="text-red-400">*</span>
               </label>
               <input
                 type="text"
@@ -612,87 +696,97 @@ const AdmissionForm: React.FC = () => {
                     message: 'CNIC must be 13 digits (format: 12345-1234567-1)' 
                   }
                 })}
-                className={`form-input ${errors.cnic ? 'border-red-500' : ''}`}
+                className={`w-full px-4 py-3 rounded-xl bg-white/5 border ${errors.cnic ? 'border-red-500/50' : 'border-white/10'} text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all backdrop-blur-sm ${errors.cnic ? 'bg-red-500/10' : 'hover:bg-white/10'}`}
                 placeholder="12345-1234567-1"
                 maxLength={15}
                 aria-invalid={!!errors.cnic}
                 aria-describedby={errors.cnic ? "cnic-error" : undefined}
               />
               {errors.cnic && (
-                <p id="cnic-error" className="mt-1 text-xs sm:text-sm text-red-500 break-words">{errors.cnic.message}</p>
+                <p id="cnic-error" className="mt-2 text-xs sm:text-sm text-red-400 break-words flex items-center gap-1">
+                  <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {errors.cnic.message}
+                </p>
               )}
             </div>
 
             {/* Gender and Age Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="gender" className="block text-sm font-medium text-white mb-2">
-                  Gender *
+                <label htmlFor="gender" className="block text-sm font-semibold text-white/90 mb-2.5">
+                  Gender <span className="text-red-400">*</span>
                 </label>
                 <select
                   id="gender"
                   {...register('gender', { required: 'Gender is required' })}
-                  className={`form-input ${errors.gender ? 'border-red-500' : ''}`}
+                  className={`w-full px-4 py-3 rounded-xl bg-white/5 border ${errors.gender ? 'border-red-500/50' : 'border-white/10'} text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all backdrop-blur-sm ${errors.gender ? 'bg-red-500/10' : 'hover:bg-white/10'}`}
                   aria-invalid={!!errors.gender}
                   aria-describedby={errors.gender ? "gender-error" : undefined}
                 >
-                  <option value="">Select Gender</option>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="other">Other</option>
+                  <option value="" className="bg-gray-800 text-white">Select Gender</option>
+                  <option value="male" className="bg-gray-800 text-white">Male</option>
+                  <option value="female" className="bg-gray-800 text-white">Female</option>
+                  <option value="other" className="bg-gray-800 text-white">Other</option>
                 </select>
                 {errors.gender && (
-                  <p id="gender-error" className="mt-1 text-xs sm:text-sm text-red-500 break-words">{errors.gender.message}</p>
+                  <p id="gender-error" className="mt-2 text-xs sm:text-sm text-red-400 break-words flex items-center gap-1">
+                    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    {errors.gender.message}
+                  </p>
                 )}
               </div>
               <div>
-                <label htmlFor="age" className="block text-sm font-medium text-white mb-2">
-                  Age *
+                <label htmlFor="dateOfBirth" className="block text-sm font-semibold text-white/90 mb-2.5">
+                  Date of Birth <span className="text-red-400">*</span>
                 </label>
                 <input
-                  type="number"
-                  id="age"
-                  {...register('age', { 
-                    required: 'Age is required',
-                    min: { value: 13, message: 'Must be at least 13 years old' },
-                    max: { value: 100, message: 'Must be less than 100 years old' },
-                    valueAsNumber: true
+                  type="date"
+                  id="dateOfBirth"
+                  {...register('dateOfBirth', { 
+                    required: 'Date of birth is required'
                   })}
-                  min="13"
-                  max="100"
-                  step="1"
-                  className={`form-input ${errors.age ? 'border-red-500' : ''}`}
-                  placeholder="Your age"
-                  aria-invalid={!!errors.age}
-                  aria-describedby={errors.age ? "age-error" : undefined}
+                  max={new Date(new Date().setFullYear(new Date().getFullYear() - 13)).toISOString().split('T')[0]}
+                  min={new Date(new Date().setFullYear(new Date().getFullYear() - 100)).toISOString().split('T')[0]}
+                  className={`w-full px-4 py-3 rounded-xl bg-white/5 border ${errors.dateOfBirth ? 'border-red-500/50' : 'border-white/10'} text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all backdrop-blur-sm ${errors.dateOfBirth ? 'bg-red-500/10' : 'hover:bg-white/10'} [color-scheme:dark]`}
+                  aria-invalid={!!errors.dateOfBirth}
+                  aria-describedby={errors.dateOfBirth ? "dateOfBirth-error" : undefined}
                 />
-                {errors.age && (
-                  <p id="age-error" className="mt-1 text-xs sm:text-sm text-red-500 break-words">{errors.age.message}</p>
+                {errors.dateOfBirth && (
+                  <p id="dateOfBirth-error" className="mt-2 text-xs sm:text-sm text-red-400 break-words flex items-center gap-1">
+                    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    {errors.dateOfBirth.message}
+                  </p>
                 )}
               </div>
             </div>
 
             {/* Address Row */}
             <div>
-              <label htmlFor="address" className="block text-sm font-medium text-white mb-2">
+              <label htmlFor="address" className="block text-sm font-semibold text-white/90 mb-2.5">
                 Address
               </label>
               <input
                 type="text"
                 id="address"
                 {...register('address')}
-                className="form-input"
+                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all backdrop-blur-sm hover:bg-white/10"
                 placeholder="House/Street, Area, City, Postal Code"
               />
             </div>
 
             <div>
-              <label htmlFor="courseName" className="block text-sm font-medium text-white mb-2">
-                Course Name *
+              <label htmlFor="courseName" className="block text-sm font-semibold text-white/90 mb-2.5">
+                Course Name <span className="text-red-400">*</span>
               </label>
               {loadingCourses ? (
-                <div className="form-input flex items-center justify-center py-3">
-                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <div className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center backdrop-blur-sm">
+                  <svg className="animate-spin h-5 w-5 text-cyan-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
@@ -704,34 +798,39 @@ const AdmissionForm: React.FC = () => {
                     {...register('courseName', { 
                       required: 'Course name is required'
                     })}
-                    className={`form-input ${errors.courseName ? 'border-red-500' : ''}`}
+                    className={`w-full px-4 py-3 rounded-xl bg-white/5 border ${errors.courseName ? 'border-red-500/50' : 'border-white/10'} text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all backdrop-blur-sm ${errors.courseName ? 'bg-red-500/10' : 'hover:bg-white/10'}`}
                     aria-invalid={!!errors.courseName}
                     aria-describedby={errors.courseName ? "courseName-error" : undefined}
                   >
-                    <option value="">Select a course (Required)</option>
+                    <option value="" className="bg-gray-800 text-white">Select a course (Required)</option>
                     {requiredCourses.map((course: { id: number; title: string }) => (
-                      <option key={course.id} value={course.title}>
+                      <option key={course.id} value={course.title} className="bg-gray-800 text-white">
                         {course.title}
                       </option>
                     ))}
                   </select>
                 ) : (
-                  <div className="form-input bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed">
+                  <div className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-400 cursor-not-allowed backdrop-blur-sm">
                     No courses available
                   </div>
                 )}
               {errors.courseName && (
-                <p id="courseName-error" className="mt-1 text-xs sm:text-sm text-red-500 break-words">{errors.courseName.message}</p>
+                <p id="courseName-error" className="mt-2 text-xs sm:text-sm text-red-400 break-words flex items-center gap-1">
+                  <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {errors.courseName.message}
+                </p>
               )}
             </div>
 
             <div>
-              <label htmlFor="courseName2" className="block text-sm font-medium text-white mb-2">
-                Optional Course
+              <label htmlFor="courseName2" className="block text-sm font-semibold text-white/90 mb-2.5">
+                Second Course (Optional)
               </label>
               {loadingCourses ? (
-                <div className="form-input flex items-center justify-center py-3">
-                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <div className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center backdrop-blur-sm">
+                  <svg className="animate-spin h-5 w-5 text-cyan-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
@@ -741,76 +840,102 @@ const AdmissionForm: React.FC = () => {
                 <select
                   id="courseName2"
                   {...register('courseName2')}
-                  className={`form-input ${errors.courseName2 ? 'border-red-500' : ''}`}
+                  className={`w-full px-4 py-3 rounded-xl bg-white/5 border ${errors.courseName2 ? 'border-red-500/50' : 'border-white/10'} text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all backdrop-blur-sm hover:bg-white/10`}
                   aria-invalid={!!errors.courseName2}
                   aria-describedby={errors.courseName2 ? "courseName2-error" : undefined}
                 >
-                  <option value="">Select an optional course</option>
+                  <option value="" className="bg-gray-800 text-white">Select an optional course</option>
                   {optionalCourses.map((course: { id: number; title: string }) => (
-                    <option key={course.id} value={course.title}>
+                    <option key={course.id} value={course.title} className="bg-gray-800 text-white">
                       {course.title}
                     </option>
                   ))}
                 </select>
               ) : (
-                <div className="form-input bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed">
+                <div className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-400 cursor-not-allowed backdrop-blur-sm">
                   No optional courses available
                 </div>
               )}
               {errors.courseName2 && (
-                <p id="courseName2-error" className="mt-1 text-xs sm:text-sm text-red-500 break-words">{errors.courseName2.message}</p>
+                <p id="courseName2-error" className="mt-2 text-xs sm:text-sm text-red-400 break-words flex items-center gap-1">
+                  <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {errors.courseName2.message}
+                </p>
               )}
             </div>
 
             <div>
-              <label htmlFor="message" className="block text-sm font-medium text-white mb-2">
-                Message (Optional)
+              <label htmlFor="paymentScreenshot" className="block text-sm font-semibold text-white/90 mb-2.5">
+                Payment Screenshot <span className="text-red-400">*</span>
               </label>
-              <textarea
-                id="message"
-                {...register('message')}
-                rows={4}
-                className="form-input"
-                placeholder="Tell us about your project or any questions you have..."
-              />
+              <div className="relative">
+                <input
+                  id="paymentScreenshot"
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/webp"
+                  onChange={handleFileChange}
+                  className={`w-full px-4 py-3 rounded-xl bg-white/5 border ${fileError ? 'border-red-500/50' : 'border-white/10'} text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all backdrop-blur-sm hover:bg-white/10 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-cyan-500/20 file:text-cyan-400 file:cursor-pointer hover:file:bg-cyan-500/30 ${fileError ? 'bg-red-500/10' : ''}`}
+                  required
+                />
+              </div>
+              {fileError && (
+                <p className="mt-2 text-red-400 text-xs md:text-sm flex items-center gap-1">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {fileError}
+                </p>
+              )}
+              <p className="mt-2 text-gray-400 text-xs md:text-sm flex items-center gap-2">
+                <svg className="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Attach payment screenshot (JPG, PNG, WebP, max 2MB)
+              </p>
             </div>
 
-            <div>
-              <label htmlFor="paymentScreenshot" className="form-label">Payment Screenshot *</label>
+            {/* Terms and Conditions Checkbox */}
+            <div className="flex items-start gap-3">
               <input
-                id="paymentScreenshot"
-                type="file"
-                accept="image/jpeg,image/jpg,image/png,image/webp"
-                onChange={handleFileChange}
-                className={`form-input ${fileError ? 'border-red-500' : ''}`}
+                type="checkbox"
+                id="termsCheckbox"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                className="mt-1 w-5 h-5 rounded border-white/30 bg-white/5 text-cyan-500 focus:ring-2 focus:ring-cyan-500/50 focus:ring-offset-0 cursor-pointer transition-all hover:border-cyan-400/50"
                 required
               />
-              {fileError && (
-                <p className="mt-1 text-red-500 text-xs md:text-sm">{fileError}</p>
-              )}
-              <p className="mt-1 text-gray-400 text-xs md:text-sm">Attach payment screenshot (JPG, PNG, WebP, max 2MB)</p>
+              <label htmlFor="termsCheckbox" className="text-sm text-white/90 cursor-pointer flex-1">
+                I have read and agree to the <span className="text-cyan-400 font-semibold hover:text-cyan-300 transition-colors">Terms and Conditions</span> of Team4Stack courses
+              </label>
             </div>
 
             <button
               type="submit"
-              disabled={isSubmitting}
-              className="admission-submit-btn w-full px-4 py-3 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              style={{ color: '#ffffff' }}
+              disabled={isSubmitting || !acceptedTerms}
+              className="w-full px-6 py-4 rounded-xl bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 hover:from-cyan-600 hover:via-purple-600 hover:to-pink-600 text-white font-semibold text-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-lg shadow-purple-500/25 hover:shadow-xl hover:shadow-purple-500/40 hover:scale-[1.02] active:scale-[0.98] transform"
               aria-busy={isSubmitting}
             >
               {isSubmitting ? (
                 <>
-                  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" style={{ color: '#ffffff' }}>
+                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span style={{ color: '#ffffff' }}>Submitting...</span>
+                  <span>Submitting Application...</span>
                 </>
               ) : (
-                <span style={{ color: '#ffffff' }}>Submit Form</span>
+                <>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>Submit Application</span>
+                </>
               )}
             </button>
-          </form>
+            </form>
+          </div>
         </div>
       </div>
       
@@ -837,4 +962,42 @@ const AdmissionForm: React.FC = () => {
 };
 
 export default AdmissionForm;
+
+// Add custom animations via style tag
+if (typeof document !== 'undefined') {
+  const styleId = 'admission-form-animations';
+  if (!document.getElementById(styleId)) {
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = `
+      @keyframes shimmer {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(100%); }
+      }
+      @keyframes gridMove {
+        0% { transform: translate(0, 0); }
+        100% { transform: translate(50px, 50px); }
+      }
+      @keyframes gradient-shift {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.8; }
+      }
+      .animate-shimmer {
+        animation: shimmer 3s ease-in-out infinite;
+      }
+      .animate-gradient-shift {
+        animation: gradient-shift 4s ease-in-out infinite;
+      }
+      input[type="date"]::-webkit-calendar-picker-indicator {
+        filter: invert(1);
+        cursor: pointer;
+        opacity: 0.7;
+      }
+      input[type="date"]::-webkit-calendar-picker-indicator:hover {
+        opacity: 1;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+}
 
