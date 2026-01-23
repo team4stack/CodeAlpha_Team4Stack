@@ -17,7 +17,7 @@ export class UserController {
 
   getUserByEmail = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { email } = req.query;
+      const { email } = req.params;
       if (!email) {
         return res.status(400).json({ success: false, error: 'Email is required' });
       }

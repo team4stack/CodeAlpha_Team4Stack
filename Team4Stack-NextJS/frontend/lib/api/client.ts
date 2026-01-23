@@ -42,7 +42,7 @@ class ApiClient {
           if (response.status === 429) {
             errorMessage = 'Too many requests. Please wait a moment and try again.';
           } else if (response.status === 401) {
-            errorMessage = 'You are not authorized to perform this action.';
+            errorMessage = 'Invalid email or password.';
           } else if (response.status === 403) {
             errorMessage = 'Access denied. You do not have permission.';
           } else if (response.status === 404) {
@@ -52,7 +52,7 @@ class ApiClient {
           } else {
             try {
               const errorData = await response.json();
-              // Sanitize error message from backend
+              // Always sanitize error message from backend to prevent exposing sensitive info
               const { sanitizeError } = await import('@/lib/utils/errorHandler');
               const sanitized = sanitizeError(errorData.error || errorData.message || '');
               errorMessage = sanitized.message;
@@ -74,22 +74,24 @@ class ApiClient {
       } catch (error: any) {
         // If this is the last attempt, return error
         if (attempt === retries) {
-          // Handle network errors (backend not running, connection refused, etc.)
-          if (process.env.NODE_ENV === 'development') {
-            console.error('API Error:', error);
-          }
-          
           // Sanitize error messages to prevent exposing internal information
+          // NEVER expose backend URLs, server details, or technical errors to users
           let errorMessage = 'Unable to connect to the server. Please try again later.';
           
-          // Check if it's a network error
-          if (error.message?.includes('fetch') || error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
-            errorMessage = 'Unable to connect to the server. Please check your connection and try again.';
+          // Check if it's a network error - use generic message for all network errors
+          if (error.message?.includes('fetch') || error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError') || error.message?.includes('ERR_CONNECTION_REFUSED') || error.message?.includes('ERR_NETWORK')) {
+            // Generic message - never expose backend URL or technical details
+            errorMessage = 'Unable to connect to the server. Please check your internet connection and try again.';
           } else if (error.message) {
-            // Sanitize error message
-            const { sanitizeError } = await import('@/lib/utils/errorHandler');
-            const sanitized = sanitizeError(error);
-            errorMessage = sanitized.message;
+            // Sanitize error message - remove any sensitive information
+            try {
+              const { sanitizeError } = await import('@/lib/utils/errorHandler');
+              const sanitized = sanitizeError(error);
+              errorMessage = sanitized.message;
+            } catch {
+              // If error handler fails, use generic message
+              errorMessage = 'An error occurred. Please try again.';
+            }
           }
           
           return {

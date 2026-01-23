@@ -105,79 +105,324 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loadSession = useCallback(async () => {
     setLoading(true)
     try {
-      // Check if Supabase is properly configured (not placeholder)
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      // Get session from localStorage (stored by AuthModal after backend authentication)
+      const sessionStr = localStorage.getItem('auth_session')
       
-      // If Supabase keys are missing, skip auth (for admin-only mode)
-      if (!supabaseUrl || !supabaseKey || supabaseUrl.includes('placeholder')) {
+      if (!sessionStr) {
         setUser(null)
         setLoading(false)
         return
       }
 
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-      
-      // If session check fails, don't sign out - just set user to null
-      if (sessionError) {
-        console.warn('Session check failed:', sessionError.message)
-        setUser(null)
-        setLoading(false)
-        return
-      }
-
-      if (!session?.user) {
-        setUser(null)
-        setLoading(false)
-        return
-      }
-      // Ensure profile exists (only creates if doesn't exist)
-      await upsertProfile(session.user)
-      // Always fetch fresh data from database to get latest updates via API
-      const profileResult = await usersApi.getUserById(session.user.id)
-      
-      if (profileResult.error) {
-        // No sensitive info in logs
-        // Fallback to upsertProfile result if fetch fails
-        const fallback = await upsertProfile(session.user)
-        setUser(fallback)
-      } else {
-        const profile = profileResult.data
-        // Check if user is blocked - if yes, sign them out immediately
-        if (profile && (profile as any).is_blocked === true) {
-          await supabase.auth.signOut()
+      try {
+        const session = JSON.parse(sessionStr)
+        
+        if (!session.access_token || !session.refresh_token) {
+          localStorage.removeItem('auth_session')
           setUser(null)
           setLoading(false)
           return
         }
         
-        const mapped = mapProfile(session.user, profile)
+        // Check if session is expired (only check if expires_at exists and is valid)
+        if (session.expires_at) {
+          const expiresAt = typeof session.expires_at === 'number' ? session.expires_at : parseInt(session.expires_at)
+          if (!isNaN(expiresAt) && Date.now() > expiresAt) {
+            // Session expired, remove it
+            localStorage.removeItem('auth_session')
+            setUser(null)
+            setLoading(false)
+            return
+          }
+        }
+
+        // Verify session with backend API (backend will verify with Supabase)
+        const { authApi } = await import('@/lib/api')
+        let sessionUser = null
+        let userProfile = null
+        
+        try {
+          const verifyResult = await authApi.getSession(session.access_token, session.refresh_token)
+          
+          if (verifyResult.success && verifyResult.data) {
+            const sessionData = verifyResult.data as any
+            sessionUser = sessionData.user
+            userProfile = sessionData.user?.profile || null
+          } else {
+            // Backend verification failed, try to use stored user data as fallback
+            // Use stored user data if available
+            if (session.user && session.user.id) {
+              sessionUser = session.user
+            } else {
+              // No user data available, session is invalid
+              localStorage.removeItem('auth_session')
+              setUser(null)
+              setLoading(false)
+              return
+            }
+          }
+        } catch (verifyErr: any) {
+          // Backend API call failed, try to use stored user data
+          // Use stored user data if available
+          if (session.user && session.user.id) {
+            sessionUser = session.user
+          } else {
+            // No user data available, session is invalid
+            localStorage.removeItem('auth_session')
+            setUser(null)
+            setLoading(false)
+            return
+          }
+        }
+        
+        if (!sessionUser || !sessionUser.id) {
+          setUser(null)
+          setLoading(false)
+          return
+        }
+
+        // Get user profile (either from user.profile or fetch separately)
+        if (!userProfile) {
+          userProfile = sessionUser.profile || null
+        }
+        
+        // If profile is not available, fetch it separately or create it
+        if (!userProfile) {
+          try {
+            const profileResult = await usersApi.getUserById(sessionUser.id)
+            if (profileResult.success && profileResult.data) {
+              userProfile = profileResult.data
+            } else {
+              // Profile doesn't exist, create it via upsertProfile
+              const createdProfile = await upsertProfile(sessionUser)
+              if (createdProfile) {
+                userProfile = createdProfile as any
+              }
+            }
+          } catch (profileErr) {
+            // Try to create profile
+            try {
+              const createdProfile = await upsertProfile(sessionUser)
+              if (createdProfile) {
+                userProfile = createdProfile as any
+              }
+            } catch (createErr) {
+              // Continue without profile - will use session user data
+            }
+          }
+        }
+
+        // Check if user is blocked (only if we have profile data)
+        if (userProfile && (userProfile as any).is_blocked === true) {
+          // User is blocked, remove session
+          localStorage.removeItem('auth_session')
+          setUser(null)
+          setLoading(false)
+          return
+        }
+
+        // Map user data (use sessionUser as fallback if profile is null)
+        const mapped = mapProfile(sessionUser, userProfile)
         setUser(mapped)
+      } catch (parseError: any) {
+        // Invalid session data, remove it
+        localStorage.removeItem('auth_session')
+        setUser(null)
       }
     } catch (err: any) {
       // Handle any errors gracefully - don't crash the app
-      console.warn('Error loading session:', err.message)
       setUser(null)
     } finally {
       setLoading(false)
     }
-  }, [upsertProfile])
+  }, [])
 
   useEffect(() => {
     loadSession()
     
-    // Only subscribe to auth changes if Supabase is properly configured
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    
-    if (supabaseUrl && supabaseKey && !supabaseUrl.includes('placeholder')) {
-      const { data: sub } = supabase.auth.onAuthStateChange((_event, _session) => {
-        // Only reload session if we have a valid session or explicit sign out
-        if (_event === 'SIGNED_OUT' || _event === 'SIGNED_IN' || _event === 'TOKEN_REFRESHED') {
-          loadSession()
+    // Handle OAuth callback from URL hash or query params (when user returns from Google/GitHub)
+    const handleOAuthCallback = async () => {
+      // Check if URL has OAuth tokens in hash (direct Supabase redirect) or query params (backend redirect)
+      const hash = window.location.hash
+      const queryParams = new URLSearchParams(window.location.search)
+      
+      // Get tokens from hash (direct Supabase) or query params (backend redirect)
+      let accessToken: string | null = null
+      let refreshToken: string | null = null
+      let type: string | null = null
+      let expiresIn: string | null = null
+      let expiresAt: number | null = null
+      
+      if (hash && hash.includes('access_token')) {
+        // Parse hash parameters (handle multiple # separators)
+        let hashString = hash.substring(1)
+        if (hashString.includes('#')) {
+          hashString = hashString.replace(/#/g, '&')
         }
-      })
-      return () => { sub?.subscription?.unsubscribe() }
+        const hashParams = new URLSearchParams(hashString)
+        accessToken = hashParams.get('access_token')
+        refreshToken = hashParams.get('refresh_token')
+        type = hashParams.get('type')
+        expiresIn = hashParams.get('expires_in')
+        expiresAt = hashParams.get('expires_at') ? parseInt(hashParams.get('expires_at')!) : null
+      } else if (queryParams.has('access_token')) {
+        // Parse query parameters (backend redirect)
+        accessToken = queryParams.get('access_token')
+        refreshToken = queryParams.get('refresh_token')
+        type = queryParams.get('type')
+        expiresIn = queryParams.get('expires_in')
+        expiresAt = queryParams.get('expires_at') ? parseInt(queryParams.get('expires_at')!) : null
+      }
+      
+      // If it's an OAuth callback (not password reset)
+      if (accessToken && refreshToken && type !== 'recovery') {
+        try {
+          // Calculate expires_at if not provided
+          if (!expiresAt) {
+            expiresAt = expiresIn 
+              ? Date.now() + (parseInt(expiresIn) * 1000)
+              : Date.now() + 3600000 // Default 1 hour
+          }
+          
+          // Verify session with backend and get user profile
+          try {
+            const { authApi } = await import('@/lib/api')
+            const verifyResult = await authApi.getSession(accessToken, refreshToken)
+            
+            if (verifyResult.success && verifyResult.data) {
+              const sessionData = verifyResult.data as any
+              const sessionUser = sessionData.user
+              
+              // Store session in localStorage
+              localStorage.setItem('auth_session', JSON.stringify({
+                access_token: accessToken,
+                refresh_token: refreshToken,
+                expires_at: expiresAt,
+                user: sessionUser
+              }))
+              
+              // Clear hash and query params from URL
+              window.history.replaceState(null, '', window.location.pathname)
+              
+              // Trigger session reload
+              loadSession()
+              return
+            }
+          } catch (backendErr) {
+            // Backend verification failed - still store session
+          }
+          
+          // If backend verification fails, still store basic session
+          localStorage.setItem('auth_session', JSON.stringify({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+            expires_at: expiresAt,
+            user: null // Will be fetched on next loadSession
+          }))
+          
+          // Clear hash and query params from URL
+          window.history.replaceState(null, '', window.location.pathname)
+          
+          // Trigger session reload
+          loadSession()
+        } catch (err) {
+          // Silent fail - let Supabase handle it via onAuthStateChange
+        }
+      }
+    }
+    
+    // Check for OAuth callback on mount
+    handleOAuthCallback()
+    
+    // Listen for Supabase auth state changes (for OAuth callbacks)
+    // This handles OAuth login when user returns from Google/GitHub
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        // OAuth login successful - store session in localStorage
+        try {
+          // Get session tokens
+          const accessToken = session.access_token
+          const refreshToken = session.refresh_token
+          
+          // Calculate expires_at properly
+          let expiresAt = Date.now() + 3600000 // Default 1 hour
+          if (session.expires_at) {
+            // expires_at is in seconds (Unix timestamp)
+            expiresAt = session.expires_at * 1000
+          } else if (session.expires_in) {
+            // expires_in is in seconds
+            expiresAt = Date.now() + (session.expires_in * 1000)
+          }
+          
+          // Verify session with backend and get user profile
+          try {
+            const { authApi } = await import('@/lib/api')
+            const verifyResult = await authApi.getSession(accessToken, refreshToken)
+            
+            if (verifyResult.success && verifyResult.data) {
+              const sessionData = verifyResult.data as any
+              const sessionUser = sessionData.user
+              
+              // Store session in localStorage (same format as email/password login)
+              localStorage.setItem('auth_session', JSON.stringify({
+                access_token: accessToken,
+                refresh_token: refreshToken,
+                expires_at: expiresAt,
+                user: sessionUser
+              }))
+              
+              // Trigger session reload
+              loadSession()
+              return
+            }
+          } catch (backendErr) {
+            // Backend verification failed - continue with Supabase session
+          }
+          
+          // If backend verification fails, still use Supabase session
+          // Store basic session info
+          localStorage.setItem('auth_session', JSON.stringify({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+            expires_at: expiresAt,
+            user: session.user
+          }))
+          loadSession()
+        } catch (err) {
+          // Silent fail - session might already be stored
+        }
+      } else if (event === 'SIGNED_OUT') {
+        // User signed out - clear localStorage
+        localStorage.removeItem('auth_session')
+        setUser(null)
+      }
+    })
+    
+    // Listen for storage changes (when session is updated in another tab)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'auth_session') {
+        loadSession()
+      }
+    }
+    
+    // Listen for custom event when session is updated in same tab
+    const handleSessionUpdate = () => {
+      loadSession()
+    }
+    
+    window.addEventListener('storage', handleStorageChange)
+    window.addEventListener('auth_session_updated', handleSessionUpdate)
+    
+    // Also check session periodically (every 5 minutes) to verify it's still valid
+    const intervalId = setInterval(() => {
+      loadSession()
+    }, 5 * 60 * 1000) // 5 minutes
+    
+    return () => {
+      subscription.unsubscribe()
+      window.removeEventListener('storage', handleStorageChange)
+      window.removeEventListener('auth_session_updated', handleSessionUpdate)
+      clearInterval(intervalId)
     }
   }, [loadSession])
 
@@ -210,7 +455,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const value = useMemo<AuthContextType>(() => ({
     user,
     loading,
-    signOut: async () => { await supabase.auth.signOut(); setUser(null) },
+    signOut: async () => { 
+      // Sign out via backend API
+      try {
+        const { authApi } = await import('@/lib/api')
+        await authApi.signOut()
+      } catch (err) {
+        // Continue even if backend signout fails
+      }
+      // Remove session from localStorage
+      localStorage.removeItem('auth_session')
+      setUser(null) 
+    },
     refresh: loadSession,
     requiresUsername
   }), [user, loading, loadSession, requiresUsername])

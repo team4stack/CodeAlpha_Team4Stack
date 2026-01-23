@@ -55,31 +55,34 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
       const type = hashParams.get('type')
       
       if (type === 'recovery' && accessToken) {
-        // Set the session first using the recovery token
+        // Verify recovery token with backend API (backend will verify with Supabase)
         try {
-          const { data: { session }, error: setSessionError } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken || ''
-          })
+          const { authApi } = await import('@/lib/api')
+          const verifyResult = await authApi.getSession(accessToken, refreshToken || '')
           
-          if (setSessionError) {
-            // No sensitive info in logs
+          if (verifyResult.error || !verifyResult.success) {
             setError('Invalid or expired reset link. Please request a new password reset link.')
             return
           }
           
-          if (session) {
-            // Password reset link clicked - show reset form
-            setIsForgotPassword(false)
-            setIsResettingPassword(true)
-            setError(null)
-            setSuccess('Please enter your new password')
-            
-            // Clear URL hash
-            window.history.replaceState(null, '', window.location.pathname)
-          } else {
-            setError('Failed to authenticate. Please request a new password reset link.')
+          // Store tokens temporarily for password update
+          try {
+            localStorage.setItem('password_reset_tokens', JSON.stringify({
+              access_token: accessToken,
+              refresh_token: refreshToken || ''
+            }))
+          } catch (storageErr) {
+            // Continue even if storage fails
           }
+          
+          // Password reset link verified - show reset form
+          setIsForgotPassword(false)
+          setIsResettingPassword(true)
+          setError(null)
+          setSuccess('Please enter your new password')
+          
+          // Clear URL hash
+          window.history.replaceState(null, '', window.location.pathname)
         } catch (err: any) {
           // No sensitive info in logs
           setError('Failed to process reset link. Please request a new password reset link.')
@@ -112,42 +115,31 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
 
   const signInOAuth = async (provider: 'google' | 'github') => {
     setError(null)
+    setLoading(true)
     try {
-      // Check if Supabase is properly configured
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-      
-      if (!supabaseUrl || !supabaseKey || supabaseUrl.includes('placeholder') || supabaseKey.includes('placeholder')) {
-        // No console warnings - silent fail for security
-        // Always show generic message to users (production-safe)
-        setError('Authentication service is temporarily unavailable. Please contact support.')
-        return
-      }
-      
       // Get the current site URL for redirect after OAuth
-      // The redirectTo should be where user lands after OAuth completes
       const redirectUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
+      const currentPath = window.location.pathname
+      const finalRedirectTo = `${redirectUrl}${currentPath}`
       
-      // Supabase OAuth automatically handles the callback through Supabase
-      // We just need to specify where to redirect after successful auth
-      const { data, error } = await supabase.auth.signInWithOAuth({ 
-        provider, 
-        options: { 
-          redirectTo: `${redirectUrl}${window.location.pathname}`,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          }
-        } 
-      })
+      // Use backend redirect endpoint to mask Supabase URL
+      // This way user sees backend URL instead of Supabase URL
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+      const backendRedirectUrl = `${apiUrl}/auth/oauth/redirect?provider=${provider}&redirect_to=${encodeURIComponent(finalRedirectTo)}`
       
-      if (error) {
-        setError(error.message)
-      }
-      // If successful, data.url will contain the OAuth URL and user will be redirected
-      // No need to handle success here as user will be redirected
+      // Redirect to backend endpoint (which will then redirect to Supabase OAuth)
+      // User will see backend URL briefly, then OAuth provider
+      window.location.href = backendRedirectUrl
     } catch (err: any) {
-      setError(err?.message || 'Failed to initiate OAuth login. Please try again.')
+      // Sanitize error message
+      try {
+        const { sanitizeError } = await import('@/lib/utils/errorHandler')
+        const sanitized = sanitizeError(err)
+        setError(sanitized.message)
+      } catch {
+        setError('Failed to initiate OAuth login. Please try again.')
+      }
+      setLoading(false)
     }
   }
 
@@ -158,6 +150,8 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
       return;
     }
 
+    let observer: MutationObserver | null = null;
+
     // Load reCAPTCHA script
     const loadRecaptcha = () => {
       if (window.grecaptcha && window.grecaptcha.render) {
@@ -165,6 +159,11 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
           const container = document.getElementById('auth-recaptcha-container');
           if (container && container.children.length === 0) {
             try {
+              // Remove aria-hidden from container if it exists (fixes accessibility warning)
+              if (container.hasAttribute('aria-hidden')) {
+                container.removeAttribute('aria-hidden');
+              }
+              
               window.grecaptcha.render("auth-recaptcha-container", {
                 sitekey: RECAPTCHA_SITE_KEY,
                 callback: (token: string) => {
@@ -177,9 +176,47 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
                   setRecaptchaToken(null);
                 }
               });
+              
+              // Use MutationObserver to watch for reCAPTCHA elements and fix aria-hidden issues
+              observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                  mutation.addedNodes.forEach((node) => {
+                    if (node.nodeType === Node.ELEMENT_NODE) {
+                      const element = node as Element;
+                      // Check if this element or its children have aria-hidden and contain focused element
+                      const checkAndFix = (el: Element) => {
+                        if (el.hasAttribute('aria-hidden') && el.getAttribute('aria-hidden') === 'true') {
+                          const focused = document.activeElement;
+                          if (focused && (el.contains(focused) || el === focused)) {
+                            el.removeAttribute('aria-hidden');
+                          }
+                        }
+                        // Check children
+                        el.querySelectorAll('[aria-hidden="true"]').forEach((child) => {
+                          const focused = document.activeElement;
+                          if (focused && (child.contains(focused) || child === focused)) {
+                            child.removeAttribute('aria-hidden');
+                          }
+                        });
+                      };
+                      checkAndFix(element);
+                      // Also check all descendants
+                      element.querySelectorAll('[aria-hidden="true"]').forEach(checkAndFix);
+                    }
+                  });
+                });
+              });
+              
+              // Observe the container for changes
+              observer.observe(container, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['aria-hidden']
+              });
             } catch (error) {
               if (process.env.NODE_ENV === 'development') {
-                console.error('reCAPTCHA render error:', error);
+                // reCAPTCHA render error - silent fail
               }
             }
           }
@@ -203,12 +240,23 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
 
     // Cleanup
     return () => {
+      if (observer) {
+        observer.disconnect();
+        observer = null;
+      }
       if (window.grecaptcha && window.grecaptcha.reset) {
         try {
           window.grecaptcha.reset();
         } catch (error) {
           // Silent fail
         }
+      }
+      // Cleanup any aria-hidden attributes from reCAPTCHA elements on cleanup
+      const container = document.getElementById('auth-recaptcha-container');
+      if (container) {
+        container.querySelectorAll('[aria-hidden="true"]').forEach((el) => {
+          el.removeAttribute('aria-hidden');
+        });
       }
     };
   }, [isOpen, isSignUp, isForgotPassword, isVerifying, isResettingPassword]);
@@ -217,18 +265,6 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
     try {
       setLoading(true)
       setError(null)
-      
-      // Check if Supabase is properly configured
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-      
-      if (!supabaseUrl || !supabaseKey || supabaseUrl.includes('placeholder') || supabaseKey.includes('placeholder')) {
-        // No console warnings - silent fail for security
-        // Always show generic message to users (production-safe)
-        setError('Authentication service is temporarily unavailable. Please try again later.')
-        setLoading(false)
-        return
-      }
       
       if (!email || !password) {
         setError('Please enter both email and password')
@@ -269,34 +305,43 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
           return
         }
           
-          const userData = result.data
+          const userData = result.data as any
         
         // Check if user is blocked
-        if (userData.is_blocked === true) {
+        if (userData && userData.is_blocked === true) {
           setError('Your account has been suspended. Please contact support.')
           setLoading(false)
           return
         }
         
-        loginEmail = userData.email.toLowerCase().trim()
+        if (userData && userData.email) {
+          loginEmail = userData.email.toLowerCase().trim()
+        } else {
+          setError('Username not found. Please use your email address.')
+          setLoading(false)
+          return
+        }
         } catch (err) {
           setError('Failed to verify username. Please use your email address.')
           setLoading(false)
           return
         }
       } else {
-        // It's an email, check if user is blocked via backend API
+        // It's an email, check if user is blocked via backend API (optional check)
+        // If backend is down, we'll skip this check and let the login attempt proceed
         try {
           const { usersApi } = await import('@/lib/api')
           const result = await usersApi.getUserByEmail(loginEmail)
           
-          if (result.success && result.data && result.data.is_blocked === true) {
-          setError('Your account has been suspended. Please contact support.')
-          setLoading(false)
-          return
+          // Only check if API call was successful
+          if (result.success && result.data && (result.data as any)?.is_blocked === true) {
+            setError('Your account has been suspended. Please contact support.')
+            setLoading(false)
+            return
           }
         } catch (err) {
-          // Continue with login attempt even if check fails
+          // Backend might be down or API call failed - continue with login attempt
+          // The backend will check if user is blocked during actual login
         }
       }
       
@@ -307,32 +352,60 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
         return
       }
       
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ 
-        email: loginEmail.trim(), 
-        password: password.trim() 
-      })
+      // Sign in via backend API
+      const { authApi } = await import('@/lib/api')
+      const signInResult = await authApi.signIn(loginEmail.trim(), password.trim())
       
-      if (signInError) {
+      if (signInResult.error || !signInResult.success) {
         // Generic error message - no sensitive info
-        setError('Invalid email or password.')
-      } else if (signInData?.user) {
-        // Double-check blocked status after successful auth (in case it was changed during login)
+        setError(signInResult.error || 'Invalid email or password.')
+        setLoading(false)
+        return
+      }
+      
+      if (signInResult.data && (signInResult.data as any).session) {
+        const session = (signInResult.data as any).session
+        
+        // Store session in localStorage (backend API se aayi hui session)
+        // Frontend directly Supabase se connect nahi karega - sab backend se hi hoga
         try {
-          const { usersApi } = await import('@/lib/api')
-          const result = await usersApi.getUserByEmail(loginEmail)
+          const signInData = signInResult.data as any
           
-          if (result.success && result.data && result.data.is_blocked === true) {
-          // User was blocked, sign them out
-          await supabase.auth.signOut()
-          setError('Your account has been suspended. Please contact support.')
+          // Calculate expires_at from session
+          let expiresAt = session.expires_at
+          if (!expiresAt) {
+            // If expires_at is not provided, calculate from expires_in (seconds) or default to 1 hour
+            if (session.expires_in) {
+              expiresAt = Date.now() + (session.expires_in * 1000)
+            } else {
+              expiresAt = Date.now() + 3600000 // 1 hour default
+            }
+          } else if (typeof expiresAt === 'number' && expiresAt < 1000000000000) {
+            // If expires_at is in seconds (Unix timestamp), convert to milliseconds
+            expiresAt = expiresAt * 1000
+          }
+          
+          const sessionToStore = {
+            access_token: session.access_token,
+            refresh_token: session.refresh_token,
+            expires_at: expiresAt,
+            user: signInData?.user || null
+          }
+          
+          localStorage.setItem('auth_session', JSON.stringify(sessionToStore))
+          
+          // Verify session was stored correctly
+          const verifyStored = localStorage.getItem('auth_session')
+          if (!verifyStored) {
+            throw new Error('Session storage verification failed')
+          }
+        } catch (storageErr) {
+          setError('Failed to save session. Please try again.')
           setLoading(false)
           return
-          }
-        } catch (err) {
-          // Continue even if check fails
         }
         
-        // Success - session is automatically saved by Supabase
+        // Success - session is now saved in localStorage
         setSuccess('Signed in successfully!')
         // Reset reCAPTCHA
         if (window.grecaptcha && window.grecaptcha.reset) {
@@ -343,11 +416,25 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
             // Silent fail
           }
         }
-        // Reload page to ensure session is properly loaded across all pages
-        // Session is already saved in localStorage, so reload will load it properly
+        
+        // Close modal first
+        onClose()
+        
+        // Wait a bit to ensure localStorage is fully written, then reload
+        // This gives AuthContext time to detect the session
         setTimeout(() => {
-          window.location.reload()
-        }, 800)
+          // Trigger a custom event to notify AuthContext about new session
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('auth_session_updated'))
+          }
+          // Small delay before reload to ensure event is processed
+          setTimeout(() => {
+            window.location.reload()
+          }, 100)
+        }, 300)
+      } else {
+        setError('Failed to sign in. Please try again.')
+        setLoading(false)
       }
     } catch (err: any) {
       // Generic error message - no sensitive info
@@ -433,18 +520,6 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
     try {
       setLoading(true); setError(null); setSuccess(null)
       
-      // Check if Supabase is properly configured
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-      
-      if (!supabaseUrl || !supabaseKey || supabaseUrl.includes('placeholder') || supabaseKey.includes('placeholder')) {
-        // No console warnings - silent fail for security
-        // Always show generic message to users (production-safe)
-        setError('Authentication service is temporarily unavailable. Please try again later.')
-        setLoading(false)
-        return
-      }
-      
       if (!email || !password || !confirmPassword) {
         setError('Please fill in all required fields')
         return
@@ -469,6 +544,7 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
         return
       }
       // Check if username already exists via API
+      const { usersApi } = await import('@/lib/api')
       const usernameCheck = await usersApi.getUserByUsername(username.toLowerCase())
       if (usernameCheck.success && usernameCheck.data) {
         setError('Username already taken. Please choose another one.')
@@ -602,11 +678,6 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
         return
       }
       
-      // Debug: Log password info (without showing actual password)
-      // Create account in Supabase
-      // Support both localhost and production
-      const redirectUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
-      
       // Validate password before sign up
       if (!otpData.password || typeof otpData.password !== 'string' || otpData.password.trim().length < 6) {
         setError('Password is invalid. Please sign up again.')
@@ -614,25 +685,23 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
         return
       }
       
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({ 
-        email: otpData.email.trim().toLowerCase(), 
-        password: otpData.password.trim(),
-        options: {
-          emailRedirectTo: redirectUrl,
-          data: {
-            username: otpData.username,
-            name: otpData.username || otpData.email.split('@')[0]
-          }
-        }
-      })
+      // Sign up via backend API
+      const { authApi } = await import('@/lib/api')
+      const signUpResult = await authApi.signUp(
+        otpData.email.trim().toLowerCase(),
+        otpData.password.trim(),
+        otpData.username,
+        otpData.username || otpData.email.split('@')[0]
+      )
       
-      if (signUpError) {
+      if (signUpResult.error || !signUpResult.success) {
         // Generic error message - no sensitive info
-        setError('Failed to create account. Please try again.')
+        setError(signUpResult.error || 'Failed to create account. Please try again.')
+        setLoading(false)
         return
       }
       
-      if (authData) {
+      if (signUpResult.data && (signUpResult.data as any)?.user) {
         // Clean up OTP data
         try {
           const { landingApi } = await import('@/lib/api')
@@ -650,39 +719,69 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
           const signInEmail = otpData.email.trim().toLowerCase()
           const signInPassword = otpData.password.trim()
           
-          // Debug: Log auto sign-in attempt
-          if (process.env.NODE_ENV === 'development') {
-            console.log('Auto sign-in attempt:', {
-              email: signInEmail,
-              passwordLength: signInPassword.length,
-              originalEmail: otpData.email
-            })
-          }
+          // Sign in via backend API
+          const signInResult = await authApi.signIn(signInEmail, signInPassword)
           
-          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-            email: signInEmail,
-            password: signInPassword
-          })
-          
-          if (signInError) {
-            console.error('Auto sign-in error:', signInError)
-            
+          if (signInResult.error || !signInResult.success) {
             // Check if error is due to email confirmation
-            if (signInError.message.includes('email') || 
-                signInError.message.includes('confirm') ||
-                signInError.message.includes('Email not confirmed')) {
+            if (signInResult.error?.includes('email') || 
+                signInResult.error?.includes('confirm') ||
+                signInResult.error?.includes('Email not confirmed')) {
               setSuccess('Account created! Please check your email to confirm your account, then sign in.')
             } else {
               // Even if auto sign-in fails, account is created
               setSuccess('Account created successfully! You can now sign in with your email and password.')
             }
-          } else if (signInData?.user) {
-            setSuccess('Account created and signed in successfully!')
-            // Reload page to update user state
-            setTimeout(() => {
-              window.location.reload()
-            }, 1500)
-            return
+          } else if (signInResult.data && (signInResult.data as any)?.session) {
+            const session = (signInResult.data as any)?.session
+            
+            // Store session in localStorage (backend API se aayi hui session)
+            // Frontend directly Supabase se connect nahi karega - sab backend se hi hoga
+            try {
+              const signInData = signInResult.data as any
+              
+              // Calculate expires_at
+              let expiresAt = session.expires_at
+              if (!expiresAt) {
+                if (session.expires_in) {
+                  expiresAt = Date.now() + (session.expires_in * 1000)
+                } else {
+                  expiresAt = Date.now() + 3600000
+                }
+              } else if (typeof expiresAt === 'number' && expiresAt < 1000000000000) {
+                expiresAt = expiresAt * 1000
+              }
+              
+              const sessionToStore = {
+                access_token: session.access_token,
+                refresh_token: session.refresh_token,
+                expires_at: expiresAt,
+                user: signInData?.user || null
+              }
+              
+              localStorage.setItem('auth_session', JSON.stringify(sessionToStore))
+              
+              // Verify storage
+              const verifyStored = localStorage.getItem('auth_session')
+              if (!verifyStored) {
+                throw new Error('Session storage verification failed')
+              }
+              
+              setSuccess('Account created and signed in successfully!')
+              // Close modal and reload page to update user state
+              onClose()
+              setTimeout(() => {
+                window.dispatchEvent(new Event('auth_session_updated'))
+                setTimeout(() => {
+                  window.location.reload()
+                }, 100)
+              }, 300)
+              return
+            } catch (storageErr) {
+              setSuccess('Account created successfully! You can now sign in with your email and password.')
+            }
+          } else {
+            setSuccess('Account created successfully! You can now sign in with your email and password.')
           }
         } catch (signInErr: any) {
           // No sensitive info in logs
@@ -699,6 +798,9 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
           setConfirmPassword('')
           setUsername('')
         }, 2000)
+      } else {
+        setError('Failed to create account. Please try again.')
+        setLoading(false)
       }
     } finally { setLoading(false) }
   }
@@ -766,31 +868,23 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
     try {
       setLoading(true); setError(null); setSuccess(null)
       
-      // Check if Supabase is properly configured
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-      
-      if (!supabaseUrl || !supabaseKey || supabaseUrl.includes('placeholder') || supabaseKey.includes('placeholder')) {
-        // No console warnings - silent fail for security
-        // Always show generic message to users (production-safe)
-        setError('Authentication service is temporarily unavailable. Please try again later.')
+      if (!email) {
+        setError('Please enter your email address')
         setLoading(false)
         return
       }
       
-      if (!email) {
-        setError('Please enter your email address')
-        return
-      }
       const redirectUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${redirectUrl}${window.location.pathname}#type=recovery`
-      })
-      if (error) {
-        setError(error.message)
+      const { authApi } = await import('@/lib/api')
+      const result = await authApi.resetPassword(email, `${redirectUrl}${window.location.pathname}#type=recovery`, window.location.pathname)
+      
+      if (result.error || !result.success) {
+        setError(result.error || 'Failed to send password reset email. Please try again.')
       } else {
         setSuccess('Password reset link sent to your email! Please check your inbox.')
       }
+    } catch (err: any) {
+      setError('An error occurred. Please try again.')
     } finally { setLoading(false) }
   }
 
@@ -813,55 +907,53 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
         return
       }
       
-      // Check if we have a valid session (from recovery token)
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      // Get access token and refresh token from localStorage or URL hash
+      let accessToken: string | undefined;
+      let refreshToken: string | undefined;
       
-      if (sessionError) {
-        if (process.env.NODE_ENV === 'development') {
-          console.error('Session error:', sessionError)
+      // First try to get from localStorage (stored during password reset flow)
+      try {
+        const resetTokensStr = localStorage.getItem('password_reset_tokens');
+        if (resetTokensStr) {
+          const resetTokens = JSON.parse(resetTokensStr);
+          accessToken = resetTokens.access_token;
+          refreshToken = resetTokens.refresh_token;
         }
-        setError('Session expired. Please request a new password reset link.')
-        return
+      } catch (e) {
+        // Continue to check URL hash
       }
       
-      if (!session) {
-        // Try to get session from URL hash if available
+      // If not in localStorage, try to get from URL hash
+      if (!accessToken) {
         let hash = window.location.hash;
         if (hash.includes('#type=') && hash.includes('#access_token=')) {
           hash = hash.substring(1).replace(/#/g, '&');
           const hashParams = new URLSearchParams(hash.substring(1));
-          const accessToken = hashParams.get('access_token');
-          
-          if (accessToken) {
-            // Set the session using the access token
-            const { data: { session: newSession }, error: setSessionError } = await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: hashParams.get('refresh_token') || ''
-            })
-            
-            if (setSessionError || !newSession) {
-              setError('Invalid or expired reset link. Please request a new password reset link.')
-              return
-            }
-          } else {
-            setError('Invalid reset link. Please request a new password reset link.')
-            return
-          }
-        } else {
-          setError('Session expired. Please request a new password reset link.')
-          return
+          accessToken = hashParams.get('access_token') || undefined;
+          refreshToken = hashParams.get('refresh_token') || undefined;
         }
       }
       
-      // Now update the password
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword
-      })
+      if (!accessToken) {
+        setError('Session expired. Please request a new password reset link.')
+        return
+      }
       
-      if (error) {
+      // Update password via backend API
+      const { authApi } = await import('@/lib/api')
+      const result = await authApi.updatePassword(newPassword, accessToken, refreshToken)
+      
+      if (result.error || !result.success) {
         // Generic error message - no sensitive info
-        setError('An error occurred. Please try again.')
+        setError(result.error || 'An error occurred. Please try again.')
       } else {
+        // Remove password reset tokens after successful update
+        try {
+          localStorage.removeItem('password_reset_tokens')
+        } catch (e) {
+          // Silent fail
+        }
+        
         setSuccess('Password updated successfully! You can now sign in with your new password.')
         setTimeout(() => {
           setIsResettingPassword(false)
@@ -899,8 +991,20 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
           </div>
           {!isForgotPassword && !isVerifying && !isResettingPassword && (
             <div className="grid grid-cols-2 gap-3">
-              <button onClick={() => signInOAuth('google')} className="rounded-lg px-3 py-2 bg-white/10 border border-white/15 hover:bg-white/15">Google</button>
-              <button onClick={() => signInOAuth('github')} className="rounded-lg px-3 py-2 bg-white/10 border border-white/15 hover:bg-white/15">GitHub</button>
+              <button 
+                onClick={() => signInOAuth('google')} 
+                disabled={loading}
+                className="rounded-lg px-3 py-2 bg-white/10 border border-white/15 hover:bg-white/15 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Loading...' : 'Google'}
+              </button>
+              <button 
+                onClick={() => signInOAuth('github')} 
+                disabled={loading}
+                className="rounded-lg px-3 py-2 bg-white/10 border border-white/15 hover:bg-white/15 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Loading...' : 'GitHub'}
+              </button>
             </div>
           )}
           {!isForgotPassword && !isVerifying && !isResettingPassword && <div className="my-4 h-px bg-white/10" />}
@@ -1194,7 +1298,10 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
                 {/* reCAPTCHA - only show for sign-in, not sign-up */}
                 {!isSignUp && (
                   <div className="mt-4">
-                    <div id="auth-recaptcha-container" ref={recaptchaRef}></div>
+                    <div 
+                      id="auth-recaptcha-container" 
+                      ref={recaptchaRef}
+                    ></div>
                     {!recaptchaToken && (
                       <p className="mt-1 text-red-400 text-xs">Please complete the reCAPTCHA verification</p>
                     )}

@@ -7,7 +7,7 @@ export const usersApi = {
   },
 
   getUserByEmail: async (email: string) => {
-    return apiClient.get(`/users/email/${email}`);
+    return apiClient.get(`/users/email/${encodeURIComponent(email)}`);
   },
 
   getUserByUsername: async (username: string) => {

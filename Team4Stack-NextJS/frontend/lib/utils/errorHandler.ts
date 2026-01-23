@@ -86,9 +86,16 @@ function sanitizeErrorMessage(message: string): string {
   // Remove UUIDs and IDs that might expose data
   sanitized = sanitized.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '[id]');
 
-  // Remove connection strings
+  // Remove connection strings and backend URLs
   sanitized = sanitized.replace(/postgresql:\/\/[^\s]+/gi, '[connection string]');
   sanitized = sanitized.replace(/https?:\/\/[^\s]+supabase[^\s]+/gi, '[connection string]');
+  sanitized = sanitized.replace(/https?:\/\/localhost[^\s]*/gi, '[server address]');
+  sanitized = sanitized.replace(/https?:\/\/127\.0\.0\.1[^\s]*/gi, '[server address]');
+  sanitized = sanitized.replace(/http:\/\/localhost:\d+/gi, '[server address]');
+  sanitized = sanitized.replace(/backend[^\s]*/gi, '[server]');
+  sanitized = sanitized.replace(/API_URL[^\s]*/gi, '[api endpoint]');
+  sanitized = sanitized.replace(/make sure the backend is running/gi, 'please try again later');
+  sanitized = sanitized.replace(/Backend URL:[^\s]*/gi, '');
 
   // Remove detailed error information
   sanitized = sanitized.replace(/details:\s*[^\n]+/gi, '');
@@ -105,6 +112,9 @@ function sanitizeErrorMessage(message: string): string {
     'not null': 'Required information is missing.',
     'invalid input': 'The provided information is invalid.',
     'connection': 'Unable to connect to the server. Please try again later.',
+    'connection refused': 'Unable to connect to the server. Please try again later.',
+    'err_connection_refused': 'Unable to connect to the server. Please try again later.',
+    'backend': 'Unable to connect to the server. Please try again later.',
     'timeout': 'The request took too long. Please try again.',
     'network': 'Network error. Please check your connection.',
     'unauthorized': 'You are not authorized to perform this action.',

@@ -74,7 +74,7 @@ const LoginPage: React.FC = () => {
       const adminCheckResult = await superadminApi.checkAdminByEmail(loginEmail)
 
       // If there's an error checking admin_users, deny access
-      if (adminCheckError) {
+      if (adminCheckResult.error) {
         // No sensitive info in logs
         setError('Invalid email or password.')
         setLoading(false)

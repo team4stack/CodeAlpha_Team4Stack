@@ -15,6 +15,7 @@ import stackstoreRoutes from './modules/stackstore/routes';
 import teamRoutes from './modules/team/routes';
 import superadminRoutes from './modules/superadmin/routes';
 import usersRoutes from './shared/modules/users/routes';
+import authRoutes from './shared/modules/auth/routes';
 
 const app: Express = express();
 const PORT = process.env.PORT || 5000;
@@ -64,6 +65,7 @@ app.use('/api/stackstore', stackstoreRoutes);
 app.use('/api/team', teamRoutes);
 app.use('/api/superadmin', superadminRoutes);
 app.use('/api/users', usersRoutes);
+app.use('/api/auth', authRoutes);
 
 // Error handling middleware
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {

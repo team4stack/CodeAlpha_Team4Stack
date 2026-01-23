@@ -6,3 +6,4 @@ export { stackstoreApi } from './stackstore';
 export { teamApi } from './team';
 export { superadminApi } from './superadmin';
 export { usersApi } from './users';
+export { authApi } from './auth';

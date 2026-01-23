@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useRouter } from 'next/navigation'
 import { isEmailAllowedForAdmin, verifyAdminAccess } from '../utils/adminSecurity'
 
 const LoginPage: React.FC = () => {
-  const navigate = useNavigate()
+  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -19,7 +19,7 @@ const LoginPage: React.FC = () => {
           const adminSession = JSON.parse(adminSessionStr)
           // Check if session is still valid
           if (adminSession.expiresAt && Date.now() < adminSession.expiresAt) {
-            navigate('/adminlandingt4s', { replace: true })
+            router.replace('/adminlandingt4s')
           } else {
             // Session expired, remove it
             sessionStorage.removeItem('admin_session')
@@ -31,7 +31,7 @@ const LoginPage: React.FC = () => {
       }
     }
     checkSession()
-  }, [navigate])
+  }, [router])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -74,7 +74,7 @@ const LoginPage: React.FC = () => {
       const adminCheckResult = await superadminApi.checkAdminByEmail(loginEmail)
 
       // If there's an error checking admin_users, deny access
-      if (adminCheckError) {
+      if (adminCheckResult.error) {
         // No sensitive info in logs
         setError('Invalid email or password.')
         setLoading(false)
@@ -84,7 +84,8 @@ const LoginPage: React.FC = () => {
       // CRITICAL: If email is NOT in admin_users table, deny immediately
       // Normal users ka email admin_users mein nahi hoga
       // Only manually added admins will be in admin_users table
-      if (!adminCheckResult.data || !adminCheckResult.data.email) {
+      const adminData = adminCheckResult.data as any
+      if (!adminData || !adminData.email) {
         // Email not in admin_users table - this is a normal user
         // Deny access immediately - do not proceed with password verification
         setError('Invalid email or password.')
@@ -92,8 +93,7 @@ const LoginPage: React.FC = () => {
         return
       }
 
-      // Step 2: Verify password via API
-      const { superadminApi } = await import('@/lib/api')
+      // Step 3: Verify password via API
       const verifyResult = await superadminApi.verifyAdminPassword(loginEmail, loginPassword)
 
       if (verifyResult.error) {
@@ -104,7 +104,8 @@ const LoginPage: React.FC = () => {
       }
 
       // Check if password is valid
-      const isValid = verifyResult.data && verifyResult.data.valid === true
+      const verifyData = verifyResult.data as any
+      const isValid = verifyData && verifyData.valid === true
 
       if (!isValid) {
         // Password is incorrect
@@ -125,7 +126,7 @@ const LoginPage: React.FC = () => {
       sessionStorage.setItem('admin_session', JSON.stringify(adminSession))
 
       // Success - navigate to admin dashboard
-      navigate('/adminlandingt4s', { replace: true })
+      router.replace('/adminlandingt4s')
     } catch (error: any) {
       // Generic error message - no sensitive info
       setError('An error occurred. Please try again.')
