@@ -32,11 +32,33 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Rate limiting
+// Rate limiting - More lenient in development, skip for localhost
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.'
+  max: process.env.NODE_ENV === 'development' ? 10000 : 100, // Very high limit in dev, normal in production
+  message: 'Too many requests from this IP, please wait a moment and try again.',
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  skip: (req) => {
+    // Skip rate limiting for health check endpoint
+    if (req.path === '/health') return true;
+    // Skip rate limiting for localhost in development
+    if (process.env.NODE_ENV === 'development') {
+      const ip = req.ip || req.socket.remoteAddress || '';
+      if (ip === '::1' || ip === '127.0.0.1' || ip.includes('localhost')) {
+        return true;
+      }
+    }
+    return false;
+  },
+  // Custom handler to provide better error messages
+  handler: (req, res) => {
+    res.status(429).json({
+      error: 'Too many requests',
+      message: 'Too many requests from this IP. Please wait a moment and try again.',
+      retryAfter: Math.ceil(15 * 60) // 15 minutes in seconds
+    });
+  }
 });
 app.use('/api/', limiter);
 
@@ -69,10 +91,25 @@ app.use('/api/auth', authRoutes);
 
 // Error handling middleware
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  console.error('Error:', err);
+  console.error('[Server] Error:', err);
+  console.error('[Server] Error stack:', err.stack);
+  if ((err as any).code) {
+    console.error('[Server] Error code:', (err as any).code);
+  }
+  if ((err as any).details) {
+    console.error('[Server] Error details:', (err as any).details);
+  }
+  if ((err as any).hint) {
+    console.error('[Server] Error hint:', (err as any).hint);
+  }
   res.status(500).json({
     error: 'Internal server error',
-    message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong',
+    ...(process.env.NODE_ENV === 'development' && {
+      code: (err as any).code,
+      details: (err as any).details,
+      hint: (err as any).hint
+    })
   });
 });
 

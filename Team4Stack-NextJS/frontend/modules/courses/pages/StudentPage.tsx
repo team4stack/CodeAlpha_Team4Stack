@@ -30,39 +30,40 @@ const StudentPage: React.FC = () => {
   const [rejectionMessage, setRejectionMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    // Use user.id and user.email as dependencies instead of user object to prevent infinite loops
+    const userId = user?.id;
+    const userEmail = user?.email;
+    
+    // Prevent loading if no user
+    if (!userId || !userEmail) {
+      setLoading(false);
+      setCourses([]);
+      setProgressMap({});
+      return;
+    }
+
+    let isMounted = true; // Flag to prevent state updates if component unmounts
+
     const loadData = async () => {
-      if (!user) {
-        setLoading(false);
-        return;
-      }
+      if (!isMounted) return;
 
       setLoading(true);
       try {
         // Check for rejected application
-        if (user.email) {
-          const result = await coursesApi.getAdmissionForms({
-            email: user.email.toLowerCase().trim()
-          });
-          const applicationData = result.data?.find((app: any) => app.approved === false);
-
-          if (applicationData && applicationData.rejection_message) {
-            setRejectionMessage(applicationData.rejection_message);
-          } else {
-            setRejectionMessage(null);
-          }
-        }
-
-        // First, get user's approved applications to get enrolled courses
-        if (!user.email) {
-          setCourses([]);
-          setProgressMap({});
-          setLoading(false);
-          return;
-        }
-
         const result = await coursesApi.getAdmissionForms({
-          email: user.email.toLowerCase().trim()
+          email: userEmail.toLowerCase().trim()
         });
+        
+        if (!isMounted) return;
+        
+        const applicationData = result.data?.find((app: any) => app.approved === false);
+
+        if (applicationData && applicationData.rejection_message) {
+          setRejectionMessage(applicationData.rejection_message);
+        } else {
+          setRejectionMessage(null);
+        }
+
         const applications = result.data || [];
         const appError = result.error ? new Error(result.error) : null;
 
@@ -72,9 +73,10 @@ const StudentPage: React.FC = () => {
         }
 
         if (!applications || applications.length === 0) {
-          setCourses([]);
-          setProgressMap({});
-          setLoading(false);
+          if (isMounted) {
+            setCourses([]);
+            setProgressMap({});
+          }
           return;
         }
 
@@ -102,9 +104,10 @@ const StudentPage: React.FC = () => {
         });
 
         if (appsWithAnyApproved.length === 0) {
-          setCourses([]);
-          setProgressMap({});
-          setLoading(false);
+          if (isMounted) {
+            setCourses([]);
+            setProgressMap({});
+          }
           return;
         }
 
@@ -126,11 +129,13 @@ const StudentPage: React.FC = () => {
 
         // Fetch all courses from API
         const coursesResult = await coursesApi.getAllCourses();
+        
+        if (!isMounted) return;
+        
         if (coursesResult.error) {
           console.error('Error loading courses:', coursesResult.error);
           setCourses([]);
           setProgressMap({});
-          setLoading(false);
           return;
         }
         const allCourses = coursesResult.data || [];
@@ -143,10 +148,15 @@ const StudentPage: React.FC = () => {
           );
         });
         
-        setCourses(enrolledCourses);
+        if (isMounted) {
+          setCourses(enrolledCourses);
+        }
         
         // Fetch progress records for current user
-        const progressResult = await coursesApi.getUserProgress(user.id);
+        const progressResult = await coursesApi.getUserProgress(userId);
+        
+        if (!isMounted) return;
+        
         const progressData = progressResult.data || [];
 
         const progressByCourse: Record<string, Progress> = {};
@@ -163,16 +173,25 @@ const StudentPage: React.FC = () => {
           });
         }
 
-        setProgressMap(progressByCourse);
+        if (isMounted) {
+          setProgressMap(progressByCourse);
+        }
       } catch (err: any) {
         console.error('[StudentPage] Failed to load data', err);
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     loadData();
-  }, [user]);
+
+    // Cleanup function
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.id, user?.email]); // Use specific properties instead of entire user object
 
   const courseStatus = useMemo(
     () =>

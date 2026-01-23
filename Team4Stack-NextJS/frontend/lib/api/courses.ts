@@ -94,4 +94,65 @@ export const coursesApi = {
   updateProgress: async (progress: any) => {
     return apiClient.post('/courses/progress', progress);
   },
+
+  // Quiz APIs
+  getQuizByVideoId: async (videoId: number) => {
+    return apiClient.get(`/courses/quizzes/video/${videoId}`);
+  },
+
+  createQuiz: async (quiz: any) => {
+    return apiClient.post('/courses/quizzes', quiz);
+  },
+
+  updateQuiz: async (id: number, quiz: any) => {
+    return apiClient.put(`/courses/quizzes/${id}`, quiz);
+  },
+
+  deleteQuiz: async (id: number) => {
+    return apiClient.delete(`/courses/quizzes/${id}`);
+  },
+
+  createQuestion: async (question: any) => {
+    return apiClient.post('/courses/quizzes/questions', question);
+  },
+
+  updateQuestion: async (id: number, question: any) => {
+    return apiClient.put(`/courses/quizzes/questions/${id}`, question);
+  },
+
+  deleteQuestion: async (id: number) => {
+    return apiClient.delete(`/courses/quizzes/questions/${id}`);
+  },
+
+  createOption: async (option: any) => {
+    return apiClient.post('/courses/quizzes/options', option);
+  },
+
+  updateOption: async (id: number, option: any) => {
+    return apiClient.put(`/courses/quizzes/options/${id}`, option);
+  },
+
+  deleteOption: async (id: number) => {
+    return apiClient.delete(`/courses/quizzes/options/${id}`);
+  },
+
+  startQuizAttempt: async (quizId: number, userId: string, videoId: number) => {
+    return apiClient.post('/courses/quizzes/attempts/start', {
+      quiz_id: quizId,
+      user_id: userId,
+      video_id: videoId
+    });
+  },
+
+  submitQuizAttempt: async (attemptId: number, answers: Array<{ question_id: number; selected_option_id: number }>) => {
+    return apiClient.post(`/courses/quizzes/attempts/${attemptId}/submit`, { answers });
+  },
+
+  getUserQuizAttempts: async (videoId: number, userId: string) => {
+    return apiClient.get(`/courses/quizzes/attempts/${videoId}/${userId}`);
+  },
+
+  hasUserPassedQuiz: async (videoId: number, userId: string) => {
+    return apiClient.get(`/courses/quizzes/check/${videoId}/${userId}`);
+  },
 };

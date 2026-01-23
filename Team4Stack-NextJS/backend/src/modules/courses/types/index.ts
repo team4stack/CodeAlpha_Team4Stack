@@ -64,3 +64,59 @@ export interface ProgressRecord {
   created_at?: string;
   updated_at?: string;
 }
+
+export interface Quiz {
+  id: number | string;
+  video_id: number;
+  title: string;
+  description?: string;
+  total_marks: number;
+  passing_percentage: number;
+  time_limit_minutes: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface QuizQuestion {
+  id: number | string;
+  quiz_id: number | string;
+  question_text: string;
+  order_index: number;
+  marks: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface QuizOption {
+  id: number | string;
+  question_id: number | string;
+  option_text: string;
+  is_correct: boolean;
+  order_index: number;
+  created_at?: string;
+}
+
+export interface QuizAttempt {
+  id: number | string;
+  quiz_id: number | string;
+  user_id: string;
+  video_id: number;
+  score: number;
+  total_marks: number;
+  percentage: number;
+  passed: boolean;
+  started_at: string;
+  submitted_at?: string;
+  time_taken_seconds?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface QuizAttemptAnswer {
+  id: number | string;
+  attempt_id: number | string;
+  question_id: number | string;
+  selected_option_id: number | string;
+  is_correct: boolean;
+  created_at?: string;
+}

@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
 import { coursesApi } from '@/lib/api'
 import toast from 'react-hot-toast'
+import QuizManagementModal from '../components/QuizManagementModal'
 
 type Video = {
   id: string
@@ -34,6 +35,8 @@ const VideosManagementPage: React.FC = () => {
   const [filterCourse, setFilterCourse] = useState<string>('') // No default, must select course
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingVideo, setEditingVideo] = useState<Video | null>(null)
+  const [showQuizModal, setShowQuizModal] = useState(false)
+  const [selectedVideoForQuiz, setSelectedVideoForQuiz] = useState<{ id: number; title: string } | null>(null)
   const [formData, setFormData] = useState<{
     course_id: string;
     title: string;
@@ -576,6 +579,15 @@ const VideosManagementPage: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end gap-2">
                         <button
+                          onClick={() => {
+                            setSelectedVideoForQuiz({ id: parseInt(video.id), title: video.title })
+                            setShowQuizModal(true)
+                          }}
+                          className="px-3 py-1 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors"
+                        >
+                          Quiz
+                        </button>
+                        <button
                           onClick={() => handleEdit(video)}
                           className="px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
                         >
@@ -596,6 +608,19 @@ const VideosManagementPage: React.FC = () => {
             </table>
           </div>
         </div>
+      )}
+
+      {/* Quiz Management Modal */}
+      {selectedVideoForQuiz && (
+        <QuizManagementModal
+          isOpen={showQuizModal}
+          onClose={() => {
+            setShowQuizModal(false)
+            setSelectedVideoForQuiz(null)
+          }}
+          videoId={selectedVideoForQuiz.id}
+          videoTitle={selectedVideoForQuiz.title}
+        />
       )}
     </div>
   )

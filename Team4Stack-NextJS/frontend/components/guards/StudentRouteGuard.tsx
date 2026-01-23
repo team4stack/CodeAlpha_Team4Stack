@@ -19,26 +19,38 @@ const StudentRouteGuard: React.FC<StudentRouteGuardProps> = ({ children }) => {
   const [showNotApprovedModal, setShowNotApprovedModal] = useState(false)
 
   useEffect(() => {
-    const checkStudentStatus = async () => {
-      setChecking(true)
+    // Use user.id and user.email as dependencies instead of user object to prevent infinite loops
+    const userId = user?.id;
+    const userEmail = user?.email;
+    
+    let isMounted = true; // Flag to prevent state updates if component unmounts
 
+    const checkStudentStatus = async () => {
       // If auth is still loading, wait
       if (authLoading) {
         return
       }
 
       // If user is not logged in, show auth modal
-      if (!user || !user.email) {
-        setChecking(false)
-        setShowAuthModal(true)
-        setIsApproved(false)
+      if (!userId || !userEmail) {
+        if (isMounted) {
+          setChecking(false)
+          setShowAuthModal(true)
+          setIsApproved(false)
+        }
         return
+      }
+
+      if (isMounted) {
+        setChecking(true)
       }
 
       // Check if user is an approved student via API
       try {
         const { coursesApi } = await import('@/lib/api');
-        const result = await coursesApi.getAdmissionForms({ email: user.email.toLowerCase().trim() });
+        const result = await coursesApi.getAdmissionForms({ email: userEmail.toLowerCase().trim() });
+
+        if (!isMounted) return;
 
         if (result.error) {
           console.error('Error checking student status:', result.error)
@@ -79,24 +91,33 @@ const StudentRouteGuard: React.FC<StudentRouteGuardProps> = ({ children }) => {
           }
         }
 
-        if (hasAnyCourseApproved) {
-          setIsApproved(true)
-          setShowNotApprovedModal(false)
-        } else {
-          setIsApproved(false)
-          setShowNotApprovedModal(true)
+        if (isMounted) {
+          if (hasAnyCourseApproved) {
+            setIsApproved(true)
+            setShowNotApprovedModal(false)
+          } else {
+            setIsApproved(false)
+            setShowNotApprovedModal(true)
+          }
+          setChecking(false)
         }
       } catch (err) {
         console.error('Error checking student status:', err)
-        setIsApproved(false)
-        setShowNotApprovedModal(true)
-      } finally {
-        setChecking(false)
+        if (isMounted) {
+          setIsApproved(false)
+          setShowNotApprovedModal(true)
+          setChecking(false)
+        }
       }
     }
 
     checkStudentStatus()
-  }, [user, authLoading])
+
+    // Cleanup function
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.id, user?.email, authLoading]) // Use specific properties instead of entire user object
 
   // Show loading state
   if (authLoading || checking) {

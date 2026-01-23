@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import StudentNavbar from '@/navigation/StudentNavbar';
 import { coursesApi } from '@/lib/api';
 import toast from 'react-hot-toast';
+import QuizComponent from '../components/QuizComponent';
 
 interface Video {
   id: number;
@@ -36,14 +37,25 @@ interface ProgressRecord {
 }
 
 interface CourseViewPageProps {
-  courseId: string;
+  courseId?: string;
+  params?: Promise<{ courseId: string }>;
 }
 
-const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
+const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId: courseIdProp, params }) => {
   const router = useRouter();
   const { isDarkMode } = useTheme();
   const { user } = useAuth();
+  const [courseId, setCourseId] = useState<string | null>(courseIdProp || null);
   const [course, setCourse] = useState<Course | null>(null);
+  
+  // Handle async params from Next.js 15+
+  useEffect(() => {
+    if (params && !courseIdProp) {
+      params.then((resolvedParams) => {
+        setCourseId(resolvedParams.courseId);
+      });
+    }
+  }, [params, courseIdProp]);
   const [videos, setVideos] = useState<Video[]>([]);
   const [progressRecords, setProgressRecords] = useState<ProgressRecord[]>([]);
   const [selectedVideoId, setSelectedVideoId] = useState<number | null>(null);
@@ -54,6 +66,13 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
   const [videoWatchedTime, setVideoWatchedTime] = useState<Map<number, number>>(new Map()); // videoId -> watched time in seconds
   const [videoTotalDuration, setVideoTotalDuration] = useState<Map<number, number>>(new Map()); // videoId -> total duration in seconds
   const [iframeError, setIframeError] = useState(false);
+  // Quiz state maps - declared early so they can be used in useMemo hooks
+  const [quizPassedMap, setQuizPassedMap] = useState<Map<number, boolean>>(new Map());
+  const [quizExistsMap, setQuizExistsMap] = useState<Map<number, boolean>>(new Map());
+  const [quizScoresMap, setQuizScoresMap] = useState<Map<number, { score: number; total_marks: number; percentage: number }>>(new Map());
+  // Quiz display state
+  const [showQuiz, setShowQuiz] = useState(false);
+  const [quizVideoId, setQuizVideoId] = useState<number | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const youtubePlayerRef = useRef<any>(null); // YouTube IFrame API player instance
@@ -753,6 +772,7 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
   }, [videos, videoWatchedTime]);
 
   // Determine which lectures are unlocked
+  // Now also checks if quiz is passed (if quiz exists)
   const unlockedLectures = useMemo(() => {
     const unlocked = new Set<number>();
     
@@ -765,19 +785,32 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
     for (let i = 1; i < videos.length; i++) {
       const previousVideo = videos[i - 1];
       const previousProgress = videoProgress.get(previousVideo.id) || 0;
+      const previousWatched = videoWatched.has(previousVideo.id);
       
-      // Unlock ONLY if previous lecture is 90%+ watched OR completed
-      // Lock remains until 90% is reached
-      if (previousProgress >= 90 || videoWatched.has(previousVideo.id)) {
-        unlocked.add(videos[i].id);
-      } else {
-        // Stop unlocking if previous is not 90%+ - keep locked
+      // Check if previous video is 90%+ watched
+      const progressMet = previousProgress >= 90 || previousWatched;
+      
+      if (!progressMet) {
+        // Progress not met - stop unlocking
         break;
       }
+      
+      // Progress met - check if quiz exists and if passed
+      const quizExists = quizExistsMap.get(previousVideo.id);
+      if (quizExists) {
+        const quizPassed = quizPassedMap.get(previousVideo.id);
+        if (!quizPassed) {
+          // Quiz exists but not passed - stop unlocking
+          break;
+        }
+      }
+      
+      // All conditions met - unlock this lecture
+      unlocked.add(videos[i].id);
     }
     
     return unlocked;
-  }, [videos, videoProgress, videoWatched]);
+  }, [videos, videoProgress, videoWatched, quizExistsMap, quizPassedMap]);
 
   // Get next lecture ID
   const getNextLectureId = useCallback((currentVideoId: number): number | null => {
@@ -787,6 +820,53 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
     }
     return null;
   }, [videos]);
+
+  // Check if user has passed quiz for video
+  const checkQuizStatus = useCallback(async (videoId: number) => {
+    if (!user?.id) return false;
+    
+    try {
+      const result = await coursesApi.hasUserPassedQuiz(videoId, user.id);
+      if (result.success && result.data) {
+        const passed = result.data.passed || false;
+        setQuizPassedMap(prev => new Map(prev).set(videoId, passed));
+        
+        // Also fetch quiz attempts to get latest score
+        try {
+          const attemptsResult = await coursesApi.getUserQuizAttempts(videoId, user.id);
+          if (attemptsResult.success && attemptsResult.data && attemptsResult.data.length > 0) {
+            // Get the latest attempt (first one as it's sorted by created_at desc)
+            const latestAttempt = attemptsResult.data[0];
+            setQuizScoresMap(prev => new Map(prev).set(videoId, {
+              score: latestAttempt.score || 0,
+              total_marks: latestAttempt.total_marks || 10,
+              percentage: latestAttempt.percentage || 0
+            }));
+          }
+        } catch (scoreErr) {
+          console.error('Error fetching quiz scores:', scoreErr);
+        }
+        
+        return passed;
+      }
+    } catch (err) {
+      console.error('Error checking quiz status:', err);
+    }
+    return false;
+  }, [user?.id]);
+
+  // Check if quiz exists for video
+  const checkQuizExists = useCallback(async (videoId: number) => {
+    try {
+      const result = await coursesApi.getQuizByVideoId(videoId);
+      const exists = result.success && result.data !== null;
+      setQuizExistsMap(prev => new Map(prev).set(videoId, exists));
+      return exists;
+    } catch (err) {
+      console.error('Error checking quiz existence:', err);
+      return false;
+    }
+  }, []);
 
   const handleSelectVideo = (videoId: number) => {
     // Check if lecture is unlocked
@@ -798,6 +878,59 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
     setIframeError(false); // Reset error when switching videos
     // Don't reset progress/time when switching - keep accumulated values
   };
+
+  // Check quiz status for all videos when videos load
+  useEffect(() => {
+    if (!user?.id || videos.length === 0) return;
+    
+    const checkAllQuizzes = async () => {
+      for (const video of videos) {
+        // Check if quiz exists
+        const exists = await checkQuizExists(video.id);
+        if (exists) {
+          // Check if passed
+          await checkQuizStatus(video.id);
+        }
+      }
+    };
+    
+    checkAllQuizzes();
+  }, [videos, user?.id, checkQuizExists, checkQuizStatus]);
+
+  // Refresh quiz status when page becomes visible (user returns from quiz page)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && user?.id && videos.length > 0) {
+        // Re-check quiz status for current video
+        if (selectedVideoId) {
+          checkQuizExists(selectedVideoId).then(exists => {
+            if (exists) {
+              checkQuizStatus(selectedVideoId);
+            }
+          });
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [selectedVideoId, user?.id, videos.length, checkQuizExists, checkQuizStatus]);
+
+  // Refresh quiz status when showQuiz becomes false (quiz closed)
+  useEffect(() => {
+    if (!showQuiz && quizVideoId === null && user?.id && videos.length > 0) {
+      // Quiz was just closed - refresh status for all videos
+      const refreshAllQuizStatus = async () => {
+        for (const video of videos) {
+          const exists = await checkQuizExists(video.id);
+          if (exists) {
+            await checkQuizStatus(video.id);
+          }
+        }
+      };
+      refreshAllQuizStatus();
+    }
+  }, [showQuiz, quizVideoId, user?.id, videos, checkQuizExists, checkQuizStatus]);
 
   // If selected video is locked, select first unlocked video instead
   // This must be BEFORE early returns to maintain hook order
@@ -1030,6 +1163,24 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
                               {video.description}
                             </p>
                           )}
+                          {/* Quiz Score Display */}
+                          {(() => {
+                            const quizExists = quizExistsMap.get(video.id);
+                            const quizScore = quizScoresMap.get(video.id);
+                            if (quizExists && quizScore) {
+                              return (
+                                <div className={`flex items-center gap-1 mt-1 px-2 py-0.5 rounded text-xs font-semibold ${
+                                  quizScore.percentage >= 80
+                                    ? isDarkMode ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-700'
+                                    : isDarkMode ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-700'
+                                }`}>
+                                  <span>📝</span>
+                                  <span>{quizScore.score}/{quizScore.total_marks} ({Math.round(quizScore.percentage)}%)</span>
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
                           {/* Time and Progress Display */}
                           <div className="flex items-center gap-2 mt-1">
                             {video.duration ? (
@@ -1109,10 +1260,109 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
             </div>
           </div>
 
-          {/* Right Side - Video Player */}
-          <div className="flex-1 overflow-y-auto">
-            <div className={`p-6 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
-              {videos.length > 0 && selectedVideo ? (
+          {/* Right Side - Video Player or Quiz */}
+          <div className="flex-1 overflow-hidden">
+            {showQuiz && quizVideoId ? (
+              <QuizComponent
+                videoId={quizVideoId}
+                courseId={courseId || 0}
+                onQuizComplete={async (passed, attemptCount) => {
+                  const currentQuizVideoId = quizVideoId; // Store before clearing
+                  
+                  console.log(`[CourseViewPage] Quiz completed for video ${currentQuizVideoId}, passed:`, passed, 'attempt:', attemptCount);
+                  
+                  // Don't close quiz component yet - let result screen show
+                  // Quiz component will call onClose when user clicks button on result screen
+                  
+                  // Immediately update quiz status in state (this triggers unlockedLectures recalculation)
+                  if (currentQuizVideoId) {
+                    // Update state immediately
+                    setQuizPassedMap(prev => {
+                      const newMap = new Map(prev);
+                      newMap.set(currentQuizVideoId, passed);
+                      console.log(`[CourseViewPage] Updated quizPassedMap:`, Array.from(newMap.entries()));
+                      return newMap;
+                    });
+                    
+                    // Also refresh from server to ensure consistency (this will also fetch scores)
+                    try {
+                      await checkQuizStatus(currentQuizVideoId);
+                      await checkQuizExists(currentQuizVideoId);
+                    } catch (err) {
+                      console.error('[CourseViewPage] Error refreshing quiz status:', err);
+                    }
+                  }
+                  
+                  // If failed on 2nd attempt, reset video progress
+                  if (!passed && attemptCount === 2 && currentQuizVideoId && user?.id) {
+                    try {
+                      console.log(`[CourseViewPage] Resetting video progress for video ${currentQuizVideoId} after 2nd failed attempt`);
+                      
+                      // Reset progress to 0
+                      const progressResult = await coursesApi.updateProgress({
+                        user_id: user.id,
+                        video_id: currentQuizVideoId,
+                        progress_percentage: 0,
+                        watched_time_seconds: 0,
+                        completed: false
+                      });
+                      
+                      if (progressResult.error) {
+                        console.error('Error resetting progress:', progressResult.error);
+                      } else {
+                        // Update local state
+                        setVideoProgress(prev => {
+                          const newMap = new Map(prev);
+                          newMap.set(currentQuizVideoId, 0);
+                          return newMap;
+                        });
+                        setVideoWatchedTime(prev => {
+                          const newMap = new Map(prev);
+                          newMap.set(currentQuizVideoId, 0);
+                          return newMap;
+                        });
+                        setVideoWatched(prev => {
+                          const newSet = new Set(prev);
+                          newSet.delete(currentQuizVideoId);
+                          return newSet;
+                        });
+                        
+                        toast.success('Video progress reset. Please watch the video again before retaking the quiz.');
+                      }
+                    } catch (err) {
+                      console.error('[CourseViewPage] Error resetting video progress:', err);
+                    }
+                  }
+                }}
+                onClose={async () => {
+                  const currentQuizVideoId = quizVideoId;
+                  
+                  // Close quiz component
+                  setShowQuiz(false);
+                  setQuizVideoId(null);
+                  
+                  // Now handle quiz completion logic
+                  if (currentQuizVideoId && user?.id) {
+                    // Refresh quiz status (this will also fetch latest scores)
+                    await checkQuizStatus(currentQuizVideoId);
+                    await checkQuizExists(currentQuizVideoId);
+                    
+                    // Check if quiz was passed to unlock next lecture
+                    const quizPassed = quizPassedMap.get(currentQuizVideoId);
+                    if (quizPassed) {
+                      const nextId = getNextLectureId(currentQuizVideoId);
+                      if (nextId) {
+                        setTimeout(() => {
+                          setSelectedVideoId(nextId);
+                        }, 300);
+                      }
+                    }
+                  }
+                }}
+              />
+            ) : (
+              <div className={`h-full overflow-y-auto p-6 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+                {videos.length > 0 && selectedVideo ? (
                 <div>
                   {/* Video Player */}
                   <div className={`rounded-xl shadow-lg overflow-hidden mb-6 ${
@@ -1335,20 +1585,63 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
                         {selectedVideo.description}
                       </p>
                     )}
-                    {videoWatched.has(selectedVideo.id) && (
-                      <div className={`rounded-lg p-4 ${
-                        isDarkMode 
-                          ? 'bg-green-900/30 border border-green-700' 
-                          : 'bg-green-50 border border-green-200'
-                      }`}>
-                        <p className={`flex items-center gap-2 ${
-                          isDarkMode ? 'text-green-300' : 'text-green-700'
+                    {videoWatched.has(selectedVideo.id) && (() => {
+                      const quizExists = quizExistsMap.get(selectedVideo.id) || false;
+                      const quizPassed = quizExists ? (quizPassedMap.get(selectedVideo.id) || false) : false;
+                      const nextLectureId = getNextLectureId(selectedVideo.id);
+                      const hasNext = nextLectureId !== null;
+
+                      return (
+                        <div className={`rounded-lg p-4 ${
+                          isDarkMode 
+                            ? 'bg-green-900/30 border border-green-700' 
+                            : 'bg-green-50 border border-green-200'
                         }`}>
-                          <span>✅</span>
-                          <span className="font-semibold">This lecture has been completed</span>
-                        </p>
-                      </div>
-                    )}
+                          <div className="flex items-center justify-between">
+                            <p className={`flex items-center gap-2 ${
+                              isDarkMode ? 'text-green-300' : 'text-green-700'
+                            }`}>
+                              <span>✅</span>
+                              <span className="font-semibold">This lecture has been completed</span>
+                            </p>
+                            <div className="flex gap-2">
+                              {quizExists && !quizPassed ? (
+                                // Quiz exists but not passed - show Take Quiz button
+                                <button
+                                  onClick={() => {
+                                    setQuizVideoId(selectedVideo.id);
+                                    setShowQuiz(true);
+                                  }}
+                                  className={`px-4 py-2 text-sm rounded-lg font-semibold transition-all shadow-md ${
+                                    isDarkMode
+                                      ? 'bg-purple-600 hover:bg-purple-700 text-white hover:scale-105 cursor-pointer'
+                                      : 'bg-purple-500 hover:bg-purple-600 text-white hover:scale-105 cursor-pointer'
+                                  }`}
+                                >
+                                  📝 Take Quiz
+                                </button>
+                              ) : (quizExists && quizPassed || !quizExists) && hasNext ? (
+                                // Quiz passed or no quiz - show Next Lecture button
+                                <button
+                                  onClick={() => {
+                                    if (nextLectureId) {
+                                      setSelectedVideoId(nextLectureId);
+                                    }
+                                  }}
+                                  className={`px-4 py-2 text-sm rounded-lg font-semibold transition-all shadow-md ${
+                                    isDarkMode
+                                      ? 'bg-blue-600 hover:bg-blue-700 text-white hover:scale-105 cursor-pointer'
+                                      : 'bg-blue-500 hover:bg-blue-600 text-white hover:scale-105 cursor-pointer'
+                                  }`}
+                                >
+                                  ➡️ Next Lecture
+                                </button>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
                     {!videoWatched.has(selectedVideo.id) && (
                       <div className={`text-sm ${
                         isDarkMode ? 'text-gray-400' : 'text-gray-500'
@@ -1363,7 +1656,7 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
                     )}
                   </div>
 
-                  {/* Complete and Next Button - Below Video Info */}
+                  {/* Action Button - Show only for incomplete videos */}
                   {!videoWatched.has(selectedVideo.id) && selectedVideo.video_url && (() => {
                     const progress = videoProgress.get(selectedVideo.id) || 0;
                     const isActive = progress >= 90;
@@ -1374,10 +1667,26 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
                       <div className="flex justify-end mt-4">
                         <button
                           onClick={async () => {
-                            if (!isActive) return; // Prevent click if locked
+                            if (!isActive) return;
                             
                             await markVideoAsCompleted(selectedVideo.id);
-                            // Auto-switch to next lecture if available
+                            
+                            // Check if quiz exists for this video
+                            const exists = await checkQuizExists(selectedVideo.id);
+                            
+                            if (exists) {
+                              // Check if user has passed the quiz
+                              const passed = await checkQuizStatus(selectedVideo.id);
+                              
+                              if (!passed) {
+                                // Quiz exists but not passed - show quiz in right side
+                                setQuizVideoId(selectedVideo.id);
+                                setShowQuiz(true);
+                                return;
+                              }
+                            }
+                            
+                            // No quiz or quiz passed - proceed to next lecture
                             if (hasNext && nextLectureId) {
                               setTimeout(() => {
                                 setSelectedVideoId(nextLectureId);
@@ -1421,7 +1730,8 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId }) => {
                   </p>
                 </div>
               )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
