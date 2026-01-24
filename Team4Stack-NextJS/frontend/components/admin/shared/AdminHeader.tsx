@@ -1,40 +1,10 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
-import ProfileAvatar from '../../../shared/components/ProfileAvatar';
+import React from 'react'
 import { usePathname } from 'next/navigation'
-import { landingApi } from '@/lib/api'
 
 const AdminHeader: React.FC = () => {
-  const [avatarUrl, setAvatarUrl] = useState<string>('')
-  const [now, setNow] = useState<string>('')
   const pathname = usePathname()
-
-  useEffect(() => {
-    const sanitize = (u?: string): string => {
-      if (!u) return ''
-      let url = String(u).trim()
-      if (url.includes('github.com') && url.includes('/blob/') && !url.includes('?raw=')) {
-        url += (url.includes('?') ? '&' : '?') + 'raw=1'
-      }
-      return url
-    }
-    const load = async () => {
-      try {
-        const result = await landingApi.getSiteSettings(['admin_avatar_url'])
-        if (result.data && Array.isArray(result.data)) {
-          const setting = result.data.find((s: any) => s.key === 'admin_avatar_url')
-          if (setting?.value) setAvatarUrl(sanitize(setting.value))
-        }
-      } catch (err) {
-        // Ignore errors
-      }
-    }
-    load()
-    const t = setInterval(() => setNow(new Date().toLocaleString()), 1000)
-    // Note: Real-time subscriptions removed - using backend API
-    return () => { clearInterval(t) }
-  }, [])
 
   const prettyTitle = () => {
     let p = pathname || ''
@@ -63,25 +33,6 @@ const AdminHeader: React.FC = () => {
     return map[seg] || seg
   }
 
-  const handleLogout = async () => {
-    // Remove custom admin session (NOT Supabase Auth session)
-    // Admin login is completely separate from normal website login
-    const currentPath = window.location.pathname
-    sessionStorage.removeItem('admin_session')
-    
-    // Redirect to appropriate login page based on current route
-    if (currentPath.startsWith('/adminstackt4s')) {
-      window.location.href = '/adminstackt4s/login'
-    } else if (currentPath.startsWith('/adminteamt4s')) {
-      window.location.href = '/adminteamt4s/login'
-    } else if (currentPath.startsWith('/admincourset4s')) {
-      window.location.href = '/admincourset4s/login'
-    } else if (currentPath.startsWith('/supadmin')) {
-      window.location.href = '/supadmin/login'
-    } else {
-      window.location.href = '/adminlandingt4s/login'
-    }
-  }
 
   return (
     <header className="sticky top-0 z-20 flex-shrink-0">
@@ -134,25 +85,7 @@ const AdminHeader: React.FC = () => {
         </div>
         
         <div className="flex items-center gap-3 relative z-10">
-          {/* Animated time display */}
-          <div className="hidden md:block text-xs font-semibold text-white/90 drop-shadow-lg bg-black/20 dark:bg-white/10 px-3 py-1.5 rounded-lg backdrop-blur-sm border border-white/20">
-            {now}
-          </div>
-          
-          {/* Enhanced logout button */}
-          <button 
-            onClick={handleLogout} 
-            className="px-4 py-2 text-sm font-semibold rounded-xl bg-gradient-to-r from-red-500 via-rose-500 to-pink-500 text-white shadow-lg hover:shadow-red-500/50 hover:scale-105 active:scale-95 transition-all duration-300 relative overflow-hidden group"
-          >
-            <span className="relative z-10">Logout</span>
-            <div className="absolute inset-0 bg-gradient-to-r from-pink-500 via-rose-500 to-red-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-          </button>
-          
-          {/* Avatar with glow */}
-          <div className="relative">
-            <div className="absolute -inset-1 bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 rounded-full blur opacity-50 animate-[pulse_2s_ease_infinite]"></div>
-            <ProfileAvatar src={avatarUrl || '/Team4stack_Logo.png?v=8'} alt="Admin Avatar" size="sm" />
-          </div>
+          {/* Empty space - logout and avatar moved to sidebar */}
         </div>
       </div>
       
