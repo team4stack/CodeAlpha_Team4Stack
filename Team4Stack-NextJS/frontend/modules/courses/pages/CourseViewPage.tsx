@@ -8,6 +8,7 @@ import StudentNavbar from '@/navigation/StudentNavbar';
 import { coursesApi } from '@/lib/api';
 import toast from 'react-hot-toast';
 import QuizComponent from '../components/QuizComponent';
+import { sanitizeError, logErrorSecurely } from '@/lib/utils/errorHandler';
 
 interface Video {
   id: number;
@@ -97,7 +98,7 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId: courseIdProp,
         setLoading(false);
         return;
       }
-      setCourse(courseResult.data || null);
+      setCourse((courseResult.data as Course) || null);
       
       // Fetch videos ordered by order_index (admin's order)
       const videosResult = await coursesApi.getCourseVideos(parseInt(courseId));
@@ -106,19 +107,21 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId: courseIdProp,
         setLoading(false);
         return;
       }
-      const videosData = videosResult.data || [];
+      const videosData = (videosResult.data as Video[]) || [];
       setVideos(videosData);
       
       // Initialize video total durations from database
       const durationMap = new Map<number, number>();
-      videosData?.forEach((video) => {
-        if (video.duration && video.duration > 0) {
-          durationMap.set(video.id, video.duration);
-        }
-      });
+      if (Array.isArray(videosData)) {
+        videosData.forEach((video: Video) => {
+          if (video.duration && video.duration > 0) {
+            durationMap.set(video.id, video.duration);
+          }
+        });
+      }
       setVideoTotalDuration(durationMap);
       
-      if (videosData && videosData.length > 0) {
+      if (Array.isArray(videosData) && videosData.length > 0) {
         setSelectedVideoId(videosData[0].id);
       } else {
         setSelectedVideoId(null);
@@ -127,16 +130,18 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId: courseIdProp,
       // Fetch progress records for current user
       const progressResult = await coursesApi.getUserProgress(user.id, parseInt(courseId));
       if (progressResult.error) {
-        console.error('Error loading progress:', progressResult.error);
-        // Continue without progress data
+        // Use secure error handler
+        logErrorSecurely(progressResult.error, 'loadUserProgress');
+        // Continue without progress data - don't block UI
       }
-      const progressData = progressResult.data || [];
+      const progressData = (progressResult.data as ProgressRecord[]) || [];
       setProgressRecords(progressData);
       
       // Track which videos have been watched and their watched time
       const watched = new Set<number>();
       const watchedTimeMap = new Map<number, number>();
-      progressData?.forEach((record) => {
+      if (Array.isArray(progressData)) {
+        progressData.forEach((record: ProgressRecord) => {
         if (record.completed && record.video_id) {
           watched.add(record.video_id);
           // Store watched time from score field (or 0 if not set)
@@ -145,14 +150,17 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId: courseIdProp,
             // Initialize actual watched time refs
             actualWatchedTimeRef.current.set(record.video_id, record.score);
           }
-        }
-      });
+          }
+        });
+      }
       setVideoWatched(watched);
       setVideoWatchedTime(watchedTimeMap);
     } catch (err: any) {
-      console.error('[CourseViewPage] Failed to load course', err);
+      // Use secure error handler
+      logErrorSecurely(err, 'loadCourseData');
+      const sanitized = sanitizeError(err);
       setError('Unable to load course content right now.');
-      toast.error('Failed to load course');
+      toast.error(sanitized.message || 'Failed to load course');
     } finally {
       setLoading(false);
     }
@@ -228,18 +236,25 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId: courseIdProp,
       });
       
       if (progressResult.error) {
-        console.error('Error updating progress:', progressResult.error);
-        toast.error(progressResult.error);
+        // Use secure error handler
+        logErrorSecurely(progressResult.error, 'updateVideoProgress');
+        const sanitized = sanitizeError(progressResult.error);
+        toast.error(sanitized.message || 'Failed to update progress');
         return;
       }
       
-      // Reload progress records
-      const reloadResult = await coursesApi.getUserProgress(user.id, parseInt(courseId));
-      if (reloadResult.error) {
-        console.error('Error reloading progress records:', reloadResult.error);
-        // Don't throw here, just log - progress was already saved
-      } else {
-        setProgressRecords(reloadResult.data || []);
+      // Reload progress records to sync with backend
+      try {
+        const reloadResult = await coursesApi.getUserProgress(user.id, parseInt(courseId));
+        if (reloadResult.error) {
+          // Silent fail - progress was already saved
+          logErrorSecurely(reloadResult.error, 'reloadProgressAfterUpdate');
+        } else {
+          setProgressRecords((reloadResult.data as ProgressRecord[]) || []);
+        }
+      } catch (reloadErr) {
+        // Silent fail - progress was already saved
+        logErrorSecurely(reloadErr, 'reloadProgressAfterUpdate');
       }
       
       toast.success('Lecture marked as complete!');
@@ -248,7 +263,6 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId: courseIdProp,
       // Next lecture will be automatically unlocked when progress >= 90%
     } catch (err: any) {
       // Use secure error handler to prevent exposing internal information
-      const { sanitizeError, logErrorSecurely } = await import('@/lib/utils/errorHandler');
       logErrorSecurely(err, 'updateProgress');
       const sanitized = sanitizeError(err);
       toast.error(sanitized.message);
@@ -416,7 +430,10 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId: courseIdProp,
             youtubePlayerRef.current.destroy();
             youtubePlayerRef.current = null;
           } catch (e) {
-            console.log('Error destroying YouTube player:', e);
+            // Silent fail - YouTube player destruction errors are non-critical
+            if (process.env.NODE_ENV === 'development') {
+              console.log('YouTube player destruction error:', e);
+            }
           }
         }
 
@@ -454,11 +471,12 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId: courseIdProp,
                 if (duration && duration > 0) {
                   setVideoTotalDuration(prev => new Map(prev).set(selectedVideoId, duration));
                   // Update database if duration is different (don't reload to avoid re-render)
-                  if (selectedVideo.duration !== duration) {
+                  if (selectedVideo.duration !== duration && selectedVideoId !== null) {
                     (async () => {
-                      const result = await coursesApi.updateVideo(parseInt(selectedVideoId), { duration: Math.floor(duration) });
+                      const result = await coursesApi.updateVideo(Number(selectedVideoId), { duration: Math.floor(duration) });
                       if (result.error) {
-                        console.log('Could not update video duration:', result.error);
+                        // Silent fail - duration update is non-critical
+                        logErrorSecurely(result.error, 'updateVideoDuration');
                       }
                     })();
                   }
@@ -537,7 +555,10 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId: courseIdProp,
                         }
                       }
                     } catch (e) {
-                      console.log('Error handling video end:', e);
+                      // Silent fail - YouTube API errors are non-critical
+                      if (process.env.NODE_ENV === 'development') {
+                        console.log('YouTube video end error:', e);
+                      }
                     }
                   }
                   if (progressIntervalRef.current) {
@@ -553,7 +574,8 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId: courseIdProp,
             },
           });
           } catch (e) {
-            console.error('Error creating YouTube player:', e);
+            // Use secure error handler for YouTube player creation errors
+            logErrorSecurely(e, 'createYouTubePlayer');
             // Show fallback iframe if player creation fails
             const playerElement = document.getElementById(`youtube-player-${selectedVideoId}`);
             if (playerElement) {
@@ -606,16 +628,17 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId: courseIdProp,
         setVideoTotalDuration(prev => new Map(prev).set(selectedVideoId, totalSeconds));
         
         // Update database if duration is not set or different
-        if (currentVideo && (!currentVideo.duration || currentVideo.duration !== totalSeconds)) {
+        if (currentVideo && selectedVideoId !== null && (!currentVideo.duration || currentVideo.duration !== totalSeconds)) {
           // Optionally update database, but don't block UI
           (async () => {
-            const result = await coursesApi.updateVideo(parseInt(selectedVideoId), { duration: totalSeconds });
+            const result = await coursesApi.updateVideo(selectedVideoId, { duration: totalSeconds });
             
             if (!result.error) {
               // Reload videos to get updated duration
               loadCourseData();
             } else {
-              console.log('Could not update video duration:', result.error);
+              // Silent fail - duration update is non-critical
+              logErrorSecurely(result.error, 'updateVideoDurationFromMetadata');
             }
           })();
         }
@@ -828,29 +851,39 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId: courseIdProp,
     try {
       const result = await coursesApi.hasUserPassedQuiz(videoId, user.id);
       if (result.success && result.data) {
-        const passed = result.data.passed || false;
+        const quizData = result.data as { passed?: boolean };
+        const passed = quizData.passed || false;
         setQuizPassedMap(prev => new Map(prev).set(videoId, passed));
         
         // Also fetch quiz attempts to get latest score
         try {
           const attemptsResult = await coursesApi.getUserQuizAttempts(videoId, user.id);
-          if (attemptsResult.success && attemptsResult.data && attemptsResult.data.length > 0) {
-            // Get the latest attempt (first one as it's sorted by created_at desc)
-            const latestAttempt = attemptsResult.data[0];
-            setQuizScoresMap(prev => new Map(prev).set(videoId, {
-              score: latestAttempt.score || 0,
-              total_marks: latestAttempt.total_marks || 10,
-              percentage: latestAttempt.percentage || 0
-            }));
+          if (attemptsResult.success && attemptsResult.data) {
+            const attemptsData = attemptsResult.data as Array<{
+              score?: number;
+              total_marks?: number;
+              percentage?: number;
+            }>;
+            if (Array.isArray(attemptsData) && attemptsData.length > 0) {
+              // Get the latest attempt (first one as it's sorted by created_at desc)
+              const latestAttempt = attemptsData[0];
+              setQuizScoresMap(prev => new Map(prev).set(videoId, {
+                score: latestAttempt.score || 0,
+                total_marks: latestAttempt.total_marks || 10,
+                percentage: latestAttempt.percentage || 0
+              }));
+            }
           }
         } catch (scoreErr) {
-          console.error('Error fetching quiz scores:', scoreErr);
+          // Use secure error handler
+          logErrorSecurely(scoreErr, 'fetchQuizScores');
         }
         
         return passed;
       }
     } catch (err) {
-      console.error('Error checking quiz status:', err);
+      // Use secure error handler
+      logErrorSecurely(err, 'checkQuizStatus');
     }
     return false;
   }, [user?.id]);
@@ -863,7 +896,8 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId: courseIdProp,
       setQuizExistsMap(prev => new Map(prev).set(videoId, exists));
       return exists;
     } catch (err) {
-      console.error('Error checking quiz existence:', err);
+      // Use secure error handler
+      logErrorSecurely(err, 'checkQuizExists');
       return false;
     }
   }, []);
@@ -1265,52 +1299,49 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId: courseIdProp,
             {showQuiz && quizVideoId ? (
               <QuizComponent
                 videoId={quizVideoId}
-                courseId={courseId || 0}
+                courseId={courseId ? parseInt(courseId) : 0}
                 onQuizComplete={async (passed, attemptCount) => {
                   const currentQuizVideoId = quizVideoId; // Store before clearing
                   
-                  console.log(`[CourseViewPage] Quiz completed for video ${currentQuizVideoId}, passed:`, passed, 'attempt:', attemptCount);
-                  
-                  // Don't close quiz component yet - let result screen show
-                  // Quiz component will call onClose when user clicks button on result screen
+                  if (!currentQuizVideoId || !user?.id) return;
                   
                   // Immediately update quiz status in state (this triggers unlockedLectures recalculation)
-                  if (currentQuizVideoId) {
-                    // Update state immediately
-                    setQuizPassedMap(prev => {
-                      const newMap = new Map(prev);
-                      newMap.set(currentQuizVideoId, passed);
-                      console.log(`[CourseViewPage] Updated quizPassedMap:`, Array.from(newMap.entries()));
-                      return newMap;
-                    });
-                    
-                    // Also refresh from server to ensure consistency (this will also fetch scores)
-                    try {
-                      await checkQuizStatus(currentQuizVideoId);
-                      await checkQuizExists(currentQuizVideoId);
-                    } catch (err) {
-                      console.error('[CourseViewPage] Error refreshing quiz status:', err);
-                    }
+                  setQuizPassedMap(prev => {
+                    const newMap = new Map(prev);
+                    newMap.set(currentQuizVideoId, passed);
+                    return newMap;
+                  });
+                  
+                  // Refresh quiz status from server to ensure consistency (this will also fetch scores)
+                  try {
+                    await Promise.all([
+                      checkQuizStatus(currentQuizVideoId),
+                      checkQuizExists(currentQuizVideoId)
+                    ]);
+                  } catch (err) {
+                    // Use secure error handler
+                    logErrorSecurely(err, 'refreshQuizStatus');
                   }
                   
                   // If failed on 2nd attempt, reset video progress
-                  if (!passed && attemptCount === 2 && currentQuizVideoId && user?.id) {
+                  if (!passed && attemptCount === 2) {
                     try {
-                      console.log(`[CourseViewPage] Resetting video progress for video ${currentQuizVideoId} after 2nd failed attempt`);
-                      
                       // Reset progress to 0
                       const progressResult = await coursesApi.updateProgress({
                         user_id: user.id,
+                        course_id: Number(courseId),
                         video_id: currentQuizVideoId,
-                        progress_percentage: 0,
-                        watched_time_seconds: 0,
-                        completed: false
+                        completed: false,
+                        score: 0
                       });
                       
                       if (progressResult.error) {
-                        console.error('Error resetting progress:', progressResult.error);
+                        // Use secure error handler
+                        logErrorSecurely(progressResult.error, 'resetProgress');
+                        const sanitized = sanitizeError(progressResult.error);
+                        toast.error(sanitized.message || 'Failed to reset video progress. Please try again.');
                       } else {
-                        // Update local state
+                        // Update local state atomically
                         setVideoProgress(prev => {
                           const newMap = new Map(prev);
                           newMap.set(currentQuizVideoId, 0);
@@ -1327,35 +1358,66 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId: courseIdProp,
                           return newSet;
                         });
                         
-                        toast.success('Video progress reset. Please watch the video again before retaking the quiz.');
+                        // Reset refs
+                        actualWatchedTimeRef.current.set(currentQuizVideoId, 0);
+                        lastTrackedTimeRef.current.set(currentQuizVideoId, 0);
+                        elapsedTimeRef.current.set(currentQuizVideoId, 0);
+                        
+                        // Reload progress records to sync with backend
+                        try {
+                          const reloadResult = await coursesApi.getUserProgress(user.id, parseInt(courseId || '0'));
+                          if (!reloadResult.error && reloadResult.data) {
+                            setProgressRecords((reloadResult.data as ProgressRecord[]));
+                          }
+                        } catch (reloadErr) {
+                          // Silent fail - progress was already reset locally
+                          logErrorSecurely(reloadErr, 'reloadProgressAfterReset');
+                        }
+                        
+                        toast.success('Video progress has been reset. Please watch the video again before retaking the quiz.');
                       }
                     } catch (err) {
-                      console.error('[CourseViewPage] Error resetting video progress:', err);
+                      // Use secure error handler
+                      logErrorSecurely(err, 'resetVideoProgress');
+                      const sanitized = sanitizeError(err);
+                      toast.error(sanitized.message || 'Failed to reset video progress. Please try again.');
                     }
                   }
                 }}
                 onClose={async () => {
                   const currentQuizVideoId = quizVideoId;
                   
-                  // Close quiz component
+                  // Close quiz component first
                   setShowQuiz(false);
                   setQuizVideoId(null);
                   
-                  // Now handle quiz completion logic
+                  // Handle post-quiz actions
                   if (currentQuizVideoId && user?.id) {
-                    // Refresh quiz status (this will also fetch latest scores)
-                    await checkQuizStatus(currentQuizVideoId);
-                    await checkQuizExists(currentQuizVideoId);
-                    
-                    // Check if quiz was passed to unlock next lecture
-                    const quizPassed = quizPassedMap.get(currentQuizVideoId);
-                    if (quizPassed) {
-                      const nextId = getNextLectureId(currentQuizVideoId);
-                      if (nextId) {
-                        setTimeout(() => {
-                          setSelectedVideoId(nextId);
-                        }, 300);
+                    try {
+                      // Refresh quiz status to get latest scores
+                      await Promise.all([
+                        checkQuizStatus(currentQuizVideoId),
+                        checkQuizExists(currentQuizVideoId)
+                      ]);
+                      
+                      // Check if quiz was passed to unlock next lecture
+                      const quizPassed = quizPassedMap.get(currentQuizVideoId);
+                      if (quizPassed) {
+                        const nextId = getNextLectureId(currentQuizVideoId);
+                        if (nextId) {
+                          // Small delay for smooth transition
+                          setTimeout(() => {
+                            setSelectedVideoId(nextId);
+                            toast.success('Next lecture unlocked!');
+                          }, 300);
+                        } else {
+                          toast.success('Congratulations! You have completed all lectures in this course.');
+                        }
                       }
+                    } catch (err) {
+                      // Use secure error handler
+                      logErrorSecurely(err, 'postQuizClose');
+                      // Don't show error to user - quiz was already completed
                     }
                   }
                 }}
