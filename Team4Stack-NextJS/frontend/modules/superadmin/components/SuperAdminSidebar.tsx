@@ -46,12 +46,12 @@ const SuperAdminSidebar: React.FC = () => {
   }
 
   return (
-    <aside className="w-64 bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl border-r border-gray-200/60 dark:border-gray-700/60 h-full flex flex-col relative shadow-lg">
-      <div className="pointer-events-none absolute inset-0 opacity-10 [background:radial-gradient(100px_60px_at_20%_10%,#7c3aed_0,transparent_60%),radial-gradient(120px_80px_at_80%_30%,#06b6d4_0,transparent_60%)]"></div>
+    <aside className="w-64 bg-gradient-to-b from-green-500 to-emerald-600 backdrop-blur-xl border-r border-green-400/60 h-full flex flex-col relative shadow-lg">
+      <div className="pointer-events-none absolute inset-0 opacity-10 [background:radial-gradient(100px_60px_at_20%_10%,#22c55e_0,transparent_60%),radial-gradient(120px_80px_at_80%_30%,#10b981_0,transparent_60%)]"></div>
       <div className="flex-1 overflow-y-auto p-4 relative z-10">
         <div className="mb-6">
-          <div className="text-xs uppercase tracking-widest font-bold text-gray-500 dark:text-gray-400 mb-2">Super Admin</div>
-          <div className="text-sm text-gray-600 dark:text-gray-300 font-semibold">Complete Access</div>
+          <div className="text-xs uppercase tracking-widest font-bold text-white/90 mb-2">Super Admin</div>
+          <div className="text-sm text-white/90 font-semibold">Complete Access</div>
         </div>
         <nav>
           <ul className="space-y-2">
@@ -65,18 +65,18 @@ const SuperAdminSidebar: React.FC = () => {
                     className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-300 relative group ${
                       isActive
                         ? isDashboard
-                          ? 'bg-gradient-to-r from-yellow-500 via-orange-600 to-red-600 text-white shadow-lg shadow-yellow-500/40 scale-105 border-2 border-yellow-400/50'
-                          : 'bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/30 scale-105'
-                        : 'text-gray-700 dark:text-gray-200 hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 dark:hover:from-indigo-900/20 dark:hover:to-purple-900/20 hover:scale-105 hover:shadow-md'
+                          ? 'bg-white/30 text-white shadow-lg shadow-white/40 scale-105 border-2 border-white/50 backdrop-blur-sm'
+                          : 'bg-white/25 text-white shadow-lg shadow-white/30 scale-105 backdrop-blur-sm'
+                        : 'text-white/90 hover:bg-white/20 hover:scale-105 hover:shadow-md backdrop-blur-sm'
                     }`}
                   >
                     <span className={`text-lg transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}>{link.icon}</span>
                     <span className="flex-1">{link.label}</span>
                     {link.isSuper && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 font-bold">SUPER</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/30 text-white font-bold backdrop-blur-sm">SUPER</span>
                     )}
                     {isActive && (
-                      <div className={`absolute right-2 w-2 h-2 rounded-full animate-pulse ${isDashboard ? 'bg-yellow-300 ring-2 ring-yellow-500' : 'bg-white'}`}></div>
+                      <div className={`absolute right-2 w-2 h-2 rounded-full animate-pulse ${isDashboard ? 'bg-white ring-2 ring-white/50' : 'bg-white'}`}></div>
                     )}
                   </Link>
                 </li>
@@ -87,7 +87,7 @@ const SuperAdminSidebar: React.FC = () => {
       </div>
       
       {/* Logout Button at Bottom */}
-      <div className="p-4 border-t border-gray-200/60 dark:border-gray-700/60 relative z-10">
+      <div className="p-4 border-t border-white/30 relative z-10">
         <button 
           onClick={handleLogout} 
           className="w-full px-4 py-3 rounded-xl bg-gradient-to-r from-red-500 via-rose-500 to-pink-500 text-white shadow-lg hover:shadow-red-500/50 hover:scale-105 active:scale-95 transition-all duration-300 relative overflow-hidden group font-semibold text-sm"

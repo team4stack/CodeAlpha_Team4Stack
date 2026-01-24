@@ -40,12 +40,12 @@ const CoursesAdminSidebar: React.FC = () => {
   }
 
   return (
-    <aside className="w-64 bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl border-r border-gray-200/60 dark:border-gray-700/60 h-full flex flex-col relative shadow-lg">
-      <div className="pointer-events-none absolute inset-0 opacity-10 [background:radial-gradient(100px_60px_at_20%_10%,#7c3aed_0,transparent_60%),radial-gradient(120px_80px_at_80%_30%,#06b6d4_0,transparent_60%)]"></div>
+    <aside className="w-64 bg-gradient-to-b from-green-500 to-emerald-600 backdrop-blur-xl border-r border-green-400/60 h-full flex flex-col relative shadow-lg">
+      <div className="pointer-events-none absolute inset-0 opacity-10 [background:radial-gradient(100px_60px_at_20%_10%,#22c55e_0,transparent_60%),radial-gradient(120px_80px_at_80%_30%,#10b981_0,transparent_60%)]"></div>
       <div className="flex-1 overflow-y-auto p-4 relative z-10">
         <div className="mb-6">
-          <div className="text-xs uppercase tracking-widest font-bold text-gray-500 dark:text-gray-400 mb-2">Courses Admin</div>
-          <div className="text-sm text-gray-600 dark:text-gray-300 font-semibold">Course Management</div>
+          <div className="text-xs uppercase tracking-widest font-bold text-white/90 mb-2">Courses Admin</div>
+          <div className="text-sm text-white/90 font-semibold">Course Management</div>
         </div>
         <nav>
           <ul className="space-y-2">
@@ -57,8 +57,8 @@ const CoursesAdminSidebar: React.FC = () => {
                     href={link.to}
                     className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
                       isActive
-                        ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+                        ? 'bg-white/30 text-white shadow-lg backdrop-blur-sm'
+                        : 'text-white/90 hover:bg-white/20 backdrop-blur-sm'
                     }`}
                   >
                     <span className="text-xl">{link.icon}</span>
@@ -72,7 +72,7 @@ const CoursesAdminSidebar: React.FC = () => {
       </div>
       
       {/* Logout Button at Bottom */}
-      <div className="p-4 border-t border-gray-200/60 dark:border-gray-700/60 relative z-10">
+      <div className="p-4 border-t border-white/30 relative z-10">
         <button 
           onClick={handleLogout} 
           className="w-full px-4 py-3 rounded-xl bg-gradient-to-r from-red-500 via-rose-500 to-pink-500 text-white shadow-lg hover:shadow-red-500/50 hover:scale-105 active:scale-95 transition-all duration-300 relative overflow-hidden group font-semibold text-sm"
