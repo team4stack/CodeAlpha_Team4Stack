@@ -105,7 +105,7 @@ const CoursesAdminLayout: React.FC<CoursesAdminLayoutProps> = ({ children }) => 
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#0a0a0f]">
+    <div className="h-screen flex flex-col bg-[#0a0a0f] overflow-hidden">
       {/* Dark Background with Subtle Accents */}
       <div className="pointer-events-none fixed inset-0 bg-gradient-to-br from-black via-slate-950 to-black"></div>
       
@@ -118,18 +118,18 @@ const CoursesAdminLayout: React.FC<CoursesAdminLayoutProps> = ({ children }) => 
       {/* Navbar - Full Width at Top */}
       <AdminHeader />
       
-      {/* Sidebar and Content - Below Navbar */}
-      <div className="flex flex-1 relative z-10">
+      {/* Sidebar and Content - Below Navbar, Extends to Footer */}
+      <div className="flex flex-1 relative z-10 min-h-0 overflow-x-hidden">
         <CoursesAdminSidebar />
-        <div className="flex-1 flex flex-col">
-          <main className="flex-1 p-4 sm:p-6 text-white/90">
+        <div className="flex-1 flex flex-col min-h-0 overflow-x-hidden">
+          <main className="flex-1 p-4 sm:p-6 text-white/90 overflow-y-auto overflow-x-hidden">
             {children}
           </main>
         </div>
       </div>
       
       {/* Footer - Full Width at Bottom (including under sidebar) */}
-      <div className="relative z-10">
+      <div className="relative z-10 flex-shrink-0">
         <AdminFooter />
       </div>
     </div>
