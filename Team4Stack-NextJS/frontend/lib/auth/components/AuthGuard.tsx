@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Navigate } from 'react-router-dom'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 import { isEmailAllowedForAdmin, verifyAdminAccess } from '../utils/adminSecurity'
 
@@ -8,6 +8,7 @@ type Props = {
 }
 
 const AuthGuard: React.FC<Props> = ({ children }) => {
+  const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [allowed, setAllowed] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
@@ -76,7 +77,8 @@ const AuthGuard: React.FC<Props> = ({ children }) => {
         // CRITICAL: If user email is not in admin_users table, deny access
         // Normal users ka email admin_users mein nahi hoga
         // Only manually added admins will be in admin_users table
-        if (!adminResult.data || !adminResult.data.email) {
+        const adminData = adminResult.data as { email?: string } | null
+        if (!adminData || !adminData.email) {
           // This is a normal user trying to access admin panel
           // Deny access immediately
           sessionStorage.removeItem('admin_session')
@@ -110,12 +112,18 @@ const AuthGuard: React.FC<Props> = ({ children }) => {
     }
   }, [])
 
+  useEffect(() => {
+    if (!loading && (!isAdmin || !allowed)) {
+      router.replace('/adminlandingt4s/login')
+    }
+  }, [loading, isAdmin, allowed, router])
+
   if (loading) {
     return <div className="h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div></div>
   }
 
   if (!isAdmin || !allowed) {
-    return <Navigate to="/adminlandingt4s/login" replace />
+    return null // Will redirect via useEffect
   }
 
   return <>{children}</>

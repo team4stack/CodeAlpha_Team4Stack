@@ -84,7 +84,7 @@ const AdminHeader: React.FC = () => {
   }
 
   return (
-    <header className="sticky top-0 z-20">
+    <header className="sticky top-0 z-20 flex-shrink-0">
       {/* Animated gradient background with multiple layers */}
       <div className="h-[74px] relative overflow-hidden">
         {/* Base gradient */}
