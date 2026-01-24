@@ -70,7 +70,18 @@ export class UserService {
       return await this.updateUser(existingUser.id, user);
     } else {
       // Create new user
-      return await this.createUser(user);
+      // Note: If users table requires an id from auth.users, this will fail
+      // That's okay - user can sign up via auth later
+      try {
+        return await this.createUser(user);
+      } catch (error: any) {
+        // If creation fails due to missing id (foreign key constraint), 
+        // throw a more descriptive error
+        if (error?.code === '23503' || error?.message?.includes('foreign key') || error?.message?.includes('id')) {
+          throw new Error('User account requires authentication. User can sign up later to access student portal.');
+        }
+        throw error;
+      }
     }
   }
 

@@ -14,6 +14,7 @@ import {
   FiLogOut
 } from 'react-icons/fi'
 import SidebarPinButton from '@/components/admin/shared/SidebarPinButton'
+import NotificationBadge from '@/components/admin/shared/NotificationBadge'
 
 const StackStoreAdminSidebar: React.FC = () => {
   const pathname = usePathname()
@@ -22,6 +23,7 @@ const StackStoreAdminSidebar: React.FC = () => {
   const [hoveredLink, setHoveredLink] = useState<string | null>(null)
   const [tooltipPosition, setTooltipPosition] = useState<{ top: number; left: number } | null>(null)
   const [isSidebarHovered, setIsSidebarHovered] = useState(false)
+  const [pendingOrders, setPendingOrders] = useState(0)
   const linkRefs = useRef<Record<string, HTMLAnchorElement | null>>({})
   const dashboardLinkRef = useRef<HTMLAnchorElement | null>(null)
 
@@ -39,6 +41,54 @@ const StackStoreAdminSidebar: React.FC = () => {
       }
     }
     load()
+  }, [])
+
+  // Load pending orders count for notification badge
+  useEffect(() => {
+    const loadPendingOrders = async () => {
+      try {
+        const { stackstoreApi } = await import('@/lib/api')
+        const result = await stackstoreApi.getOrders({ status: 'pending' })
+        const pending = result.data || []
+        setPendingOrders(pending.length)
+      } catch (error) {
+        console.error('Failed to load pending orders:', error)
+      }
+    }
+
+    loadPendingOrders()
+
+    // Auto-refresh every 30 seconds when tab is visible
+    let intervalId: NodeJS.Timeout | null = null
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadPendingOrders()
+        intervalId = setInterval(() => {
+          loadPendingOrders()
+        }, 30000)
+      } else {
+        if (intervalId) {
+          clearInterval(intervalId)
+          intervalId = null
+        }
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    if (document.visibilityState === 'visible') {
+      intervalId = setInterval(() => {
+        loadPendingOrders()
+      }, 30000)
+    }
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      if (intervalId) {
+        clearInterval(intervalId)
+      }
+    }
   }, [])
 
 
@@ -134,13 +184,19 @@ const StackStoreAdminSidebar: React.FC = () => {
                       )}
                       
                       {/* Icon with Glow */}
-                      <IconComponent 
-                        className={`${isCollapsed ? 'w-5 h-5' : 'w-5 h-5'} transition-all duration-300 relative z-10 ${
-                          isActive 
-                            ? 'scale-110 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]' 
-                            : 'group-hover:scale-110 group-hover:drop-shadow-[0_0_8px_rgba(249,115,22,0.6)]'
-                        }`}
-                      />
+                      <div className="relative">
+                        <IconComponent 
+                          className={`${isCollapsed ? 'w-5 h-5' : 'w-5 h-5'} transition-all duration-300 relative z-10 ${
+                            isActive 
+                              ? 'scale-110 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]' 
+                              : 'group-hover:scale-110 group-hover:drop-shadow-[0_0_8px_rgba(249,115,22,0.6)]'
+                          }`}
+                        />
+                        {/* Notification Badge for Orders */}
+                        {link.to === '/adminstackt4s/orders' && (
+                          <NotificationBadge count={pendingOrders} />
+                        )}
+                      </div>
                       
                       {!isCollapsed && (
                         <span className="flex-1 relative z-10">{link.label}</span>

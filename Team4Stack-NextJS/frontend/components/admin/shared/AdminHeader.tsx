@@ -3,6 +3,7 @@
 import React from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import NotificationBell from './NotificationBell'
 
 const AdminHeader: React.FC = () => {
   const pathname = usePathname()
@@ -111,8 +112,11 @@ const AdminHeader: React.FC = () => {
           </div>
         </Link>
 
-        {/* Right Side - Action Buttons */}
+        {/* Right Side - Notification Bell and Action Buttons */}
         <div className="flex items-center gap-3">
+          {/* Notification Bell */}
+          <NotificationBell />
+          
           <button 
             onClick={() => window.open('/', '_blank')} 
             className="px-5 py-2.5 text-sm font-semibold rounded-xl bg-white/10 backdrop-blur-md text-white border border-white/20 hover:bg-white/20 hover:border-cyan-400/50 hover:shadow-[0_0_15px_rgba(6,182,212,0.4)] transition-all duration-300 transform hover:scale-105 relative overflow-hidden group"

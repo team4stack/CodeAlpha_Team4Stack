@@ -21,6 +21,7 @@ import {
   FiLogOut
 } from 'react-icons/fi'
 import SidebarPinButton from '@/components/admin/shared/SidebarPinButton'
+import NotificationBadge from '@/components/admin/shared/NotificationBadge'
 
 const AdminSidebar: React.FC = () => {
   const pathname = usePathname()
@@ -29,6 +30,7 @@ const AdminSidebar: React.FC = () => {
   const [hoveredLink, setHoveredLink] = useState<string | null>(null)
   const [tooltipPosition, setTooltipPosition] = useState<{ top: number; left: number } | null>(null)
   const [isSidebarHovered, setIsSidebarHovered] = useState(false)
+  const [unviewedSupport, setUnviewedSupport] = useState(0)
   const linkRefs = useRef<Record<string, HTMLAnchorElement | null>>({})
   const dashboardLinkRef = useRef<HTMLAnchorElement | null>(null)
 
@@ -48,6 +50,53 @@ const AdminSidebar: React.FC = () => {
       }
     }
     load()
+  }, [])
+
+  // Load unviewed support requests for notification badge
+  useEffect(() => {
+    const loadUnviewedSupport = async () => {
+      try {
+        const result = await landingApi.getSupportRequests({ viewed: false })
+        const unviewed = result.data || []
+        setUnviewedSupport(unviewed.length)
+      } catch (error) {
+        console.error('Failed to load unviewed support:', error)
+      }
+    }
+
+    loadUnviewedSupport()
+
+    // Auto-refresh every 30 seconds when tab is visible
+    let intervalId: NodeJS.Timeout | null = null
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadUnviewedSupport()
+        intervalId = setInterval(() => {
+          loadUnviewedSupport()
+        }, 30000)
+      } else {
+        if (intervalId) {
+          clearInterval(intervalId)
+          intervalId = null
+        }
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    if (document.visibilityState === 'visible') {
+      intervalId = setInterval(() => {
+        loadUnviewedSupport()
+      }, 30000)
+    }
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      if (intervalId) {
+        clearInterval(intervalId)
+      }
+    }
   }, [])
 
 
@@ -150,13 +199,19 @@ const AdminSidebar: React.FC = () => {
                     )}
                     
                     {/* Icon with Glow */}
-                    <IconComponent 
-                      className={`${isCollapsed ? 'w-5 h-5' : 'w-5 h-5'} transition-all duration-300 relative z-10 ${
-                        isActive 
-                          ? 'scale-110 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]' 
-                          : 'group-hover:scale-110 group-hover:drop-shadow-[0_0_8px_rgba(249,115,22,0.6)]'
-                      }`}
-                    />
+                    <div className="relative">
+                      <IconComponent 
+                        className={`${isCollapsed ? 'w-5 h-5' : 'w-5 h-5'} transition-all duration-300 relative z-10 ${
+                          isActive 
+                            ? 'scale-110 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]' 
+                            : 'group-hover:scale-110 group-hover:drop-shadow-[0_0_8px_rgba(249,115,22,0.6)]'
+                        }`}
+                      />
+                      {/* Notification Badge for Support */}
+                      {link.to === '/adminlandingt4s/support' && (
+                        <NotificationBadge count={unviewedSupport} />
+                      )}
+                    </div>
                     
                     {!isCollapsed && (
                       <span className="flex-1 relative z-10">{link.label}</span>

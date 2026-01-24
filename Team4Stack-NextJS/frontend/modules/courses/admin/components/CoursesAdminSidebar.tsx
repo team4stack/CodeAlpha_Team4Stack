@@ -14,6 +14,7 @@ import {
   FiLogOut
 } from 'react-icons/fi'
 import SidebarPinButton from '@/components/admin/shared/SidebarPinButton'
+import NotificationBadge from '@/components/admin/shared/NotificationBadge'
 
 const CoursesAdminSidebar: React.FC = () => {
   const pathname = usePathname()
@@ -22,6 +23,7 @@ const CoursesAdminSidebar: React.FC = () => {
   const [hoveredLink, setHoveredLink] = useState<string | null>(null)
   const [tooltipPosition, setTooltipPosition] = useState<{ top: number; left: number } | null>(null)
   const [isSidebarHovered, setIsSidebarHovered] = useState(false)
+  const [pendingApplications, setPendingApplications] = useState(0)
   const linkRefs = useRef<Record<string, HTMLAnchorElement | null>>({})
   const dashboardLinkRef = useRef<HTMLAnchorElement | null>(null)
 
@@ -39,6 +41,55 @@ const CoursesAdminSidebar: React.FC = () => {
       }
     }
     load()
+  }, [])
+
+  // Load pending applications count for notification badge
+  useEffect(() => {
+    const loadPendingApplications = async () => {
+      try {
+        const { coursesApi } = await import('@/lib/api')
+        const result = await coursesApi.getAdmissionForms()
+        const allApps = result.data || []
+        const pendingCount = allApps.filter((app: any) => app.approved === null || app.approved === false).length
+        setPendingApplications(pendingCount)
+      } catch (error) {
+        console.error('Failed to load pending applications:', error)
+      }
+    }
+
+    loadPendingApplications()
+
+    // Auto-refresh every 30 seconds when tab is visible
+    let intervalId: NodeJS.Timeout | null = null
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadPendingApplications()
+        intervalId = setInterval(() => {
+          loadPendingApplications()
+        }, 30000)
+      } else {
+        if (intervalId) {
+          clearInterval(intervalId)
+          intervalId = null
+        }
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    if (document.visibilityState === 'visible') {
+      intervalId = setInterval(() => {
+        loadPendingApplications()
+      }, 30000)
+    }
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      if (intervalId) {
+        clearInterval(intervalId)
+      }
+    }
   }, [])
 
 
@@ -74,7 +125,7 @@ const CoursesAdminSidebar: React.FC = () => {
 
   return (
     <div 
-      className="relative h-full flex overflow-visible"
+      className="relative flex overflow-visible h-full"
       onMouseEnter={() => setIsSidebarHovered(true)}
       onMouseLeave={() => setIsSidebarHovered(false)}
     >
@@ -99,7 +150,7 @@ const CoursesAdminSidebar: React.FC = () => {
           sidebarWidth={isCollapsed ? 80 : 256}
         />
 
-        <div className="flex-1 overflow-y-auto p-4 relative z-10">
+        <div className="flex-1 p-4 relative z-10">
           <nav>
             <ul className="space-y-2">
               {links.map((link, index) => {
@@ -134,13 +185,19 @@ const CoursesAdminSidebar: React.FC = () => {
                       )}
                       
                       {/* Icon with Glow */}
-                      <IconComponent 
-                        className={`${isCollapsed ? 'w-5 h-5' : 'w-5 h-5'} transition-all duration-300 relative z-10 ${
-                          isActive 
-                            ? 'scale-110 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]' 
-                            : 'group-hover:scale-110 group-hover:drop-shadow-[0_0_8px_rgba(249,115,22,0.6)]'
-                        }`}
-                      />
+                      <div className="relative">
+                        <IconComponent 
+                          className={`${isCollapsed ? 'w-5 h-5' : 'w-5 h-5'} transition-all duration-300 relative z-10 ${
+                            isActive 
+                              ? 'scale-110 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]' 
+                              : 'group-hover:scale-110 group-hover:drop-shadow-[0_0_8px_rgba(249,115,22,0.6)]'
+                          }`}
+                        />
+                        {/* Notification Badge for Applications */}
+                        {link.to === '/admincourset4s/applications' && (
+                          <NotificationBadge count={pendingApplications} />
+                        )}
+                      </div>
                       
                       {!isCollapsed && (
                         <span className="flex-1 relative z-10">{link.label}</span>

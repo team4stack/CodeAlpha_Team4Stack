@@ -163,27 +163,49 @@ const ApplicationsPage: React.FC = () => {
       }
 
       // Check if user exists, if not create one
-      const userResult = await usersApi.getUserByEmail(email.toLowerCase().trim())
+      try {
+        const userResult = await usersApi.getUserByEmail(email.toLowerCase().trim())
 
-      if (!userResult?.data) {
-        // Create user account for student portal access
-        const createResult = await usersApi.upsertUser({
-          email: email.toLowerCase().trim(),
-          username: email.split('@')[0].toLowerCase(),
-          is_blocked: false
-        })
+        if (!userResult?.data) {
+          // Create user account for student portal access
+          // Note: User will need to sign up via auth to get a proper auth.users entry
+          // For now, we'll skip user creation if it fails (user can sign up later)
+          try {
+            const createResult = await usersApi.upsertUser({
+              email: email.toLowerCase().trim(),
+              username: email.split('@')[0].toLowerCase(),
+              name: name || email.split('@')[0],
+              is_blocked: false
+            })
 
-        if (createResult.error) {
-          console.error('Error creating user:', createResult.error)
-          // Don't fail the approval if user creation fails - just log it
-          toast.error(`Application approved, but failed to create user account: ${createResult.error}`)
+            if (createResult.error || !createResult.success) {
+              const errorMsg = createResult.error || 'Failed to create user account'
+              console.warn('User creation warning:', errorMsg)
+              // Don't fail the approval - user can sign up later via auth
+              // Success message already shown below
+            } else {
+              // User created successfully
+              toast.success(`Application approved! User account created.`)
+            }
+          } catch (userError: any) {
+            // User creation failed - this is okay, user can sign up later
+            console.warn('User creation failed (non-critical):', userError?.message || userError)
+            // Continue with approval - success message will be shown below
+          }
+        } else {
+          // Ensure user is not blocked
+          try {
+            const updateResult = await usersApi.updateUser(userResult.data.id, { is_blocked: false })
+            if (updateResult.error) {
+              console.warn('Error updating user:', updateResult.error)
+            }
+          } catch (updateError: any) {
+            console.warn('User update failed (non-critical):', updateError?.message || updateError)
+          }
         }
-      } else {
-        // Ensure user is not blocked
-        const updateResult = await usersApi.updateUser(userResult.data.id, { is_blocked: false })
-        if (updateResult.error) {
-          console.error('Error updating user:', updateResult.error)
-        }
+      } catch (userCheckError: any) {
+        // User check failed - non-critical, continue with approval
+        console.warn('User check failed (non-critical):', userCheckError?.message || userCheckError)
       }
       
       // Update local state
@@ -204,6 +226,7 @@ const ApplicationsPage: React.FC = () => {
         setSelectedApplication(updated)
       }
       
+      // Show success message
       toast.success(`Course ${courseNumber} approved successfully!`)
       await load() // Reload to get latest data
     } catch (err: any) {
@@ -589,13 +612,13 @@ const ApplicationsPage: React.FC = () => {
 
       {/* View Details Modal */}
       {selectedApplication && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto" style={{ paddingTop: '100px', paddingBottom: '100px' }}>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-2xl w-full overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+            <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center z-10">
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">Application Details</h2>
               <button
                 onClick={() => setSelectedApplication(null)}
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-2xl font-bold"
+                className="text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-full p-1.5 text-2xl font-bold transition-all duration-200"
               >
                 ×
               </button>
@@ -785,8 +808,8 @@ const ApplicationsPage: React.FC = () => {
 
       {/* Reject Modal with Message Input */}
       {showRejectModal && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto" style={{ paddingTop: '100px', paddingBottom: '100px' }}>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full border border-gray-200 dark:border-gray-700 overflow-hidden" style={{ maxHeight: 'calc(100vh - 200px)' }}>
             <div className="bg-gradient-to-r from-red-500 to-red-600 px-6 py-4">
               <h3 className="text-xl font-bold text-white flex items-center gap-2">
                 <span className="text-2xl">⚠️</span>
@@ -829,8 +852,8 @@ const ApplicationsPage: React.FC = () => {
 
       {/* Block User Confirmation Modal */}
       {showBlockModal && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full border border-gray-200 dark:border-gray-700 overflow-hidden animate-scale-in">
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto" style={{ paddingTop: '100px', paddingBottom: '100px' }}>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full border border-gray-200 dark:border-gray-700 overflow-hidden animate-scale-in" style={{ maxHeight: 'calc(100vh - 200px)' }}>
             <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-4">
               <h3 className="text-xl font-bold text-white flex items-center gap-2">
                 <span className="text-2xl">🚫</span>
@@ -886,8 +909,8 @@ const ApplicationsPage: React.FC = () => {
 
       {/* Delete Application Confirmation Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full border border-gray-200 dark:border-gray-700 overflow-hidden animate-scale-in">
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto" style={{ paddingTop: '100px', paddingBottom: '100px' }}>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full border border-gray-200 dark:border-gray-700 overflow-hidden animate-scale-in" style={{ maxHeight: 'calc(100vh - 200px)' }}>
             <div className="bg-gradient-to-r from-red-500 to-red-600 px-6 py-4">
               <h3 className="text-xl font-bold text-white flex items-center gap-2">
                 <span className="text-2xl">🗑️</span>

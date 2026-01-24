@@ -689,8 +689,8 @@ const StudentProgressPage: React.FC = () => {
 
         {/* Student Details Modal */}
         {showStudentModal && selectedStudent && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="relative bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto" style={{ paddingTop: '100px', paddingBottom: '100px' }}>
+            <div className="relative bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl max-w-2xl w-full overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
               <div className="sticky top-0 bg-white/10 backdrop-blur-xl border-b border-white/20 p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center text-xl font-black text-white">
@@ -706,7 +706,7 @@ const StudentProgressPage: React.FC = () => {
                     setShowStudentModal(false)
                     setSelectedStudent(null)
                   }}
-                  className="w-8 h-8 bg-white/10 hover:bg-white/20 rounded-lg flex items-center justify-center text-white font-bold transition-colors"
+                  className="w-8 h-8 bg-red-500/20 hover:bg-red-500/30 rounded-lg flex items-center justify-center text-red-300 hover:text-red-200 font-bold transition-all duration-200"
                 >
                   ✕
                 </button>
