@@ -268,22 +268,25 @@ const VideosManagementPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-xl p-6 text-white shadow-lg">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">🎥 Videos Management</h1>
-            <p className="text-white/90">
-              {filterCourse ? `Managing videos for: ${getCourseName(filterCourse)}` : 'Select a course to manage videos'}
-            </p>
+      <div className="bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-xl rounded-xl p-4 sm:p-5 text-white shadow-xl relative overflow-hidden border border-white/20">
+        <div className="absolute inset-0 bg-black/5"></div>
+        <div className="relative z-10">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl sm:text-2xl font-bold mb-1">🎥 Videos Management</h1>
+              <p className="text-white/90 text-xs sm:text-sm truncate">
+                {filterCourse ? `Managing videos for: ${getCourseName(filterCourse)}` : 'Select a course to manage videos'}
+              </p>
+            </div>
+            {filterCourse && (
+              <button
+                onClick={handleBackToCourses}
+                className="w-full sm:w-auto px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors font-semibold flex items-center justify-center gap-2 text-sm"
+              >
+                ← Back to Courses
+              </button>
+            )}
           </div>
-          {filterCourse && (
-            <button
-              onClick={handleBackToCourses}
-              className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors font-semibold flex items-center gap-2"
-            >
-              ← Back to Courses
-            </button>
-          )}
         </div>
       </div>
 
@@ -310,7 +313,7 @@ const VideosManagementPage: React.FC = () => {
               <p className="text-gray-500 dark:text-gray-400">No courses found. Please add courses first.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {courses.map((course) => (
                 <button
                   key={course.id}
@@ -342,23 +345,23 @@ const VideosManagementPage: React.FC = () => {
       {filterCourse && (
         <>
           {/* Search and Add Button */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
-            <div className="flex flex-col md:flex-row gap-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-lg border border-gray-200 dark:border-gray-700">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
               {/* Search */}
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <input
                   type="text"
-                  placeholder="Search videos by title or description..."
+                  placeholder="Search videos..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 sm:px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
                 />
               </div>
 
               {/* Add Button */}
               <button
                 onClick={handleAdd}
-                className="px-6 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors font-semibold whitespace-nowrap"
+                className="w-full sm:w-auto px-4 sm:px-6 py-2 bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-sm text-white rounded-lg hover:from-orange-600 hover:to-red-600 transition-all font-semibold whitespace-nowrap text-sm border border-white/20"
               >
                 + Add Video
               </button>
@@ -369,12 +372,12 @@ const VideosManagementPage: React.FC = () => {
 
       {/* Add/Edit Form */}
       {showAddForm && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
-          <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-white">
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-lg border border-gray-200 dark:border-gray-700">
+          <h2 className="text-xl sm:text-2xl font-bold mb-4 text-gray-800 dark:text-white">
             {editingVideo ? 'Edit Video' : 'Add New Video'}
           </h2>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Course *
@@ -507,23 +510,24 @@ const VideosManagementPage: React.FC = () => {
       {/* Videos List - Only show when course is selected */}
       {filterCourse && (
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto -mx-4 sm:mx-0">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Thumbnail
+                  <th scope="col" className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    <span className="hidden sm:inline">Thumbnail</span>
+                    <span className="sm:hidden">Thumb</span>
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th scope="col" className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Title
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th scope="col" className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider hidden md:table-cell">
                     Order
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th scope="col" className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider hidden lg:table-cell">
                     Video URL
                   </th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th scope="col" className="px-3 sm:px-6 py-2 sm:py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -546,58 +550,67 @@ const VideosManagementPage: React.FC = () => {
                 ) : (
                 videos.map((video) => (
                   <tr key={video.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="h-16 w-28 bg-gradient-to-br from-indigo-500 to-purple-500 rounded flex items-center justify-center text-white font-bold text-xs">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                      <div className="h-12 w-16 sm:h-16 sm:w-28 bg-gradient-to-br from-orange-500 to-red-500 rounded flex items-center justify-center text-white font-bold text-xs">
                         🎥
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900 dark:text-white">{video.title}</div>
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 min-w-0">
+                      <div className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white truncate">{video.title}</div>
                       {video.description && (
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2 hidden sm:block">
                           {video.description}
                         </div>
                       )}
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 sm:hidden">
+                        Order: {video.order_index || video.order || 0}
+                      </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900 dark:text-white hidden md:table-cell">
                       {video.order_index || video.order || 0}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 hidden lg:table-cell">
                       {video.video_url ? (
                         <a
                           href={video.video_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
+                          className="text-xs sm:text-sm text-orange-600 dark:text-orange-400 hover:underline truncate block max-w-xs"
                         >
                           View Video
                         </a>
                       ) : (
-                        <span className="text-sm text-gray-400">No URL</span>
+                        <span className="text-xs sm:text-sm text-gray-400">No URL</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex justify-end gap-2">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right text-xs sm:text-sm font-medium">
+                      <div className="flex justify-end gap-1 sm:gap-2 flex-wrap">
                         <button
                           onClick={() => {
                             setSelectedVideoForQuiz({ id: parseInt(video.id), title: video.title })
                             setShowQuizModal(true)
                           }}
-                          className="px-3 py-1 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors"
+                          className="px-2 sm:px-3 py-1 bg-gradient-to-r from-orange-500/90 to-red-500/90 text-white rounded-lg hover:from-orange-600 hover:to-red-600 transition-all text-xs border border-white/20"
+                          title="Manage Quiz"
                         >
-                          Quiz
+                          <span className="hidden sm:inline">Quiz</span>
+                          <span className="sm:hidden">📝</span>
                         </button>
                         <button
                           onClick={() => handleEdit(video)}
-                          className="px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                          className="px-2 sm:px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-xs"
+                          title="Edit"
                         >
-                          Edit
+                          <span className="hidden sm:inline">Edit</span>
+                          <span className="sm:hidden">✏️</span>
                         </button>
                         <button
                           onClick={() => handleDelete(video.id, video.title)}
-                          className="px-3 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                          className="px-2 sm:px-3 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-xs"
+                          title="Delete"
                         >
-                          Delete
+                          <span className="hidden sm:inline">Delete</span>
+                          <span className="sm:hidden">🗑️</span>
                         </button>
                       </div>
                     </td>

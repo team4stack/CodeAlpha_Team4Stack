@@ -95,12 +95,12 @@ const SuperAdminDashboard: React.FC = () => {
 
   // Custom Stat Card Component for Super Admin
   const StatCard: React.FC<{ title: string; value: number; icon: string; gradient: string }> = ({ title, value, icon, gradient }) => (
-    <div className={`bg-gradient-to-br ${gradient} rounded-xl p-6 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105`}>
+    <div className={`bg-gradient-to-br ${gradient} backdrop-blur-sm rounded-xl p-5 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 border border-white/20`}>
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-4xl mb-2">{icon}</div>
-          <div className="text-3xl font-bold mb-1">{value.toLocaleString()}</div>
-          <div className="text-white/90 text-sm font-medium">{title}</div>
+          <div className="text-3xl mb-2">{icon}</div>
+          <div className="text-2xl font-bold mb-1">{value.toLocaleString()}</div>
+          <div className="text-white/90 text-xs font-medium">{title}</div>
         </div>
       </div>
     </div>
@@ -117,14 +117,14 @@ const SuperAdminDashboard: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-yellow-500 via-orange-600 to-red-600 rounded-xl p-8 text-white shadow-2xl relative overflow-hidden">
-        <div className="absolute inset-0 bg-black/10"></div>
+      <div className="bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-xl rounded-xl p-6 text-white shadow-xl relative overflow-hidden border border-white/20">
+        <div className="absolute inset-0 bg-black/5"></div>
         <div className="relative z-10">
-          <div className="flex items-center gap-4 mb-3">
-            <div className="text-5xl">👑</div>
+          <div className="flex items-center gap-4">
+            <div className="text-4xl">👑</div>
             <div>
-              <h1 className="text-4xl font-bold mb-2">Super Admin Dashboard</h1>
-              <p className="text-white/90 text-lg">Complete system access and control</p>
+              <h1 className="text-3xl font-bold mb-1">Super Admin Dashboard</h1>
+              <p className="text-white/90 text-sm">Complete system access and control</p>
             </div>
           </div>
         </div>
@@ -189,14 +189,14 @@ const SuperAdminDashboard: React.FC = () => {
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
-        <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-white flex items-center gap-2">
+      <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl rounded-xl p-6 shadow-lg border border-gray-200/50 dark:border-gray-700/50">
+        <h2 className="text-xl font-bold mb-5 text-gray-800 dark:text-white flex items-center gap-2">
           <span>⚡</span> Quick Actions
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <button
             onClick={() => router.push('/supadmin/roles')}
-            className="p-5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:from-indigo-600 hover:to-purple-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left"
+            className="p-5 rounded-xl bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-sm text-white hover:from-orange-600 hover:to-red-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left border border-white/20"
           >
             <div className="text-3xl mb-2">🔐</div>
             <div className="font-bold text-lg mb-1">Manage Roles</div>
@@ -204,7 +204,7 @@ const SuperAdminDashboard: React.FC = () => {
           </button>
           <button
             onClick={() => router.push('/supadmin/admins')}
-            className="p-5 rounded-xl bg-gradient-to-r from-yellow-500 to-orange-500 text-white hover:from-yellow-600 hover:to-orange-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left"
+            className="p-5 rounded-xl bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-sm text-white hover:from-orange-600 hover:to-red-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left border border-white/20"
           >
             <div className="text-3xl mb-2">🛡️</div>
             <div className="font-bold text-lg mb-1">Admin Management</div>
@@ -212,7 +212,7 @@ const SuperAdminDashboard: React.FC = () => {
           </button>
           <button
             onClick={() => router.push('/supadmin/system')}
-            className="p-5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-600 hover:to-blue-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left"
+            className="p-5 rounded-xl bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-sm text-white hover:from-orange-600 hover:to-red-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left border border-white/20"
           >
             <div className="text-3xl mb-2">⚙️</div>
             <div className="font-bold text-lg mb-1">System Settings</div>
@@ -220,7 +220,7 @@ const SuperAdminDashboard: React.FC = () => {
           </button>
           <button
             onClick={() => router.push('/supadmin/audit')}
-            className="p-5 rounded-xl bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left"
+            className="p-5 rounded-xl bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-sm text-white hover:from-orange-600 hover:to-red-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left border border-white/20"
           >
             <div className="text-3xl mb-2">📋</div>
             <div className="font-bold text-lg mb-1">Audit Logs</div>
@@ -228,7 +228,7 @@ const SuperAdminDashboard: React.FC = () => {
           </button>
           <button
             onClick={() => router.push('/adminlandingt4s')}
-            className="p-5 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left"
+            className="p-5 rounded-xl bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-sm text-white hover:from-orange-600 hover:to-red-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left border border-white/20"
           >
             <div className="text-3xl mb-2">📊</div>
             <div className="font-bold text-lg mb-1">Landing Admin</div>
@@ -236,7 +236,7 @@ const SuperAdminDashboard: React.FC = () => {
           </button>
           <button
             onClick={() => router.push('/admincourset4s')}
-            className="p-5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:from-indigo-600 hover:to-purple-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left"
+            className="p-5 rounded-xl bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-sm text-white hover:from-orange-600 hover:to-red-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left border border-white/20"
           >
             <div className="text-3xl mb-2">🎓</div>
             <div className="font-bold text-lg mb-1">Courses Admin</div>
@@ -244,7 +244,7 @@ const SuperAdminDashboard: React.FC = () => {
           </button>
           <button
             onClick={() => router.push('/adminteamt4s')}
-            className="p-5 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 text-white hover:from-blue-600 hover:to-cyan-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left"
+            className="p-5 rounded-xl bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-sm text-white hover:from-orange-600 hover:to-red-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left border border-white/20"
           >
             <div className="text-3xl mb-2">👥</div>
             <div className="font-bold text-lg mb-1">Team Admin</div>
@@ -252,7 +252,7 @@ const SuperAdminDashboard: React.FC = () => {
           </button>
           <button
             onClick={() => router.push('/adminstackt4s')}
-            className="p-5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left"
+            className="p-5 rounded-xl bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-sm text-white hover:from-orange-600 hover:to-red-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left border border-white/20"
           >
             <div className="text-3xl mb-2">🧩</div>
             <div className="font-bold text-lg mb-1">StackStore Admin</div>
@@ -260,7 +260,7 @@ const SuperAdminDashboard: React.FC = () => {
           </button>
           <button
             onClick={() => router.push('/supadmin/users')}
-            className="p-5 rounded-xl bg-gradient-to-r from-rose-500 to-red-500 text-white hover:from-rose-600 hover:to-red-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left"
+            className="p-5 rounded-xl bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-sm text-white hover:from-orange-600 hover:to-red-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left border border-white/20"
           >
             <div className="text-3xl mb-2">👥</div>
             <div className="font-bold text-lg mb-1">All Users</div>
@@ -270,15 +270,15 @@ const SuperAdminDashboard: React.FC = () => {
       </div>
 
       {/* Info Section */}
-      <div className="bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 rounded-xl p-6 border-2 border-yellow-300 dark:border-yellow-700">
+      <div className="bg-gradient-to-r from-orange-50/50 to-red-50/50 dark:from-orange-900/20 dark:to-red-900/20 backdrop-blur-sm rounded-xl p-5 border border-orange-200/50 dark:border-orange-800/50">
         <div className="flex items-start gap-3">
-          <div className="text-3xl">⚠️</div>
+          <div className="text-2xl">⚠️</div>
           <div>
-            <h3 className="text-lg font-bold mb-2 text-gray-800 dark:text-white">Super Admin Access</h3>
-        <p className="text-gray-700 dark:text-gray-300">
-          You have complete access to all system features. Use this power responsibly. 
-          All actions are logged for security and audit purposes.
-        </p>
+            <h3 className="text-base font-bold mb-2 text-gray-800 dark:text-white">Super Admin Access</h3>
+            <p className="text-sm text-gray-700 dark:text-gray-300">
+              You have complete access to all system features. Use this power responsibly. 
+              All actions are logged for security and audit purposes.
+            </p>
           </div>
         </div>
       </div>

@@ -788,7 +788,7 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
   if (!table || table === 'users' || table === 'settings') {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">Invalid Page</h1>
+        <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-red-500">Invalid Page</h1>
         <p className="text-gray-600 dark:text-gray-400">This page is not available. Please use the navigation menu.</p>
       </div>
     )
@@ -796,7 +796,14 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">Manage {contentType || table}</h1>
+      {/* Header */}
+      <div className="bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-xl rounded-xl p-5 text-white shadow-xl relative overflow-hidden border border-white/20">
+        <div className="absolute inset-0 bg-black/5"></div>
+        <div className="relative z-10">
+          <h1 className="text-2xl font-bold">Manage {contentType || table}</h1>
+          <p className="text-white/90 text-sm mt-1">Add, edit, and manage {contentType || table} content</p>
+        </div>
+      </div>
       {error && (
         <div className="rounded-lg p-3 bg-red-500/10 border border-red-500/30 text-red-500 text-sm">
           {error}
@@ -812,11 +819,11 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
           <form className="grid grid-cols-1 md:grid-cols-3 gap-3" onSubmit={handleSubmit}>
             {!isContact && !isFooter && !isHero && !isSupport && (
               <>
-                <input className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-600" placeholder={isTeamLike ? 'Name' : 'Title'} value={form.title || ''} onChange={(e) => setForm(s => ({ ...s, title: e.target.value }))} />
+                <input className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300 hover:border-orange-300 dark:hover:border-orange-600" placeholder={isTeamLike ? 'Name' : 'Title'} value={form.title || ''} onChange={(e) => setForm(s => ({ ...s, title: e.target.value }))} />
                 {isTeamLike ? (
-                  <input className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-600" placeholder="Role" value={form.role_text || ''} onChange={(e) => setForm(s => ({ ...s, role_text: e.target.value }))} />
+                  <input className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300 hover:border-orange-300 dark:hover:border-orange-600" placeholder="Role" value={form.role_text || ''} onChange={(e) => setForm(s => ({ ...s, role_text: e.target.value }))} />
                 ) : (
-                  <input className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-600" placeholder="Description" value={form.description || ''} onChange={(e) => setForm(s => ({ ...s, description: e.target.value }))} />
+                  <input className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300 hover:border-orange-300 dark:hover:border-orange-600" placeholder="Description" value={form.description || ''} onChange={(e) => setForm(s => ({ ...s, description: e.target.value }))} />
                 )}
               </>
             )}
@@ -825,7 +832,7 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
             )}
             {isProjects && (
               <>
-                <input className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-600" placeholder="YouTube Video ID or URL" value={(form as any)['video_id'] || ''} onChange={(e) => setForm(s => ({ ...s, video_id: e.target.value }))} />
+                <input className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300 hover:border-orange-300 dark:hover:border-orange-600" placeholder="YouTube Video ID or URL" value={(form as any)['video_id'] || ''} onChange={(e) => setForm(s => ({ ...s, video_id: e.target.value }))} />
                 <select 
                   className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-600" 
                   value={form.order_index ?? ''} 
@@ -854,16 +861,16 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
             )}
             {isCourses && (
               <>
-                <input className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-600" placeholder="Level (Physical/Online)" value={form.level || ''} onChange={(e) => setForm(s => ({ ...s, level: e.target.value }))} />
-                <input className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-600" placeholder="Duration (e.g., 3 months)" value={form.duration || ''} onChange={(e) => setForm(s => ({ ...s, duration: e.target.value }))} />
-                <input className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-600" placeholder="Price (e.g., Rs 10,000)" value={form.price || ''} onChange={(e) => setForm(s => ({ ...s, price: e.target.value }))} />
-                <input className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-600" placeholder="Note (e.g., Next months...)" value={form.note || ''} onChange={(e) => setForm(s => ({ ...s, note: e.target.value }))} />
+                <input className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300 hover:border-orange-300 dark:hover:border-orange-600" placeholder="Level (Physical/Online)" value={form.level || ''} onChange={(e) => setForm(s => ({ ...s, level: e.target.value }))} />
+                <input className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300 hover:border-orange-300 dark:hover:border-orange-600" placeholder="Duration (e.g., 3 months)" value={form.duration || ''} onChange={(e) => setForm(s => ({ ...s, duration: e.target.value }))} />
+                <input className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300 hover:border-orange-300 dark:hover:border-orange-600" placeholder="Price (e.g., Rs 10,000)" value={form.price || ''} onChange={(e) => setForm(s => ({ ...s, price: e.target.value }))} />
+                <input className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300 hover:border-orange-300 dark:hover:border-orange-600" placeholder="Note (e.g., Next months...)" value={form.note || ''} onChange={(e) => setForm(s => ({ ...s, note: e.target.value }))} />
                 <input className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-600 md:col-span-2" placeholder='Features JSON (e.g., ["Live classes","Projects"])' value={form.features || ''} onChange={(e) => setForm(s => ({ ...s, features: e.target.value }))} />
               </>
             )}
             {isServices && (
               <>
-                <input className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-600" placeholder="Emoji (e.g., 🌐, 🚀, 💻, 🎨)" value={form.emoji || ''} onChange={(e) => setForm(s => ({ ...s, emoji: e.target.value }))} />
+                <input className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300 hover:border-orange-300 dark:hover:border-orange-600" placeholder="Emoji (e.g., 🌐, 🚀, 💻, 🎨)" value={form.emoji || ''} onChange={(e) => setForm(s => ({ ...s, emoji: e.target.value }))} />
                 <select className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-600" value={form.gradient_color || ''} onChange={(e) => setForm(s => ({ ...s, gradient_color: e.target.value }))}>
                   <option value="">Select Gradient</option>
                   <option value="from-blue-500 to-cyan-500">Blue to Cyan</option>
@@ -879,7 +886,7 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
                   <option value="from-pink-500 to-rose-500">Pink to Rose</option>
                   <option value="from-indigo-500 to-purple-500">Indigo to Purple</option>
                 </select>
-                <input className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-600" placeholder="Contact (WhatsApp Number, e.g., 923001234567)" value={form.contact || ''} onChange={(e) => setForm(s => ({ ...s, contact: e.target.value }))} />
+                <input className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300 hover:border-orange-300 dark:hover:border-orange-600" placeholder="Contact (WhatsApp Number, e.g., 923001234567)" value={form.contact || ''} onChange={(e) => setForm(s => ({ ...s, contact: e.target.value }))} />
                 <select 
                   className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-600" 
                   value={form.order_index ?? ''} 

@@ -82,7 +82,14 @@ const SettingsPage: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">Settings</h1>
+      {/* Header */}
+      <div className="bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-xl rounded-xl p-5 text-white shadow-xl relative overflow-hidden border border-white/20">
+        <div className="absolute inset-0 bg-black/5"></div>
+        <div className="relative z-10">
+          <h1 className="text-2xl font-bold">Settings</h1>
+          <p className="text-white/90 text-sm mt-1">Configure landing page settings and preferences</p>
+        </div>
+      </div>
       <div className="rounded-xl p-4 bg-white/80 dark:bg-gray-800/70 backdrop-blur border border-white/20 dark:border-white/10 shadow">
         {loading ? (
           <div className="text-sm text-gray-500 dark:text-gray-400">Loading…</div>
@@ -118,7 +125,7 @@ const SettingsPage: React.FC = () => {
                   <option value="settings">Settings</option>
                 </select>
                 <input className="flex-1 px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-600" placeholder="New tab label (e.g., Portfolio)" value={tabLabel} onChange={(e) => setTabLabel(e.target.value)} />
-                <button type="button" className="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white font-semibold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300" onClick={async () => {
+                <button type="button" className="px-6 py-3 rounded-xl bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-sm text-white font-semibold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 border border-white/20" onClick={async () => {
                   const key = `tab_label_${tabKey}`
                   const payload = [{ key, value: tabLabel }]
                   setSaving(true)

@@ -22,23 +22,47 @@ const AdminHeader: React.FC = () => {
   }
 
   return (
-    <header className="sticky top-0 z-20 flex-shrink-0 bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 shadow-lg overflow-x-hidden">
-      <div className="h-32 flex items-center justify-between px-8 relative">
+    <header className="sticky top-0 z-20 flex-shrink-0 overflow-x-hidden relative">
+      {/* Static Gradient Background - No Animation */}
+      <div className="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900"></div>
+      
+      {/* Glassmorphism Overlay */}
+      <div className="absolute inset-0 backdrop-blur-xl bg-black/30"></div>
+      
+      {/* Subtle Accent Glow */}
+      <div className="absolute inset-0 bg-gradient-to-b from-cyan-500/5 via-transparent to-orange-500/5"></div>
+      
+      {/* Animated Grid Pattern - Same as Main Site */}
+      <div className="pointer-events-none absolute inset-0 opacity-20 overflow-hidden">
+        <div 
+          className="navbar-grid-animate absolute left-1/2 top-1/2 w-[140%] h-[140%]" 
+          style={{
+            backgroundImage: `repeating-linear-gradient(0deg, rgba(148,163,184,0.25) 0, rgba(148,163,184,0.25) 1px, transparent 1px, transparent 30px),
+                              repeating-linear-gradient(90deg, rgba(148,163,184,0.22) 0, rgba(148,163,184,0.22) 1px, transparent 1px, transparent 30px)`,
+            maskImage: 'radial-gradient(ellipse 80% 50% at center, rgba(0,0,0,1) 60%, rgba(0,0,0,0) 100%)',
+            WebkitMaskImage: 'radial-gradient(ellipse 80% 50% at center, rgba(0,0,0,1) 60%, rgba(0,0,0,0) 100%)',
+            transition: 'none',
+            willChange: 'transform',
+            animation: 'gridSlide 3s ease-in-out infinite'
+          }} 
+        />
+      </div>
+      
+      <div className="h-20 flex items-center justify-between px-6 relative z-10">
         {/* Left Side - Logo and Text */}
-        <div className="flex items-center gap-6">
-          {/* Logo - Big with Black Shadow */}
-          <div className="relative flex-shrink-0">
-            {/* Black shadow layers for depth - can extend up/down but not left/right */}
-            <div className="absolute inset-0 bg-black/40 rounded-full blur-3xl"></div>
-            <div className="absolute inset-0 bg-black/30 rounded-full blur-2xl"></div>
-            <div className="absolute inset-0 bg-black/20 rounded-full blur-xl"></div>
-            <div className="relative w-32 h-32 flex items-center justify-center">
+        <div className="flex items-center gap-4">
+          {/* Logo with Subtle Glow */}
+          <div className="relative flex-shrink-0 group">
+            {/* Subtle Glowing Background */}
+            <div className="absolute inset-0 bg-cyan-400/20 rounded-full blur-2xl group-hover:bg-cyan-400/30 transition-all duration-300"></div>
+            
+            <div className="relative w-20 h-20 flex items-center justify-center">
               <img
                 src="/Team4Stack_Transparant.svg"
                 alt="Team4Stack Logo"
-                className="w-full h-full object-contain drop-shadow-2xl"
+                className="w-full h-full object-contain drop-shadow-2xl transition-transform duration-300 group-hover:scale-105"
                 style={{
-                  filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.6)) drop-shadow(0 8px 16px rgba(0,0,0,0.5)) drop-shadow(0 12px 24px rgba(0,0,0,0.4)) drop-shadow(0 16px 32px rgba(0,0,0,0.3))'
+                  filter: 'drop-shadow(0 0 15px rgba(6, 182, 212, 0.4))'
                 }}
                 onError={(e) => {
                   const target = e.target as HTMLImageElement
@@ -52,10 +76,10 @@ const AdminHeader: React.FC = () => {
           
           {/* Text Section */}
           <div className="flex flex-col">
-            <h1 className="text-3xl font-bold text-white drop-shadow-md">
+            <h1 className="text-2xl font-bold text-white drop-shadow-md tracking-tight">
               Team4Stack
             </h1>
-            <p className="text-base text-white/90 font-semibold mt-1">
+            <p className="text-sm text-white/80 font-medium tracking-wide">
               {getAdminName()}
             </p>
           </div>
@@ -65,18 +89,23 @@ const AdminHeader: React.FC = () => {
         <div className="flex items-center gap-3">
           <button 
             onClick={() => window.open('/', '_blank')} 
-            className="px-5 py-2.5 text-sm font-semibold rounded-lg bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm border border-white/30 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105"
+            className="px-5 py-2.5 text-sm font-semibold rounded-xl bg-white/10 backdrop-blur-md text-white border border-white/20 hover:bg-white/20 hover:border-cyan-400/50 hover:shadow-[0_0_15px_rgba(6,182,212,0.4)] transition-all duration-300 transform hover:scale-105 relative overflow-hidden group"
           >
-            View Site
+            <span className="relative z-10">View Site</span>
+            <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-orange-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
           </button>
           <button 
             onClick={() => window.location.reload()} 
-            className="px-5 py-2.5 text-sm font-semibold rounded-lg bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm border border-white/30 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105"
+            className="px-5 py-2.5 text-sm font-semibold rounded-xl bg-white/10 backdrop-blur-md text-white border border-white/20 hover:bg-white/20 hover:border-orange-400/50 hover:shadow-[0_0_15px_rgba(249,115,22,0.4)] transition-all duration-300 transform hover:scale-105 relative overflow-hidden group"
           >
-            Refresh
+            <span className="relative z-10">Refresh</span>
+            <div className="absolute inset-0 bg-gradient-to-r from-orange-500/10 to-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
           </button>
         </div>
       </div>
+
+      {/* Bottom Edge - Covered by Navbar Design */}
+      <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent"></div>
     </header>
   )
 }

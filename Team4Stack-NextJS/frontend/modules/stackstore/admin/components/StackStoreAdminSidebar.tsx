@@ -40,13 +40,17 @@ const StackStoreAdminSidebar: React.FC = () => {
   }
 
   return (
-    <aside className="w-64 bg-gradient-to-b from-green-500 to-emerald-600 backdrop-blur-xl border-r border-green-400/60 h-full flex flex-col relative shadow-lg">
-      <div className="pointer-events-none absolute inset-0 opacity-10 [background:radial-gradient(100px_60px_at_20%_10%,#22c55e_0,transparent_60%),radial-gradient(120px_80px_at_80%_30%,#10b981_0,transparent_60%)]"></div>
+    <aside className="w-64 bg-black/40 backdrop-blur-2xl border-r border-cyan-500/20 flex flex-col relative shadow-2xl shadow-cyan-500/10 min-h-[calc(100vh-80px)]">
+      {/* Dark Glassmorphism Background */}
+      <div className="absolute inset-0 bg-gradient-to-b from-slate-900/90 via-black/80 to-slate-900/90"></div>
+      
+      {/* Subtle Neon Accents */}
+      <div className="pointer-events-none absolute inset-0 opacity-20 [background:radial-gradient(200px_100px_at_20%_10%,rgba(6,182,212,0.4)_0,transparent_60%),radial-gradient(250px_120px_at_80%_30%,rgba(249,115,22,0.3)_0,transparent_60%)]"></div>
+      
+      {/* Glowing Border Effect */}
+      <div className="absolute right-0 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-cyan-500/50 to-transparent"></div>
+      
       <div className="flex-1 overflow-y-auto p-4 relative z-10">
-        <div className="mb-6">
-          <div className="text-xs uppercase tracking-widest font-bold text-white/90 mb-2">StackStore Admin</div>
-          <div className="text-sm text-white/90 font-semibold">Marketplace Management</div>
-        </div>
         <nav>
           <ul className="space-y-2">
             {links.map(link => {
@@ -56,18 +60,41 @@ const StackStoreAdminSidebar: React.FC = () => {
                 <li key={link.to}>
                   <Link
                     href={link.to}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-300 relative group ${
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 relative group overflow-hidden ${
                       isActive
-                        ? isDashboard
-                          ? 'bg-white/30 text-white shadow-lg shadow-white/40 scale-105 border-2 border-white/50 backdrop-blur-sm'
-                          : 'bg-white/25 text-white shadow-lg shadow-white/30 scale-105 backdrop-blur-sm'
-                        : 'text-white/90 hover:bg-white/20 hover:scale-105 hover:shadow-md backdrop-blur-sm'
+                        ? 'bg-gradient-to-r from-cyan-500/20 to-orange-500/20 text-white shadow-lg shadow-cyan-500/30 border border-cyan-400/40'
+                        : 'text-white/70 hover:text-white hover:bg-white/5 border border-transparent'
                     }`}
                   >
-                    <span className={`text-lg transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}>{link.icon}</span>
-                    <span className="flex-1">{link.label}</span>
+                    {/* Active Glow Effect */}
                     {isActive && (
-                      <div className={`absolute right-2 w-2 h-2 rounded-full animate-pulse ${isDashboard ? 'bg-white ring-2 ring-white/50' : 'bg-white'}`}></div>
+                      <>
+                        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-orange-500/10 opacity-50"></div>
+                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-cyan-400 to-orange-400 shadow-[0_0_10px_rgba(6,182,212,0.8)]"></div>
+                      </>
+                    )}
+                    
+                    {/* Icon with Glow */}
+                    <span 
+                      className={`text-lg transition-all duration-300 relative z-10 ${
+                        isActive 
+                          ? 'scale-110 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]' 
+                          : 'group-hover:scale-110 group-hover:drop-shadow-[0_0_8px_rgba(249,115,22,0.6)]'
+                      }`}
+                    >
+                      {link.icon}
+                    </span>
+                    
+                    <span className="flex-1 relative z-10">{link.label}</span>
+                    
+                    {/* Active Indicator */}
+                    {isActive && (
+                      <div className="absolute right-3 w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,1)] animate-pulse"></div>
+                    )}
+                    
+                    {/* Hover Glow */}
+                    {!isActive && (
+                      <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/0 via-orange-500/0 to-cyan-500/0 group-hover:from-cyan-500/5 group-hover:via-orange-500/5 group-hover:to-cyan-500/5 transition-all duration-300"></div>
                     )}
                   </Link>
                 </li>
@@ -78,16 +105,17 @@ const StackStoreAdminSidebar: React.FC = () => {
       </div>
       
       {/* Logout Button at Bottom */}
-      <div className="p-4 border-t border-white/30 relative z-10">
+      <div className="mt-auto px-4 pt-4 pb-4 border-t border-cyan-500/20 relative z-10 flex-shrink-0">
         <button 
           onClick={handleLogout} 
-          className="w-full px-4 py-3 rounded-xl bg-gradient-to-r from-red-500 via-rose-500 to-pink-500 text-white shadow-lg hover:shadow-red-500/50 hover:scale-105 active:scale-95 transition-all duration-300 relative overflow-hidden group font-semibold text-sm"
+          className="w-full px-4 py-3 rounded-xl bg-gradient-to-r from-red-600/20 to-orange-600/20 backdrop-blur-md text-white border border-red-500/30 hover:border-red-400/50 hover:bg-gradient-to-r hover:from-red-600/30 hover:to-orange-600/30 hover:shadow-[0_0_20px_rgba(239,68,68,0.4)] transition-all duration-300 relative overflow-hidden group font-medium text-sm"
         >
           <span className="relative z-10 flex items-center justify-center gap-2">
-            <span>🚪</span>
+            <span className="text-base">🚪</span>
             <span>Logout</span>
           </span>
-          <div className="absolute inset-0 bg-gradient-to-r from-pink-500 via-rose-500 to-red-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-red-500/20 via-orange-500/20 to-red-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          <div className="absolute inset-0 bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-xl"></div>
         </button>
       </div>
     </aside>

@@ -477,22 +477,22 @@ const StudentProgressPage: React.FC = () => {
 
   if (loading && progressRecords.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-orange-900 to-slate-900 flex items-center justify-center">
         <div className="relative">
-          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-purple-500"></div>
-          <div className="absolute inset-0 animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-pink-500 opacity-50" style={{ animationDirection: 'reverse' }}></div>
+          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-orange-500"></div>
+          <div className="absolute inset-0 animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-red-500 opacity-50" style={{ animationDirection: 'reverse' }}></div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-orange-900 to-slate-900 p-6">
       {/* Animated Background Elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse" style={{ animationDelay: '2s' }}></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-indigo-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse" style={{ animationDelay: '4s' }}></div>
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-orange-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-red-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse" style={{ animationDelay: '2s' }}></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-orange-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse" style={{ animationDelay: '4s' }}></div>
       </div>
 
       <div className="relative z-10 space-y-4">
@@ -518,7 +518,7 @@ const StudentProgressPage: React.FC = () => {
                 placeholder="Search by roll number, name, or email..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 rounded-lg border-2 border-white/20 bg-white/10 dark:bg-gray-800/30 backdrop-blur-sm text-white placeholder-white/50 focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-400/50 transition-all text-sm"
+                className="w-full pl-10 pr-4 py-2 rounded-lg border-2 border-white/20 bg-white/10 dark:bg-gray-800/30 backdrop-blur-sm text-white placeholder-white/50 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-400/50 transition-all text-sm"
               />
             </div>
 
@@ -526,7 +526,7 @@ const StudentProgressPage: React.FC = () => {
             <select
               value={filterCourse}
               onChange={(e) => setFilterCourse(e.target.value)}
-              className="px-4 py-2 rounded-lg border-2 border-white/20 bg-white/10 dark:bg-gray-800/30 backdrop-blur-sm text-white focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-400/50 transition-all text-sm min-w-[180px]"
+              className="px-4 py-2 rounded-lg border-2 border-white/20 bg-white/10 dark:bg-gray-800/30 backdrop-blur-sm text-white focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-400/50 transition-all text-sm min-w-[180px]"
             >
               <option value="all" className="bg-gray-800">All Courses</option>
               {courses.map((course) => (
@@ -540,7 +540,7 @@ const StudentProgressPage: React.FC = () => {
             <select
               value={filterProgress}
               onChange={(e) => setFilterProgress(e.target.value as 'all' | 'high' | 'medium' | 'low')}
-              className="px-4 py-2 rounded-lg border-2 border-white/20 bg-white/10 dark:bg-gray-800/30 backdrop-blur-sm text-white focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-400/50 transition-all text-sm min-w-[150px]"
+              className="px-4 py-2 rounded-lg border-2 border-white/20 bg-white/10 dark:bg-gray-800/30 backdrop-blur-sm text-white focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-400/50 transition-all text-sm min-w-[150px]"
             >
               <option value="all" className="bg-gray-800">All Progress</option>
               <option value="high" className="bg-gray-800">High (≥80%)</option>
@@ -656,7 +656,7 @@ const StudentProgressPage: React.FC = () => {
                                       student.overallProgress === 100
                                         ? 'bg-gradient-to-r from-green-400 to-emerald-400'
                                         : student.overallProgress >= 50
-                                        ? 'bg-gradient-to-r from-purple-400 to-pink-400'
+                                        ? 'bg-gradient-to-r from-orange-400 to-red-400'
                                         : 'bg-gradient-to-r from-yellow-400 to-orange-400'
                                     }`}
                                     style={{ width: `${student.overallProgress}%` }}
@@ -673,7 +673,7 @@ const StudentProgressPage: React.FC = () => {
                                   setSelectedStudent(fullProgress || null)
                                   setShowStudentModal(true)
                                 }}
-                                className="px-3 py-1.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:shadow-lg transition-all text-xs font-bold"
+                                className="px-3 py-1.5 bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-sm text-white rounded-lg hover:shadow-lg transition-all text-xs font-bold border border-white/20"
                               >
                                 View Details
                               </button>
@@ -815,7 +815,7 @@ const StudentProgressPage: React.FC = () => {
                     <div className="mt-4 pt-4 border-t border-white/10">
                       <div className="w-full bg-white/10 rounded-full h-3 overflow-hidden">
                         <div
-                          className="bg-gradient-to-r from-purple-400 to-pink-400 h-3 rounded-full transition-all duration-1000 shadow-lg"
+                          className="bg-gradient-to-r from-orange-400 to-red-400 h-3 rounded-full transition-all duration-1000 shadow-lg"
                           style={{
                             width: `${item.totalStudents > 0 ? (item.completedStudents / item.totalStudents) * 100 : 0}%`
                           }}

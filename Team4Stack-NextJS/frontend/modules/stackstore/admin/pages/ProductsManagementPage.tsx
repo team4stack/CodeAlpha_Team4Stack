@@ -254,7 +254,7 @@ const ProductsManagementPage: React.FC = () => {
   if (loading && products.length === 0) {
     return (
       <div className="h-96 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500"></div>
       </div>
     )
   }
@@ -262,9 +262,12 @@ const ProductsManagementPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-500 via-emerald-500 to-cyan-500 rounded-xl p-6 text-white shadow-lg">
-        <h1 className="text-3xl font-bold mb-2">📦 Products Management</h1>
-        <p className="text-white/90">Add, edit, and manage marketplace products</p>
+      <div className="bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-xl rounded-xl p-4 sm:p-5 text-white shadow-xl relative overflow-hidden border border-white/20">
+        <div className="absolute inset-0 bg-black/5"></div>
+        <div className="relative z-10">
+          <h1 className="text-xl sm:text-2xl font-bold mb-1">📦 Products Management</h1>
+          <p className="text-white/90 text-xs sm:text-sm">Add, edit, and manage marketplace products</p>
+        </div>
       </div>
 
       {/* Messages */}
@@ -280,16 +283,16 @@ const ProductsManagementPage: React.FC = () => {
       )}
 
       {/* Filters and Add Button */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
-        <div className="flex flex-col md:flex-row gap-4">
+      <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl rounded-xl p-4 sm:p-5 shadow-lg border border-gray-200/50 dark:border-gray-700/50">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
           {/* Search */}
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <input
               type="text"
-              placeholder="Search products by name or description..."
+              placeholder="Search products..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full px-3 sm:px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
             />
           </div>
 
@@ -298,7 +301,7 @@ const ProductsManagementPage: React.FC = () => {
             <select
               value={filterCategory}
               onChange={(e) => setFilterCategory(e.target.value)}
-              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
             >
               <option value="all">All Categories</option>
               {categories.map((category) => (
@@ -311,7 +314,7 @@ const ProductsManagementPage: React.FC = () => {
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value as 'all' | 'active' | 'inactive')}
-            className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
           >
             <option value="all">All Status</option>
             <option value="active">Active</option>
@@ -321,7 +324,7 @@ const ProductsManagementPage: React.FC = () => {
           {/* Add Button */}
           <button
             onClick={handleAdd}
-            className="px-6 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors font-semibold whitespace-nowrap"
+            className="w-full sm:w-auto px-4 sm:px-6 py-2 bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-sm text-white rounded-lg hover:from-orange-600 hover:to-red-600 transition-all font-semibold whitespace-nowrap text-sm border border-white/20"
           >
             + Add Product
           </button>
@@ -330,12 +333,12 @@ const ProductsManagementPage: React.FC = () => {
 
       {/* Add/Edit Form */}
       {showAddForm && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
-          <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-white">
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-lg border border-gray-200 dark:border-gray-700">
+          <h2 className="text-xl sm:text-2xl font-bold mb-4 text-gray-800 dark:text-white">
             {editingProduct ? 'Edit Product' : 'Add New Product'}
           </h2>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Product Name *
@@ -425,7 +428,7 @@ const ProductsManagementPage: React.FC = () => {
                 id="active"
                 checked={formData.active}
                 onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
-                className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+                className="w-4 h-4 text-orange-600 rounded focus:ring-orange-500"
               />
               <label htmlFor="active" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Active (Product is visible to customers)
@@ -455,29 +458,30 @@ const ProductsManagementPage: React.FC = () => {
 
       {/* Products List */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto -mx-4 sm:mx-0">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Image
+                <th scope="col" className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <span className="hidden sm:inline">Image</span>
+                  <span className="sm:hidden">Img</span>
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th scope="col" className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Product
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th scope="col" className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider hidden md:table-cell">
                   Category
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th scope="col" className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Price
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th scope="col" className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider hidden lg:table-cell">
                   Stock
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th scope="col" className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider hidden sm:table-cell">
                   Status
                 </th>
-                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th scope="col" className="px-3 sm:px-6 py-2 sm:py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -492,37 +496,41 @@ const ProductsManagementPage: React.FC = () => {
               ) : (
                 products.map((product) => (
                   <tr key={product.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                       {product.image_url ? (
                         <img
                           src={product.image_url}
                           alt={product.name}
-                          className="h-16 w-16 object-cover rounded"
+                          className="h-12 w-12 sm:h-16 sm:w-16 object-cover rounded"
                         />
                       ) : (
-                        <div className="h-16 w-16 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center text-gray-400">
-                          No Image
+                        <div className="h-12 w-12 sm:h-16 sm:w-16 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center text-gray-400 text-xs">
+                          <span className="hidden sm:inline">No Image</span>
+                          <span className="sm:hidden">-</span>
                         </div>
                       )}
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900 dark:text-white">{product.name}</div>
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 min-w-0">
+                      <div className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white truncate">{product.name}</div>
                       {product.description && (
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2 hidden sm:block">
                           {product.description}
                         </div>
                       )}
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 sm:hidden">
+                        {getCategoryName(product.category_id)} • {product.price ? `$${product.price.toFixed(2)}` : '-'}
+                      </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900 dark:text-white hidden md:table-cell">
                       {getCategoryName(product.category_id)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900 dark:text-white font-semibold">
                       {product.price ? `$${product.price.toFixed(2)}` : '-'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900 dark:text-white hidden lg:table-cell">
                       {product.stock !== null && product.stock !== undefined ? product.stock : '-'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap hidden sm:table-cell">
                       <span
                         className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                           product.active
@@ -533,29 +541,35 @@ const ProductsManagementPage: React.FC = () => {
                         {product.active ? 'Active' : 'Inactive'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex justify-end gap-2">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right text-xs sm:text-sm font-medium">
+                      <div className="flex justify-end gap-1 sm:gap-2 flex-wrap">
                         <button
                           onClick={() => handleToggleActive(product)}
-                          className={`px-3 py-1 rounded-lg transition-colors ${
+                          className={`px-2 sm:px-3 py-1 rounded-lg transition-colors text-xs ${
                             product.active
                               ? 'bg-yellow-500 text-white hover:bg-yellow-600'
                               : 'bg-green-500 text-white hover:bg-green-600'
                           }`}
+                          title={product.active ? 'Deactivate' : 'Activate'}
                         >
-                          {product.active ? 'Deactivate' : 'Activate'}
+                          <span className="hidden sm:inline">{product.active ? 'Deactivate' : 'Activate'}</span>
+                          <span className="sm:hidden">{product.active ? '⏸️' : '▶️'}</span>
                         </button>
                         <button
                           onClick={() => handleEdit(product)}
-                          className="px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                          className="px-2 sm:px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-xs"
+                          title="Edit"
                         >
-                          Edit
+                          <span className="hidden sm:inline">Edit</span>
+                          <span className="sm:hidden">✏️</span>
                         </button>
                         <button
                           onClick={() => handleDelete(product.id, product.name)}
-                          className="px-3 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                          className="px-2 sm:px-3 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-xs"
+                          title="Delete"
                         >
-                          Delete
+                          <span className="hidden sm:inline">Delete</span>
+                          <span className="sm:hidden">🗑️</span>
                         </button>
                       </div>
                     </td>

@@ -96,9 +96,14 @@ const FormsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">
-        Admission Form
-      </h1>
+      {/* Header */}
+      <div className="bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-xl rounded-xl p-5 text-white shadow-xl relative overflow-hidden border border-white/20">
+        <div className="absolute inset-0 bg-black/5"></div>
+        <div className="relative z-10">
+          <h1 className="text-2xl font-bold">Admission Form</h1>
+          <p className="text-white/90 text-sm mt-1">View and manage student admission applications</p>
+        </div>
+      </div>
 
       {error && (
         <div className="p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400">

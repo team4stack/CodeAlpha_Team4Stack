@@ -57,7 +57,7 @@ const TeamAdminDashboard: React.FC = () => {
   if (loading) {
     return (
       <div className="h-96 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500"></div>
       </div>
     )
   }
@@ -65,14 +65,14 @@ const TeamAdminDashboard: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-500 via-cyan-600 to-teal-500 rounded-xl p-8 text-white shadow-2xl relative overflow-hidden">
-        <div className="absolute inset-0 bg-black/10"></div>
+      <div className="bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-xl rounded-xl p-6 text-white shadow-xl relative overflow-hidden border border-white/20">
+        <div className="absolute inset-0 bg-black/5"></div>
         <div className="relative z-10">
-          <div className="flex items-center gap-4 mb-3">
-            <div className="text-5xl">👥</div>
+          <div className="flex items-center gap-4">
+            <div className="text-4xl">👥</div>
             <div>
-              <h1 className="text-4xl font-bold mb-2">Team Admin Dashboard</h1>
-              <p className="text-white/90 text-lg">Manage team members, mentor profiles, and roles</p>
+              <h1 className="text-3xl font-bold mb-1">Team Admin Dashboard</h1>
+              <p className="text-white/90 text-sm">Manage team members, mentor profiles, and roles</p>
             </div>
           </div>
         </div>
@@ -123,14 +123,14 @@ const TeamAdminDashboard: React.FC = () => {
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
-        <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-white flex items-center gap-2">
+      <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl rounded-xl p-6 shadow-lg border border-gray-200/50 dark:border-gray-700/50">
+        <h2 className="text-xl font-bold mb-5 text-gray-800 dark:text-white flex items-center gap-2">
           <span>⚡</span> Quick Actions
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <button
             onClick={() => router.push('/adminteamt4s/members')}
-            className="p-5 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 text-white hover:from-blue-600 hover:to-cyan-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left"
+            className="p-5 rounded-xl bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-sm text-white hover:from-orange-600 hover:to-red-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left border border-white/20"
           >
             <div className="text-3xl mb-2">👤</div>
             <div className="font-bold text-lg mb-1">Add Team Member</div>
@@ -138,7 +138,7 @@ const TeamAdminDashboard: React.FC = () => {
           </button>
           <button
             onClick={() => router.push('/adminteamt4s/mentor')}
-            className="p-5 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left"
+            className="p-5 rounded-xl bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-sm text-white hover:from-orange-600 hover:to-red-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left border border-white/20"
           >
             <div className="text-3xl mb-2">🎓</div>
             <div className="font-bold text-lg mb-1">Manage Mentor</div>
@@ -146,7 +146,7 @@ const TeamAdminDashboard: React.FC = () => {
           </button>
           <button
             onClick={() => router.push('/adminteamt4s/roles')}
-            className="p-5 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-500 text-white hover:from-indigo-600 hover:to-blue-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left"
+            className="p-5 rounded-xl bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-sm text-white hover:from-orange-600 hover:to-red-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left border border-white/20"
           >
             <div className="text-3xl mb-2">💼</div>
             <div className="font-bold text-lg mb-1">Manage Roles</div>
@@ -154,7 +154,7 @@ const TeamAdminDashboard: React.FC = () => {
           </button>
           <button
             onClick={() => router.push('/adminteamt4s/settings')}
-            className="p-5 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 text-white hover:from-teal-600 hover:to-cyan-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left"
+            className="p-5 rounded-xl bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-sm text-white hover:from-orange-600 hover:to-red-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left border border-white/20"
           >
             <div className="text-3xl mb-2">⚙️</div>
             <div className="font-bold text-lg mb-1">Settings</div>
@@ -164,9 +164,9 @@ const TeamAdminDashboard: React.FC = () => {
       </div>
 
       {/* Info Section */}
-      <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-xl p-6 border border-blue-200 dark:border-blue-800">
-        <h3 className="text-lg font-bold mb-2 text-gray-800 dark:text-white">📝 Team Management</h3>
-        <p className="text-gray-700 dark:text-gray-300">
+      <div className="bg-gradient-to-r from-orange-50/50 to-red-50/50 dark:from-orange-900/20 dark:to-red-900/20 backdrop-blur-sm rounded-xl p-5 border border-orange-200/50 dark:border-orange-800/50">
+        <h3 className="text-base font-bold mb-2 text-gray-800 dark:text-white">📝 Team Management</h3>
+        <p className="text-sm text-gray-700 dark:text-gray-300">
           Manage all aspects of your team including member profiles, mentor information, roles, and positions.
           All changes are logged for audit purposes.
         </p>

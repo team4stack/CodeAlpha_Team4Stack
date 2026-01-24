@@ -164,9 +164,12 @@ const CoursesSettingsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-xl p-6 text-white shadow-lg">
-        <h1 className="text-3xl font-bold mb-2">⚙️ Courses Settings</h1>
-        <p className="text-white/90">Configure course management settings and preferences</p>
+      <div className="bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-xl rounded-xl p-5 text-white shadow-xl relative overflow-hidden border border-white/20">
+        <div className="absolute inset-0 bg-black/5"></div>
+        <div className="relative z-10">
+          <h1 className="text-2xl font-bold mb-1">⚙️ Courses Settings</h1>
+          <p className="text-white/90 text-sm">Configure course management settings and preferences</p>
+        </div>
       </div>
 
       {/* Messages */}
@@ -212,7 +215,7 @@ const CoursesSettingsPage: React.FC = () => {
                       <select
                         value={editValue}
                         onChange={(e) => setEditValue(e.target.value)}
-                        className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
                       >
                         <option value="true">True</option>
                         <option value="false">False</option>
@@ -247,7 +250,7 @@ const CoursesSettingsPage: React.FC = () => {
               {editingKey !== setting.key && (
                 <button
                   onClick={() => handleEdit(setting)}
-                  className="ml-4 px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors font-semibold"
+                  className="ml-4 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg hover:from-orange-600 hover:to-red-600 transition-all shadow-md hover:shadow-lg font-semibold"
                 >
                   Edit
                 </button>
@@ -258,9 +261,9 @@ const CoursesSettingsPage: React.FC = () => {
       </div>
 
       {/* Info Section */}
-      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-xl p-6 border border-indigo-200 dark:border-indigo-800">
-        <h3 className="text-lg font-bold mb-2 text-gray-800 dark:text-white">ℹ️ About Course Settings</h3>
-        <p className="text-gray-700 dark:text-gray-300 mb-4">
+      <div className="bg-gradient-to-r from-orange-50/50 to-red-50/50 dark:from-orange-900/20 dark:to-red-900/20 backdrop-blur-sm rounded-xl p-5 border border-orange-200/50 dark:border-orange-800/50">
+        <h3 className="text-base font-bold mb-2 text-gray-800 dark:text-white">ℹ️ About Course Settings</h3>
+        <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
           These settings control various aspects of course management, including enrollment, certificates, and progress tracking.
           Changes take effect immediately and apply to all courses.
         </p>

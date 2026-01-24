@@ -417,41 +417,46 @@ const ApplicationsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h1 className="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">
-          Course Applications
-        </h1>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setFilter('all')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              filter === 'all'
-                ? 'bg-purple-600 text-white'
-                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-            }`}
-          >
-            All ({rows.length})
-          </button>
-          <button
-            onClick={() => setFilter('pending')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              filter === 'pending'
-                ? 'bg-yellow-600 text-white'
-                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-            }`}
-          >
-            Pending ({pendingCount})
-          </button>
-          <button
-            onClick={() => setFilter('approved')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              filter === 'approved'
-                ? 'bg-green-600 text-white'
-                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-            }`}
-          >
-            Approved ({approvedCount})
-          </button>
+      {/* Header */}
+      <div className="bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-xl rounded-xl p-4 sm:p-5 text-white shadow-xl relative overflow-hidden border border-white/20">
+        <div className="absolute inset-0 bg-black/5"></div>
+        <div className="relative z-10 flex flex-col gap-3 sm:gap-4">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold mb-1">Course Applications</h1>
+            <p className="text-white/90 text-xs sm:text-sm">Review and manage student admission applications</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setFilter('all')}
+              className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+                filter === 'all'
+                  ? 'bg-white/30 text-white backdrop-blur-sm border border-white/30 shadow-md'
+                  : 'bg-white/10 text-white/90 hover:bg-white/20 backdrop-blur-sm border border-white/20'
+              }`}
+            >
+              All ({rows.length})
+            </button>
+            <button
+              onClick={() => setFilter('pending')}
+              className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+                filter === 'pending'
+                  ? 'bg-yellow-500/80 text-white backdrop-blur-sm border border-yellow-400/50 shadow-md'
+                  : 'bg-white/10 text-white/90 hover:bg-white/20 backdrop-blur-sm border border-white/20'
+              }`}
+            >
+              Pending ({pendingCount})
+            </button>
+            <button
+              onClick={() => setFilter('approved')}
+              className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+                filter === 'approved'
+                  ? 'bg-green-500/80 text-white backdrop-blur-sm border border-green-400/50 shadow-md'
+                  : 'bg-white/10 text-white/90 hover:bg-white/20 backdrop-blur-sm border border-white/20'
+              }`}
+            >
+              Approved ({approvedCount})
+            </button>
+          </div>
         </div>
       </div>
 

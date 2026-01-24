@@ -228,7 +228,7 @@ const OrdersManagementPage: React.FC = () => {
   if (loading && orders.length === 0) {
     return (
       <div className="h-96 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500"></div>
       </div>
     )
   }
@@ -236,9 +236,12 @@ const OrdersManagementPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-500 via-emerald-500 to-cyan-500 rounded-xl p-6 text-white shadow-lg">
-        <h1 className="text-3xl font-bold mb-2">🛒 Orders Management</h1>
-        <p className="text-white/90">View and manage all marketplace orders</p>
+      <div className="bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-xl rounded-xl p-5 text-white shadow-xl relative overflow-hidden border border-white/20">
+        <div className="absolute inset-0 bg-black/5"></div>
+        <div className="relative z-10">
+          <h1 className="text-2xl font-bold mb-1">🛒 Orders Management</h1>
+          <p className="text-white/90 text-sm">View and manage all marketplace orders</p>
+        </div>
       </div>
 
       {/* Messages */}
@@ -266,7 +269,7 @@ const OrdersManagementPage: React.FC = () => {
                 setSearchQuery(e.target.value)
                 setCurrentPage(1)
               }}
-              className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
             />
           </div>
 
@@ -277,7 +280,7 @@ const OrdersManagementPage: React.FC = () => {
               setFilterStatus(e.target.value)
               setCurrentPage(1)
             }}
-            className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
           >
             <option value="all">All Status</option>
             {orderStatuses.map((status) => (
@@ -292,7 +295,7 @@ const OrdersManagementPage: React.FC = () => {
               setFilterPayment(e.target.value)
               setCurrentPage(1)
             }}
-            className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
           >
             <option value="all">All Payment Status</option>
             {paymentStatuses.map((status) => (

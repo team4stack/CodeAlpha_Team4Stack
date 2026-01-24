@@ -24,16 +24,16 @@ const StatCard: React.FC<Props> = ({ title, value, trend, icon, onClick, badges 
 
   return (
     <div 
-      className={`relative rounded-xl p-5 bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl border-2 border-white/30 dark:border-white/20 shadow-lg overflow-hidden group ${onClick ? 'cursor-pointer hover:scale-105 hover:shadow-2xl transition-all duration-300 hover:border-purple-400/50' : ''}`}
+      className={`relative rounded-xl p-5 bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl border-2 border-white/30 dark:border-white/20 shadow-lg overflow-hidden group ${onClick ? 'cursor-pointer hover:scale-105 hover:shadow-2xl transition-all duration-300 hover:border-orange-400/50' : ''}`}
       onClick={onClick}
     >
       {/* Animated gradient background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-purple-500/5 to-pink-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+      <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 via-red-500/5 to-pink-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
       
       <div className="relative z-10 flex items-center justify-between">
         <div className="flex-1">
           <div className="text-xs uppercase tracking-widest font-bold text-gray-500 dark:text-gray-400 mb-1">{title}</div>
-          <div className="text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 dark:from-indigo-400 dark:via-purple-400 dark:to-pink-400">{value}</div>
+          <div className="text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r from-orange-600 via-red-600 to-pink-600 dark:from-orange-400 dark:via-red-400 dark:to-pink-400">{value}</div>
         </div>
         {icon && (
           <div className="text-4xl opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300">

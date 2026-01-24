@@ -91,21 +91,21 @@ const CoursesAdminDashboard: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-500 rounded-xl p-8 text-white shadow-2xl relative overflow-hidden">
-        <div className="absolute inset-0 bg-black/10"></div>
+      <div className="bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-xl rounded-xl p-4 sm:p-6 text-white shadow-xl relative overflow-hidden border border-white/20">
+        <div className="absolute inset-0 bg-black/5"></div>
         <div className="relative z-10">
-          <div className="flex items-center gap-4 mb-3">
-            <div className="text-5xl">🎓</div>
-            <div>
-              <h1 className="text-4xl font-bold mb-2">Courses Admin Dashboard</h1>
-              <p className="text-white/90 text-lg">Manage courses, videos, and student progress</p>
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="text-3xl sm:text-4xl">🎓</div>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-1">Courses Admin Dashboard</h1>
+              <p className="text-white/90 text-xs sm:text-sm">Manage courses, videos, and student progress</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         <StatCard
           title="Total Courses"
           value={stats.totalCourses}
@@ -154,22 +154,22 @@ const CoursesAdminDashboard: React.FC = () => {
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
-        <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-white flex items-center gap-2">
+      <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl rounded-xl p-4 sm:p-6 shadow-lg border border-gray-200/50 dark:border-gray-700/50">
+        <h2 className="text-lg sm:text-xl font-bold mb-4 sm:mb-5 text-gray-800 dark:text-white flex items-center gap-2">
           <span>⚡</span> Quick Actions
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           <button
             onClick={() => router.push('/admincourset4s/manage')}
-            className="p-5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:from-indigo-600 hover:to-purple-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left"
+            className="p-4 sm:p-5 rounded-xl bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-sm text-white hover:from-orange-600 hover:to-red-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left border border-white/20"
           >
-            <div className="text-3xl mb-2">📚</div>
-            <div className="font-bold text-lg mb-1">Manage Courses</div>
-            <div className="text-sm opacity-90">Create and edit courses</div>
+            <div className="text-2xl sm:text-3xl mb-2">📚</div>
+            <div className="font-bold text-base sm:text-lg mb-1">Manage Courses</div>
+            <div className="text-xs sm:text-sm opacity-90">Create and edit courses</div>
           </button>
           <button
             onClick={() => router.push('/admincourset4s/videos')}
-            className="p-5 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left"
+            className="p-5 rounded-xl bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-sm text-white hover:from-orange-600 hover:to-red-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left border border-white/20"
           >
             <div className="text-3xl mb-2">🎥</div>
             <div className="font-bold text-lg mb-1">Manage Videos</div>
@@ -177,7 +177,7 @@ const CoursesAdminDashboard: React.FC = () => {
           </button>
           <button
             onClick={() => router.push('/admincourset4s/progress')}
-            className="p-5 rounded-xl bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:from-pink-600 hover:to-rose-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left"
+            className="p-5 rounded-xl bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-sm text-white hover:from-orange-600 hover:to-red-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left border border-white/20"
           >
             <div className="text-3xl mb-2">📊</div>
             <div className="font-bold text-lg mb-1">View Progress</div>
@@ -185,7 +185,7 @@ const CoursesAdminDashboard: React.FC = () => {
           </button>
           <button
             onClick={() => router.push('/admincourset4s/applications')}
-            className="p-5 rounded-xl bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left"
+            className="p-5 rounded-xl bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-sm text-white hover:from-orange-600 hover:to-red-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left border border-white/20"
           >
             <div className="text-3xl mb-2">📝</div>
             <div className="font-bold text-lg mb-1">Applications</div>
@@ -193,7 +193,7 @@ const CoursesAdminDashboard: React.FC = () => {
           </button>
           <button
             onClick={() => router.push('/admincourset4s/settings')}
-            className="p-5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-600 hover:to-blue-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left"
+            className="p-5 rounded-xl bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-sm text-white hover:from-orange-600 hover:to-red-600 transition-all shadow-md hover:shadow-xl transform hover:scale-105 text-left border border-white/20"
           >
             <div className="text-3xl mb-2">⚙️</div>
             <div className="font-bold text-lg mb-1">Settings</div>
@@ -203,9 +203,9 @@ const CoursesAdminDashboard: React.FC = () => {
       </div>
 
       {/* Info Section */}
-      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-xl p-6 border border-indigo-200 dark:border-indigo-800">
-        <h3 className="text-lg font-bold mb-2 text-gray-800 dark:text-white">📝 Course Management</h3>
-        <p className="text-gray-700 dark:text-gray-300">
+      <div className="bg-gradient-to-r from-orange-50/50 to-red-50/50 dark:from-orange-900/20 dark:to-red-900/20 backdrop-blur-sm rounded-xl p-4 sm:p-5 border border-orange-200/50 dark:border-orange-800/50">
+        <h3 className="text-sm sm:text-base font-bold mb-2 text-gray-800 dark:text-white">📝 Course Management</h3>
+        <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
           Manage all aspects of your courses including course creation, video management, and student progress tracking.
           All changes are logged for audit purposes.
         </p>

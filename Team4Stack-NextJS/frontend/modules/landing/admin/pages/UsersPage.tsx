@@ -39,10 +39,17 @@ const UsersPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">Users</h1>
+      {/* Header */}
+      <div className="bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-xl rounded-xl p-5 text-white shadow-xl relative overflow-hidden border border-white/20">
+        <div className="absolute inset-0 bg-black/5"></div>
+        <div className="relative z-10">
+          <h1 className="text-2xl font-bold">Users</h1>
+          <p className="text-white/90 text-sm mt-1">Manage all registered users and their accounts</p>
+        </div>
+      </div>
       {loading ? (
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-500"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-orange-500"></div>
         </div>
       ) : error ? (
         <div className="rounded-lg p-4 bg-red-500/10 border border-red-500/30 text-red-500 text-sm font-semibold">{error}</div>
@@ -62,9 +69,9 @@ const UsersPage: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-white/10">
                 {rows.map(r => (
-                  <tr key={r.id} className="hover:bg-gradient-to-r hover:from-indigo-50/50 hover:to-purple-50/50 dark:hover:from-indigo-900/10 dark:hover:to-purple-900/10 transition-colors duration-200">
+                  <tr key={r.id} className="hover:bg-gradient-to-r hover:from-orange-50/50 hover:to-red-50/50 dark:hover:from-orange-900/10 dark:hover:to-red-900/10 transition-colors duration-200">
                     <td className="px-4 py-3">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${!r.avatar_url && !isDarkMode ? 'bg-black p-1' : ''} ring-2 ring-purple-200 dark:ring-purple-800 hover:ring-purple-400 dark:hover:ring-purple-600 transition-all duration-300`}>
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${!r.avatar_url && !isDarkMode ? 'bg-black p-1' : ''} ring-2 ring-orange-200 dark:ring-orange-800 hover:ring-orange-400 dark:hover:ring-orange-600 transition-all duration-300`}>
                         <img 
                           src={r.avatar_url || '/Team4stack_Logo.png?v=8'} 
                           alt="avatar" 

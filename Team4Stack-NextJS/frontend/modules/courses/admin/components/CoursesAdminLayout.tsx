@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import CoursesAdminSidebar from './CoursesAdminSidebar'
 import AdminHeader from '../../../../components/admin/shared/AdminHeader'
+import AdminFooter from '../../../../components/admin/shared/AdminFooter'
 import { isEmailAllowedForAdmin } from '@/lib/auth/utils/adminSecurity'
 
 interface CoursesAdminLayoutProps {
@@ -100,24 +101,36 @@ const CoursesAdminLayout: React.FC<CoursesAdminLayoutProps> = ({ children }) => 
   }, [router])
 
   if (loading) {
-    return <div className="h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div></div>
+    return <div className="h-screen flex items-center justify-center bg-[#0a0a0f]"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div></div>
   }
 
   return (
-    <div className="min-h-screen flex flex-col relative overflow-hidden bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-gray-950 dark:via-gray-900 dark:to-black">
-      {/* Neon grid background accents */}
-      <div className="pointer-events-none absolute inset-0 opacity-10 [background:radial-gradient(circle_at_20%_20%,#7c3aed_0,transparent_35%),radial-gradient(circle_at_80%_30%,#06b6d4_0,transparent_35%),radial-gradient(circle_at_30%_80%,#22c55e_0,transparent_35%)]"></div>
-      <div className="pointer-events-none absolute -inset-24 blur-3xl opacity-[0.15] bg-gradient-to-br from-indigo-500 via-purple-400 to-pink-400"></div>
+    <div className="min-h-screen flex flex-col bg-[#0a0a0f]">
+      {/* Dark Background with Subtle Accents */}
+      <div className="pointer-events-none fixed inset-0 bg-gradient-to-br from-black via-slate-950 to-black"></div>
+      
+      {/* Subtle Neon Grid */}
+      <div className="pointer-events-none fixed inset-0 opacity-[0.03] [background-image:linear-gradient(rgba(6,182,212,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(6,182,212,0.1)_1px,transparent_1px)] [background-size:50px_50px]"></div>
+      
+      {/* Ambient Glow Effects */}
+      <div className="pointer-events-none fixed inset-0 opacity-20 [background:radial-gradient(circle_at_20%_20%,rgba(6,182,212,0.15)_0,transparent_50%),radial-gradient(circle_at_80%_30%,rgba(249,115,22,0.1)_0,transparent_50%),radial-gradient(circle_at_50%_80%,rgba(6,182,212,0.08)_0,transparent_50%)]"></div>
       
       {/* Navbar - Full Width at Top */}
       <AdminHeader />
       
       {/* Sidebar and Content - Below Navbar */}
-      <div className="flex flex-1 min-h-0">
+      <div className="flex flex-1 relative z-10">
         <CoursesAdminSidebar />
-        <main className="flex-1 p-6 overflow-y-auto">
-          {children}
-        </main>
+        <div className="flex-1 flex flex-col">
+          <main className="flex-1 p-4 sm:p-6 text-white/90">
+            {children}
+          </main>
+        </div>
+      </div>
+      
+      {/* Footer - Full Width at Bottom (including under sidebar) */}
+      <div className="relative z-10">
+        <AdminFooter />
       </div>
     </div>
   )

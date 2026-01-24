@@ -313,15 +313,22 @@ const DashboardPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">Dashboard</h1>
+      {/* Header */}
+      <div className="bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-xl rounded-xl p-4 sm:p-5 text-white shadow-xl relative overflow-hidden border border-white/20">
+        <div className="absolute inset-0 bg-black/5"></div>
+        <div className="relative z-10">
+          <h1 className="text-xl sm:text-2xl font-bold">Landing Admin Dashboard</h1>
+          <p className="text-white/90 text-xs sm:text-sm mt-1">Overview of all landing page content and activities</p>
+        </div>
+      </div>
       
       {loading ? (
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-500"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-orange-500"></div>
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <StatCard 
               title="Projects" 
               value={stats.projects} 
@@ -388,12 +395,12 @@ const DashboardPage: React.FC = () => {
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-2 rounded-xl p-5 bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl border-2 border-white/30 dark:border-white/20 shadow-lg">
-              <div className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Recent Activity</div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="lg:col-span-2 rounded-xl p-4 sm:p-5 bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl border-2 border-white/30 dark:border-white/20 shadow-lg">
+              <div className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-4">Recent Activity</div>
               {activityLoading ? (
                 <div className="flex items-center justify-center py-4">
-                  <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-purple-500"></div>
+                  <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-orange-500"></div>
                 </div>
               ) : recentActivity.length === 0 ? (
                 <div className="text-sm text-gray-500 dark:text-gray-400">No recent activity yet.</div>
@@ -402,7 +409,7 @@ const DashboardPage: React.FC = () => {
                   {recentActivity.map((activity, index) => (
                     <div 
                       key={`${activity.type}-${activity.id}-${index}`} 
-                      className="flex items-start gap-3 p-3 rounded-xl bg-gradient-to-r from-white/50 to-transparent dark:from-gray-700/30 dark:to-transparent hover:from-indigo-50 hover:to-purple-50 dark:hover:from-indigo-900/20 dark:hover:to-purple-900/20 border border-white/20 dark:border-white/10 hover:border-purple-300/50 dark:hover:border-purple-600/50 transition-all duration-300 cursor-pointer hover:scale-[1.02] hover:shadow-md group"
+                      className="flex items-start gap-3 p-3 rounded-xl bg-gradient-to-r from-white/50 to-transparent dark:from-gray-700/30 dark:to-transparent hover:from-orange-50 hover:to-red-50 dark:hover:from-orange-900/20 dark:hover:to-red-900/20 border border-white/20 dark:border-white/10 hover:border-orange-300/50 dark:hover:border-orange-600/50 transition-all duration-300 cursor-pointer hover:scale-[1.02] hover:shadow-md group"
                       onClick={() => {
                         const routes: Partial<Record<Activity['type'], string>> = {
                           project: '/adminlandingt4s/projects',
@@ -418,13 +425,13 @@ const DashboardPage: React.FC = () => {
                     >
                       <div className="text-2xl flex-shrink-0 group-hover:scale-110 transition-transform duration-300">{getActivityIcon(activity.type)}</div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm text-gray-900 dark:text-white font-semibold truncate group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">{activity.title}</div>
+                        <div className="text-sm text-gray-900 dark:text-white font-semibold truncate group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">{activity.title}</div>
                         <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                           {activity.action} • {formatTime(activity.timestamp)}
                         </div>
                       </div>
                       <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                        <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                         </svg>
                       </div>
