@@ -11,10 +11,9 @@ import {
   FiBarChart, 
   FiFileText, 
   FiSettings, 
-  FiLogOut,
-  FiChevronLeft,
-  FiChevronRight
+  FiLogOut
 } from 'react-icons/fi'
+import SidebarPinButton from '@/components/admin/shared/SidebarPinButton'
 
 const CoursesAdminSidebar: React.FC = () => {
   const pathname = usePathname()
@@ -22,13 +21,15 @@ const CoursesAdminSidebar: React.FC = () => {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [hoveredLink, setHoveredLink] = useState<string | null>(null)
   const [tooltipPosition, setTooltipPosition] = useState<{ top: number; left: number } | null>(null)
+  const [isSidebarHovered, setIsSidebarHovered] = useState(false)
   const linkRefs = useRef<Record<string, HTMLAnchorElement | null>>({})
+  const dashboardLinkRef = useRef<HTMLAnchorElement | null>(null)
 
   useEffect(() => {
     const load = async () => {
       try {
         const result = await landingApi.getSiteSettings(['tab_label_courses'])
-        if (result.data) {
+        if (result.data && Array.isArray(result.data)) {
           const map: Record<string,string> = {}
           result.data.forEach((r: any) => { map[r.key] = r.value })
           setLabels(map)
@@ -39,6 +40,7 @@ const CoursesAdminSidebar: React.FC = () => {
     }
     load()
   }, [])
+
 
   const links = [
     { to: '/admincourset4s', label: labels.tab_label_courses || 'Dashboard', icon: FiBook },
@@ -71,7 +73,11 @@ const CoursesAdminSidebar: React.FC = () => {
   }
 
   return (
-    <div className="relative h-full flex overflow-visible">
+    <div 
+      className="relative h-full flex overflow-visible"
+      onMouseEnter={() => setIsSidebarHovered(true)}
+      onMouseLeave={() => setIsSidebarHovered(false)}
+    >
       <aside 
         className={`${isCollapsed ? 'w-20' : 'w-64'} bg-black/40 backdrop-blur-2xl border-r border-cyan-500/20 flex flex-col relative shadow-2xl shadow-cyan-500/10 transition-all duration-300 ease-in-out h-full`}
       >
@@ -84,17 +90,32 @@ const CoursesAdminSidebar: React.FC = () => {
         {/* Glowing Border Effect */}
         <div className="absolute right-0 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-cyan-500/50 to-transparent"></div>
       
+        {/* Pin/Toggle Button - Inside Sidebar (at top) */}
+        <SidebarPinButton
+          isCollapsed={isCollapsed}
+          setIsCollapsed={setIsCollapsed}
+          isSidebarHovered={isSidebarHovered}
+          dashboardLinkRef={dashboardLinkRef}
+          sidebarWidth={isCollapsed ? 80 : 256}
+        />
+
         <div className="flex-1 overflow-y-auto p-4 relative z-10">
           <nav>
             <ul className="space-y-2">
-              {links.map(link => {
+              {links.map((link, index) => {
                 const isActive = pathname === link.to || (link.to !== '/admincourset4s' && pathname?.startsWith(link.to))
                 const IconComponent = link.icon
                 const isHovered = hoveredLink === link.to
+                const isDashboard = link.to === '/admincourset4s'
                 return (
                   <li key={link.to} className="relative">
                     <Link
-                      ref={(el) => { linkRefs.current[link.to] = el }}
+                      ref={(el) => { 
+                        linkRefs.current[link.to] = el
+                        if (isDashboard) {
+                          dashboardLinkRef.current = el
+                        }
+                      }}
                       href={link.to}
                       className={`flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-4'} py-3 rounded-xl text-sm font-medium transition-all duration-300 relative group overflow-visible ${
                         isActive
@@ -166,19 +187,6 @@ const CoursesAdminSidebar: React.FC = () => {
           </div>
         </div>
       </aside>
-
-      {/* Pin/Toggle Button - Right Side of Sidebar, Middle */}
-      <button
-        onClick={() => setIsCollapsed(!isCollapsed)}
-        className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-30 w-6 h-6 rounded-full bg-black/60 backdrop-blur-md border border-cyan-500/30 hover:border-cyan-400/50 hover:bg-black/80 text-white/70 hover:text-white transition-all duration-300 flex items-center justify-center group shadow-lg hover:shadow-cyan-500/30"
-        title={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
-      >
-        {isCollapsed ? (
-          <FiChevronRight className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
-        ) : (
-          <FiChevronLeft className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
-        )}
-      </button>
 
       {/* Tooltip - Fixed Position Outside Sidebar */}
       {isCollapsed && hoveredLink && tooltipPosition && (
