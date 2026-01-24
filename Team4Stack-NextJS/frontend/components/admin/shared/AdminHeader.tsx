@@ -1,10 +1,12 @@
 'use client'
 
 import React from 'react'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 const AdminHeader: React.FC = () => {
   const pathname = usePathname()
+  const router = useRouter()
 
   const getAdminName = () => {
     if (pathname?.startsWith('/supadmin')) {
@@ -21,8 +23,28 @@ const AdminHeader: React.FC = () => {
     return 'Admin'
   }
 
+  const getDashboardPath = () => {
+    if (pathname?.startsWith('/supadmin')) {
+      return '/supadmin'
+    } else if (pathname?.startsWith('/adminlandingt4s')) {
+      return '/adminlandingt4s'
+    } else if (pathname?.startsWith('/admincourset4s')) {
+      return '/admincourset4s'
+    } else if (pathname?.startsWith('/adminteamt4s')) {
+      return '/adminteamt4s'
+    } else if (pathname?.startsWith('/adminstackt4s')) {
+      return '/adminstackt4s'
+    }
+    return '/adminlandingt4s' // Default fallback
+  }
+
+  const handleLogoClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    router.push(getDashboardPath())
+  }
+
   return (
-    <header className="sticky top-0 z-20 flex-shrink-0 overflow-x-hidden relative">
+    <header className="sticky top-0 z-20 flex-shrink-0 overflow-x-hidden overflow-y-hidden relative">
       {/* Static Gradient Background - No Animation */}
       <div className="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900"></div>
       
@@ -49,14 +71,18 @@ const AdminHeader: React.FC = () => {
       </div>
       
       <div className="h-20 flex items-center justify-between px-6 relative z-10">
-        {/* Left Side - Logo and Text */}
-        <div className="flex items-center gap-4">
+        {/* Left Side - Logo and Text (Clickable) */}
+        <Link 
+          href={getDashboardPath()}
+          onClick={handleLogoClick}
+          className="flex items-center gap-4 group cursor-pointer"
+        >
           {/* Logo with Subtle Glow */}
-          <div className="relative flex-shrink-0 group">
+          <div className="relative flex-shrink-0">
             {/* Subtle Glowing Background */}
             <div className="absolute inset-0 bg-cyan-400/20 rounded-full blur-2xl group-hover:bg-cyan-400/30 transition-all duration-300"></div>
             
-            <div className="relative w-20 h-20 flex items-center justify-center">
+            <div className="relative w-20 h-20 flex items-center justify-center overflow-hidden">
               <img
                 src="/Team4Stack_Transparant.svg"
                 alt="Team4Stack Logo"
@@ -76,14 +102,14 @@ const AdminHeader: React.FC = () => {
           
           {/* Text Section */}
           <div className="flex flex-col">
-            <h1 className="text-2xl font-bold text-white drop-shadow-md tracking-tight">
+            <h1 className="text-2xl font-bold text-white drop-shadow-md tracking-tight group-hover:text-cyan-300 transition-colors duration-300 cursor-pointer">
               Team4Stack
             </h1>
             <p className="text-sm text-white/80 font-medium tracking-wide">
               {getAdminName()}
             </p>
           </div>
-        </div>
+        </Link>
 
         {/* Right Side - Action Buttons */}
         <div className="flex items-center gap-3">
