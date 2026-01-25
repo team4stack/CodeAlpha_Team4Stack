@@ -107,7 +107,7 @@ const SuperAdminSidebar: React.FC = () => {
           sidebarWidth={isCollapsed ? 80 : 256}
         />
 
-      <div className="flex-1 overflow-y-auto p-4 relative z-10">
+      <div className="flex-1 p-4 relative z-10">
         <nav>
           <ul className="space-y-2">
             {links.map((link, index) => {

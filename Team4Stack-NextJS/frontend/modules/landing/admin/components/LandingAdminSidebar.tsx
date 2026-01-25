@@ -7,7 +7,7 @@ import { landingApi } from '@/lib/api'
 import { 
   FiLayout, 
   FiUser, 
-  FiRocket, 
+  FiZap, 
   FiTool, 
   FiBriefcase, 
   FiStar, 
@@ -103,7 +103,7 @@ const AdminSidebar: React.FC = () => {
   const links = [
     { to: '/adminlandingt4s', label: labels.tab_label_dashboard || 'Dashboard', icon: FiLayout },
     { to: '/adminlandingt4s/users', label: 'Users', icon: FiUser },
-    { to: '/adminlandingt4s/hero', label: labels.tab_label_hero || 'Hero Section', icon: FiRocket },
+    { to: '/adminlandingt4s/hero', label: labels.tab_label_hero || 'Hero Section', icon: FiZap },
     { to: '/adminlandingt4s/projects', label: labels.tab_label_projects || 'Projects', icon: FiTool },
     { to: '/adminlandingt4s/services', label: labels.tab_label_services || 'Services', icon: FiBriefcase },
     { to: '/adminlandingt4s/reviews', label: labels.tab_label_reviews || 'Reviews', icon: FiStar },
@@ -164,7 +164,7 @@ const AdminSidebar: React.FC = () => {
           sidebarWidth={isCollapsed ? 80 : 256}
         />
 
-      <div className="flex-1 overflow-y-auto p-4 relative z-10">
+      <div className="flex-1 p-4 relative z-10">
         <nav>
           <ul className="space-y-2">
             {links.map((link, index) => {

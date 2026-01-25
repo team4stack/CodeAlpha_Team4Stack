@@ -71,7 +71,7 @@ const StackStoreAdminLayout: React.FC<StackStoreAdminLayoutProps> = ({ children 
         // Step 3: ROLE-BASED ACCESS CONTROL
         // Check if user has permission to access stackstore admin panel
         // Only super_admin or stackstore_admin role can access
-        const userRole = (adminData as any)?.role || 'admin'
+        const userRole = (adminResult.data as any)?.role || 'admin'
         const allowedRoles = ['super_admin', 'stackstore_admin']
         if (!allowedRoles.includes(userRole)) {
           // User doesn't have permission for this admin panel
@@ -118,22 +118,31 @@ const StackStoreAdminLayout: React.FC<StackStoreAdminLayoutProps> = ({ children 
       {/* Ambient Glow Effects */}
       <div className="pointer-events-none fixed inset-0 opacity-20 [background:radial-gradient(circle_at_20%_20%,rgba(6,182,212,0.15)_0,transparent_50%),radial-gradient(circle_at_80%_30%,rgba(249,115,22,0.1)_0,transparent_50%),radial-gradient(circle_at_50%_80%,rgba(6,182,212,0.08)_0,transparent_50%)]"></div>
       
-      {/* Navbar - Full Width at Top */}
-      <AdminHeader />
-      
-      {/* Sidebar and Content - Below Navbar, Extends to Footer */}
-      <div className="flex flex-1 relative z-10 min-h-0 overflow-x-hidden">
-        <StackStoreAdminSidebar />
-        <div className="flex-1 flex flex-col min-h-0 overflow-x-hidden">
-          <main className="flex-1 p-4 sm:p-6 text-white/90 overflow-y-auto overflow-x-hidden">
-            {children}
-          </main>
-        </div>
+      {/* Navbar - Fixed at Top */}
+      <div className="fixed top-0 left-0 right-0 z-20">
+        <AdminHeader />
       </div>
       
-      {/* Footer - Full Width at Bottom (including under sidebar) */}
-      <div className="relative z-10 flex-shrink-0">
-        <AdminFooter />
+      {/* Scrollable Container - Sidebar, Content, and Footer scroll together */}
+      <div className="flex-1 relative z-10 overflow-y-auto overflow-x-hidden admin-custom-scrollbar" style={{ marginTop: '80px', height: 'calc(100vh - 80px)' }}>
+        <div className="flex items-stretch">
+          {/* Sidebar - Scrolls with content, extends to top of footer */}
+          <div className="flex-shrink-0">
+            <StackStoreAdminSidebar />
+          </div>
+          
+          {/* Main Content Area */}
+          <div className="flex-1 flex flex-col">
+            <main className="flex-1 p-4 sm:p-6 text-white/90">
+              {children}
+            </main>
+          </div>
+        </div>
+        
+        {/* Footer - Full Width at bottom of scrollable content (like navbar), below sidebar and content */}
+        <div className="w-full flex-shrink-0">
+          <AdminFooter />
+        </div>
       </div>
     </div>
   )
