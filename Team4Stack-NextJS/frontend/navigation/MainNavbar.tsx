@@ -280,48 +280,41 @@ const Navbar: React.FC = () => {
         )}
         <div className="container-custom px-4 sm:px-6">
           <div className="flex items-center justify-between h-14 sm:h-16">
-            {/* Logo - Hide when mobile menu is open */}
+            {/* Logo – admin style, size thora chota */}
             <a 
               href="#home" 
-              className={`flex items-center space-x-2 group focus:outline-none rounded-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-95 ${
+              className={`flex items-center gap-2 sm:gap-3 group focus:outline-none rounded-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-95 flex-shrink-0 ${
                 isMenuOpen ? 'opacity-0 pointer-events-none md:opacity-100 md:pointer-events-auto' : 'opacity-100'
               }`}
               aria-label="Team4Stack Home"
               onClick={(e) => handleLinkClick(e, '#home')}
             >
-              <div
-                className="w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-300"
-                style={{ minWidth: '40px', minHeight: '40px' }}
-              >
+              <div className="relative w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center flex-shrink-0">
                 <img
                   src={
-                    // Top of page: always transparent logo in both modes
                     !isScrolled
                       ? `/Team4Stack_Transparant.svg?t=${logoKey}`
-                      // Scrolled: dark mode stays transparent, light mode uses black‑background logo
                       : (isDarkMode
                           ? `/Team4Stack_Transparant.svg?t=${logoKey}`
                           : `/Team4StackLogo.svg?t=${logoKey}`)
                   }
                   alt="Team4Stack Logo"
-                  className={`rounded-lg shadow-sm group-hover:shadow-md transition-all duration-300 object-contain ${logoLoaded ? 'opacity-100' : 'opacity-0'}`}
-                  style={{ width: '32px', height: '32px', display: 'block' }}
+                  className={`w-full h-full object-contain rounded-lg shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md ${logoLoaded ? 'opacity-100' : 'opacity-0'}`}
                   loading="eager"
                   onLoad={() => setLogoLoaded(true)}
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    setLogoLoaded(true);
-                  }}
+                  onError={() => setLogoLoaded(true)}
                   key={`logo-${isDarkMode ? 'dark' : 'light'}-${logoKey}`}
                 />
               </div>
               <span 
-                className={`text-xl font-display font-bold ${
+                className={`text-lg sm:text-xl font-bold tracking-tight transition-all duration-300 ${
                   isScrolled
                     ? (isDarkMode ? 'gradient-text' : 'text-black')
                     : 'text-white'
-                } group-hover:text-purple-300 group-active:scale-95 transition-all duration-300`}
-              >Team4Stack</span>
+                } group-hover:text-cyan-300 group-active:scale-95`}
+              >
+                Team4Stack
+              </span>
             </a>
 
             {/* Desktop Navigation (center) */}

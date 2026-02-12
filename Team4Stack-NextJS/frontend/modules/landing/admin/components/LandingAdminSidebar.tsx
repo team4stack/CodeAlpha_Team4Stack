@@ -261,7 +261,6 @@ const AdminSidebar: React.FC = () => {
             </div>
           </div>
         </div>
-        </div>
       </aside>
 
       {/* Tooltip - Fixed Position Outside Sidebar */}

@@ -126,17 +126,20 @@ const Footer: React.FC = () => {
           {/* Company Info Section */}
           <div className="footer-section footer-about">
             <div className="footer-logo-section">
-              <div className="footer-logo-wrapper">
-                <img 
-                  src="/Team4Stack_Transparant.svg" 
-                  alt="Team4Stack Logo" 
-                  className="footer-logo-img"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                  }}
-                />
-                <h2 className="footer-logo-text">Team4Stack</h2>
-              </div>
+              <Link href="/" className="footer-logo-wrapper group inline-flex items-center gap-2 sm:gap-3 w-fit focus:outline-none rounded-lg transition-all duration-300 hover:scale-[1.02] active:scale-95">
+                <div className="relative w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center flex-shrink-0">
+                  <img
+                    src="/Team4Stack_Transparant.svg"
+                    alt="Team4Stack Logo"
+                    className="w-full h-full object-contain rounded-lg shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md"
+                    onError={(e) => {
+                      const t = e.target as HTMLImageElement;
+                      if (!t.src.includes('fallback')) t.src = '/Team4Stack_Transparant.svg?fallback=1';
+                    }}
+                  />
+                </div>
+                <h2 className="footer-logo-text !m-0">Team4Stack</h2>
+              </Link>
               <p className="footer-description">{aboutText}</p>
             </div>
           </div>

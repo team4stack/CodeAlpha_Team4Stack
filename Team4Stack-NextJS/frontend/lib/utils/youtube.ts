@@ -21,6 +21,16 @@ interface YouTubeVideoSnippet {
       width: number;
       height: number;
     };
+    standard?: {
+      url: string;
+      width: number;
+      height: number;
+    };
+    maxres?: {
+      url: string;
+      width: number;
+      height: number;
+    };
   };
   channelTitle: string;
   publishedAt: string;
@@ -56,6 +66,18 @@ export interface ProjectData {
   videoUrl: string;
   githubUrl: string;
 }
+
+const pickBestYouTubeThumbnail = (thumbnails: YouTubeVideoSnippet['thumbnails'], videoId: string): string => {
+  // Prefer true 16:9 variants first to avoid letterboxed empty bands.
+  return (
+    thumbnails.maxres?.url ||
+    thumbnails.medium?.url ||
+    thumbnails.high?.url ||
+    thumbnails.standard?.url ||
+    thumbnails.default?.url ||
+    `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`
+  );
+};
 
 /**
  * Fetch YouTube video data using the YouTube Data API v3
@@ -153,7 +175,7 @@ export const fetchYouTubeVideoData = async (videoId: string, githubUrl: string):
         id: videoId,
         title: video.snippet.title,
         description: video.snippet.description,
-        thumbnailUrl: video.snippet.thumbnails.high?.url || video.snippet.thumbnails.medium?.url || video.snippet.thumbnails.default?.url,
+        thumbnailUrl: pickBestYouTubeThumbnail(video.snippet.thumbnails, videoId),
         videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
         githubUrl
       };

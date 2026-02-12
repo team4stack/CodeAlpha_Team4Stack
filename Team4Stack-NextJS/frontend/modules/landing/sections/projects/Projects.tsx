@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { useTheme } from '@/contexts/ThemeContext';
 import { ProjectData, fetchYouTubeVideoData } from '@/lib/utils/youtube';
 import { CONTACT_PHONE_NUMBERS } from '@/lib/utils/constants';
@@ -15,7 +16,8 @@ const Projects: React.FC = () => {
   const [showAll, setShowAll] = useState(false);
   const [page, setPage] = useState(1);
   const perPage = 6;
-  // Add state for debugging info
+  const [featuredIndex, setFeaturedIndex] = useState(0);
+  const [isCarouselHovered, setIsCarouselHovered] = useState(false);
   const [debugInfo, setDebugInfo] = useState<{apiKeyStatus: string, error?: string} | null>(null);
 
   // Extract a YouTube video ID from either a plain ID or a full URL
@@ -126,119 +128,28 @@ const Projects: React.FC = () => {
     window.open(url, '_blank');
   };
 
-  // Detect mobile device
-  const [isMobile, setIsMobile] = useState(false);
-  
+  const totalProjects = projects.length;
+  const safeFeaturedIndex = totalProjects > 0 ? featuredIndex % totalProjects : 0;
+  const visibleDotsCount = Math.min(totalProjects, 8);
+  const activeDotIndex = totalProjects <= 1
+    ? 0
+    : Math.round((safeFeaturedIndex / (totalProjects - 1)) * (visibleDotsCount - 1));
+
+  const goPrev = () => {
+    if (totalProjects === 0) return;
+    setFeaturedIndex((prev) => (prev - 1 + totalProjects) % totalProjects);
+  };
+  const goNext = () => {
+    if (totalProjects === 0) return;
+    setFeaturedIndex((prev) => (prev + 1) % totalProjects);
+  };
+
+  // Auto-flip: cycle to next card (garment-style carousel)
   useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth <= 768);
-    };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  // Force stop all animations on mobile whenever isMobile changes
-  useEffect(() => {
-    if (isMobile) {
-      // Find all project tracks and stop their animations
-      const tracks = document.querySelectorAll('.project-track');
-      tracks.forEach((track) => {
-        const el = track as HTMLDivElement;
-        (el as any).isPaused = true;
-        if ((el as any)._raf) {
-          cancelAnimationFrame((el as any)._raf);
-          (el as any)._raf = null;
-        }
-        el.style.transform = 'none';
-        (el as any)._tx = 0;
-      });
-    }
-  }, [isMobile]);
-
-  // helpers for marquee dragging and auto scroll (desktop only)
-  const getTx = (el: HTMLDivElement) => {
-    // Prefer inline transform (most up-to-date), then computed, then stored
-    const inline = el.style.transform;
-    const matchInline = /translateX\((-?\d+(?:\.\d+)?)px\)/.exec(inline);
-    if (matchInline) {
-      const v = parseFloat(matchInline[1]);
-      if (!isNaN(v)) return v;
-    }
-    const computed = getComputedStyle(el).transform;
-    const matchComputed = /translateX\((-?\d+(?:\.\d+)?)px\)/.exec(computed);
-    if (matchComputed) {
-      const v = parseFloat(matchComputed[1]);
-      if (!isNaN(v)) return v;
-    }
-    const stored = (el as any)._tx;
-    return typeof stored === 'number' && !isNaN(stored) ? stored : 0;
-  };
-  
-  // Desktop auto-animation (transform-based)
-  const autoAnimate = (track: HTMLDivElement, speed: number = 1.5) => {
-    // Skip animation on mobile - use native scroll instead
-    if (isMobile) {
-      // Cancel any existing animation on mobile
-      if ((track as any)._raf) {
-        cancelAnimationFrame((track as any)._raf);
-        (track as any)._raf = null;
-      }
-      return;
-    }
-    
-    let tx = (track as any)._tx ?? getTx(track);
-    const step = () => {
-      // Check again if mobile (in case screen was resized)
-      if (isMobile) {
-        if ((track as any)._raf) {
-          cancelAnimationFrame((track as any)._raf);
-          (track as any)._raf = null;
-        }
-        return;
-      }
-      
-      // Only continue if not paused
-      if ((track as any).isPaused) {
-        (track as any)._raf = requestAnimationFrame(step);
-        return;
-      }
-
-      // move left and loop
-      tx -= speed; // faster speed
-      const width = track.scrollWidth / 2; // because duplicated
-      if (-tx >= width) tx += width;
-      track.style.transform = `translateX(${tx}px)`;
-      (track as any)._tx = tx;
-      (track as any)._raf = requestAnimationFrame(step);
-    };
-    // cancel previous
-    if ((track as any)._raf) cancelAnimationFrame((track as any)._raf);
-    (track as any)._raf = requestAnimationFrame(step);
-  };
-  
-  // Mobile native scroll handler - ensure animation is stopped
-  const handleMobileScroll = (container: HTMLDivElement) => {
-    if (!isMobile) return;
-    
-    const track = container.querySelector('.project-track') as HTMLDivElement | null;
-    if (track) {
-      // Force stop any animation on mobile
-      (track as any).isPaused = true;
-      if ((track as any)._raf) {
-        cancelAnimationFrame((track as any)._raf);
-        (track as any)._raf = null;
-      }
-      // Reset transform on mobile - use native scroll only
-      track.style.transform = 'none';
-      (track as any)._tx = 0;
-    }
-    
-    // Optional: Use native scroll position for infinite loop effect
-    // Commented out to prevent any interference with native scroll
-    // const scrollLeft = container.scrollLeft;
-    // const maxScroll = container.scrollWidth - container.clientWidth;
-  };
+    if (showAll || totalProjects <= 1 || isCarouselHovered) return;
+    const interval = setInterval(goNext, 4500);
+    return () => clearInterval(interval);
+  }, [showAll, totalProjects, isCarouselHovered]);
 
   // Structured Data for SEO
   const projectsStructuredData = {
@@ -263,15 +174,6 @@ const Projects: React.FC = () => {
       </script>
       
       <div className="container-custom">
-        <div className="text-center mb-16">
-          <h2 className={`text-4xl md:text-5xl font-bold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
-            Our <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-cyan-500">Projects</span>
-          </h2>
-          <p className={`text-xl max-w-3xl mx-auto ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-            Discover our innovative MERN stack projects and solutions that showcase our technical expertise and creativity.
-          </p>
-        </div>
-
         {/* Loading State */}
         {loading && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
@@ -293,180 +195,218 @@ const Projects: React.FC = () => {
           </div>
         )}
 
-        {/* Projects Auto-Scroll Marquee */}
+        {/* New layout: Left = title + description + arrows, Right = featured card. Below = bundle grid. No animation. */}
         {!loading && projects.length > 0 && (
           <>
             {!showAll && (
-            <div 
-              className="project-marquee mb-16"
-              onScroll={(e) => {
-                if (isMobile) {
-                  handleMobileScroll(e.currentTarget);
-                }
-              }}
-              onTouchStart={(e) => {
-                // On mobile touch, ensure animation is stopped
-                if (isMobile) {
-                  const container = e.currentTarget as HTMLDivElement;
-                  const track = container.querySelector('.project-track') as HTMLDivElement | null;
-                  if (track) {
-                    (track as any).isPaused = true;
-                    if ((track as any)._raf) {
-                      cancelAnimationFrame((track as any)._raf);
-                      (track as any)._raf = null;
-                    }
-                    track.style.transform = 'none';
-                    (track as any)._tx = 0;
-                  }
-                }
-              }}
-              onTouchMove={(e) => {
-                // On mobile touch move, keep animation stopped
-                if (isMobile) {
-                  const container = e.currentTarget as HTMLDivElement;
-                  const track = container.querySelector('.project-track') as HTMLDivElement | null;
-                  if (track) {
-                    (track as any).isPaused = true;
-                    if ((track as any)._raf) {
-                      cancelAnimationFrame((track as any)._raf);
-                      (track as any)._raf = null;
-                    }
-                  }
-                }
-              }}
-              onMouseDown={(e) => {
-                // Desktop only - skip on mobile
-                if (isMobile) return;
-              const container = e.currentTarget as HTMLDivElement;
-              const track = container.querySelector('.project-track') as HTMLDivElement | null;
-              if (!track) return;
-
-              // Pause animation while dragging
-              (track as any).isPaused = true;
-              container.classList.add('dragging');
-
-              const startX = e.pageX; const startTx = getTx(track);
-              const onMove = (ev: MouseEvent) => {
-                const currentTx = startTx + (ev.pageX - startX);
-                track.style.transform = `translateX(${currentTx}px)`;
-                (track as any)._tx = currentTx;
-              };
-              const onUp = () => {
-                container.classList.remove('dragging');
-                document.removeEventListener('mousemove', onMove);
-                document.removeEventListener('mouseup', onUp);
-                // Keep paused when mouse remains over container; resume on mouseleave
-                (track as any)._tx = getTx(track);
-                (track as any).isPaused = true;
-              };
-              document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp);
-            }} onMouseEnter={(e) => {
-              // Desktop only
-              if (isMobile) return;
-              const container = e.currentTarget as HTMLDivElement;
-              const track = container.querySelector('.project-track') as HTMLDivElement | null;
-              if (track) {
-                (track as any).isPaused = true;
-              }
-            }} onMouseLeave={(e) => {
-              // Desktop only
-              if (isMobile) return;
-              const container = e.currentTarget as HTMLDivElement;
-              const track = container.querySelector('.project-track') as HTMLDivElement | null;
-              if (track) {
-                (track as any).isPaused = false;
-                if (!(track as any)._raf) {
-                  autoAnimate(track, 1.5);
-                }
-              }
-            }}>
-              <div 
-                className="project-track" 
-                ref={(el) => { 
-                  if (el) {
-                    // Cancel any existing animation first
-                    if ((el as any)._raf) {
-                      cancelAnimationFrame((el as any)._raf);
-                      (el as any)._raf = null;
-                    }
-                    
-                    if (!isMobile) {
-                      // Desktop: Start auto-animation
-                      setTimeout(() => autoAnimate(el, 1.5), 0);
-                    } else {
-                      // Mobile: Stop all animations and use native scroll
-                      (el as any).isPaused = true;
-                      (el as any)._tx = 0;
-                      el.style.transform = 'translateX(0px)';
-                      
-                      // Ensure native scroll works
-                      const container = el.parentElement;
-                      if (container) {
-                        container.scrollLeft = 0;
-                      }
-                    }
-                  }
-                }}
-                style={isMobile ? {
-                  // Mobile: Use flex layout for native scroll, NO transform
-                  display: 'flex',
-                  gap: '1.5rem',
-                  width: 'max-content',
-                  transform: 'none',
-                  willChange: 'auto'
-                } : {
-                  // Desktop: Transform-based animation
-                  touchAction: 'pan-x',
-                  WebkitOverflowScrolling: 'touch',
-                  transform: 'translateZ(0)',
-                  willChange: 'transform'
-                }}
-              >
-              {(projects.length >= 4 ? [...projects, ...projects] : projects).map((project, idx) => (
-                <div 
-                  key={`${project.id}-${idx}`}
-                  className={`project-card project-neon relative group rounded-xl overflow-hidden shadow-lg transform transition-all duration-300 hover:scale-105 ${isDarkMode ? 'bg-gray-800' : 'bg-white'} flex flex-col`}
-                >
-                  {/* Project Thumbnail */}
-                  <div className="relative h-48 overflow-hidden cursor-pointer" onClick={() => openYouTube(project.videoUrl)}>
-                    <img 
-                      src={project.thumbnailUrl} 
-                      alt={project.title}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                    {/* Play Icon Overlay */}
-                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                      <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center">
-                        <svg className="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                        </svg>
-                      </div>
+              <>
+                {/* Top row: Left (title + desc + arrows) | Right (featured card) */}
+                <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 mb-12 items-stretch">
+                  {/* Left: Section name + short description (no buttons; auto-flip only) */}
+                  <div className="lg:w-[42%] flex flex-col justify-center order-2 lg:order-1">
+                    <p className={`text-xs md:text-sm font-semibold uppercase tracking-[0.2em] mb-3 ${isDarkMode ? 'text-cyan-300' : 'text-blue-600'}`}>
+                      Portfolio Showcase
+                    </p>
+                    <h2 className={`text-3xl md:text-4xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
+                      Our <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-cyan-500">Projects</span> Build Real Impact
+                    </h2>
+                    <p className={`text-base md:text-lg leading-relaxed mb-6 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                      Explore production-ready MERN stack projects designed for startups, e-commerce brands, and growing businesses.
+                      Each project combines clean UI, fast performance, and practical features that solve real user problems.
+                      Hover on cards to pause the carousel, review details, and open live video or code instantly.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {['MERN Stack', 'Responsive UI', 'Scalable Architecture', 'Clean Code', 'API Integrations', 'SEO Friendly'].map((item) => (
+                        <span
+                          key={item}
+                          className={`px-3 py-1.5 rounded-full text-xs md:text-sm border ${isDarkMode ? 'bg-cyan-500/10 text-cyan-200 border-cyan-400/30' : 'bg-blue-50 text-blue-700 border-blue-200'}`}
+                        >
+                          {item}
+                        </span>
+                      ))}
                     </div>
                   </div>
-                  
-                  {/* Project Content */}
-                  <div className="p-6 flex flex-col flex-1">
-                    <h3 className={`text-xl font-bold mb-3 line-clamp-1 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
-                      {project.title}
-                    </h3>
-                    <p className={`text-sm leading-relaxed mb-4 line-clamp-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                      {project.description}
-                    </p>
-                  
-                    {/* View Code Button */}
-                    <button 
-                      onClick={() => openGitHub(project.githubUrl)} 
-                    className="w-full preview-btn rounded-lg mt-auto"
-                      aria-label={`View code for ${project.title}`}
+                  {/* Right: Garment-style stacked card carousel */}
+                  <div className="lg:w-[58%] order-1 lg:order-2 flex flex-col items-center">
+                    <div
+                      className="relative w-full flex items-center justify-center"
+                      style={{
+                        height: 'clamp(300px, 60vw, 500px)',
+                        minHeight: '300px',
+                        perspective: '1000px',
+                      }}
+                      onMouseEnter={() => setIsCarouselHovered(true)}
+                      onMouseLeave={() => setIsCarouselHovered(false)}
                     >
-                      View Code
-                    </button>
+                      {totalProjects > 0 && projects.map((project, index) => {
+                        const isActive = index === safeFeaturedIndex;
+                        const isNext = index === (safeFeaturedIndex + 1) % totalProjects;
+                        const isPrev = index === (safeFeaturedIndex - 1 + totalProjects) % totalProjects;
+
+                        let zIndex = totalProjects - Math.abs(index - safeFeaturedIndex);
+                        if (zIndex > totalProjects) zIndex = totalProjects;
+
+                        let translateY = 0;
+                        let rotateY = 0;
+                        let scale = 1;
+                        let opacity = 1;
+
+                        if (isActive) {
+                          translateY = 0;
+                          rotateY = 0;
+                          scale = 1;
+                          opacity = 1;
+                          zIndex = totalProjects + 1;
+                        } else if (isNext) {
+                          translateY = 30;
+                          rotateY = -15;
+                          scale = 0.9;
+                          opacity = 0.7;
+                        } else if (isPrev) {
+                          translateY = -30;
+                          rotateY = 15;
+                          scale = 0.9;
+                          opacity = 0.7;
+                        } else {
+                          translateY = index < safeFeaturedIndex ? -60 : 60;
+                          rotateY = index < safeFeaturedIndex ? 25 : -25;
+                          scale = 0.7;
+                          opacity = 0.4;
+                        }
+
+                        const cardShadow = isActive
+                          ? (isDarkMode
+                              ? '0 25px 60px rgba(0,0,0,0.5)'
+                              : '0px 25px 60px rgba(102, 126, 234, 0.3), 0px 10px 25px rgba(79, 172, 254, 0.25), 0px 0px 0px 1px rgba(102, 126, 234, 0.1)')
+                          : '0 10px 30px rgba(0,0,0,0.2)';
+                        const cardBg = isDarkMode
+                          ? 'linear-gradient(145deg, #1f2937 0%, #111827 100%)'
+                          : 'linear-gradient(145deg, #ffffff 0%, #f0f4ff 100%)';
+                        const cardBorder = isDarkMode ? '2px solid rgba(34, 211, 238, 0.4)' : '2px solid rgba(102, 126, 234, 0.4)';
+
+                        return (
+                          <motion.div
+                            key={project.id}
+                            className="absolute w-full max-w-[360px] flex flex-col"
+                            style={{
+                              width: 'clamp(260px, 65vw, 360px)',
+                              height: 'clamp(300px, 75vw, 420px)',
+                              transformStyle: 'preserve-3d',
+                              zIndex,
+                            }}
+                            initial={false}
+                            animate={{
+                              y: translateY,
+                              rotateY,
+                              scale,
+                              opacity,
+                            }}
+                            transition={{
+                              duration: 0.8,
+                              ease: [0.68, -0.55, 0.265, 1.55],
+                            }}
+                            onClick={() => setFeaturedIndex(index)}
+                          >
+                            <div
+                              style={{
+                                position: 'relative',
+                                width: '100%',
+                                height: '100%',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                borderRadius: '28px',
+                                overflow: 'hidden',
+                                background: cardBg,
+                                boxShadow: cardShadow,
+                                border: cardBorder,
+                                padding: '20px',
+                                transform: isActive ? 'rotate(-5deg)' : 'rotate(0deg)',
+                                transition: 'all 0.8s ease',
+                              }}
+                            >
+                              <div
+                                style={{
+                                  borderRadius: '16px',
+                                  overflow: 'hidden',
+                                  boxShadow: '0px 4px 15px rgba(0,0,0,0.08)',
+                                  width: '100%',
+                                  aspectRatio: '16 / 9',
+                                }}
+                              >
+                                <div
+                                  className="relative w-full h-full cursor-pointer"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openYouTube(project.videoUrl);
+                                  }}
+                                  role="button"
+                                  tabIndex={0}
+                                >
+                                  <img
+                                    src={project.thumbnailUrl}
+                                    alt={project.title}
+                                    className="w-full h-full object-cover block"
+                                    style={{ borderRadius: '14px', objectPosition: 'center top' }}
+                                    loading="lazy"
+                                  />
+                                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-300">
+                                    <div className="w-14 h-14 bg-red-600 rounded-full flex items-center justify-center">
+                                      <svg className="w-7 h-7 text-white ml-0.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" /></svg>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="p-3 pt-4 flex flex-col flex-1 min-h-0">
+                                <h3 className={`text-base font-bold mb-2 line-clamp-1 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{project.title}</h3>
+                                <p className={`text-xs leading-relaxed mb-3 line-clamp-2 flex-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{project.description}</p>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openGitHub(project.githubUrl);
+                                  }}
+                                  className="w-full preview-btn rounded-lg py-2 text-sm mt-auto"
+                                >
+                                  View Code
+                                </button>
+                              </div>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                    {/* Garment-style dots: active wider, rounded */}
+                    {totalProjects > 0 && (
+                      <div className="flex justify-center gap-2 mt-10" style={{ position: 'relative', zIndex: 100 }}>
+                        {Array.from({ length: visibleDotsCount }, (_, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => {
+                              if (totalProjects <= visibleDotsCount) {
+                                setFeaturedIndex(i);
+                                return;
+                              }
+                              const mappedIndex = Math.round((i / (visibleDotsCount - 1)) * (totalProjects - 1));
+                              setFeaturedIndex(mappedIndex);
+                            }}
+                            aria-label={`Project ${i + 1}`}
+                            style={{
+                              width: i === activeDotIndex ? 30 : 10,
+                              height: 10,
+                              borderRadius: 5,
+                              border: 'none',
+                              backgroundColor: i === activeDotIndex ? (isDarkMode ? '#22d3ee' : '#1a1a2e') : (isDarkMode ? 'rgba(255,255,255,0.3)' : '#ccc'),
+                              cursor: 'pointer',
+                              transition: 'all 0.3s ease',
+                            }}
+                          />
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
-              ))}
-              </div>
-            </div>
+              </>
             )}
             {/* Toggle to reveal full list */}
             {projects.length > perPage && !showAll && (
@@ -542,8 +482,8 @@ const Projects: React.FC = () => {
                 <div className="flex items-center justify-center mb-10">
                   <button
                     className="reviews-dot projects-toggle"
-                    aria-label="Back to scrolling marquee"
-                    title="Back to scrolling marquee"
+                    aria-label="Back to projects"
+                    title="Back to projects"
                     onClick={() => { setShowAll(false); setPage(1); }}
                   >
                     ↑

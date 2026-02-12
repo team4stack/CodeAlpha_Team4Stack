@@ -60,23 +60,14 @@ const CoursesNavbar: React.FC = () => {
         )}
         <div className="container-custom px-4 sm:px-6">
           <div className="flex items-center justify-between h-14 sm:h-16">
-            {/* Logo / Brand - Left Side */}
+            {/* Logo – main site jaisa same (no background) */}
             <button
               type="button"
-              className="btn-plain flex items-center space-x-1 sm:space-x-2 group focus:outline-none rounded-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-95 flex-shrink-0"
+              className="btn-plain flex items-center gap-2 sm:gap-3 group focus:outline-none rounded-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-95 flex-shrink-0"
               aria-label="Back to main website"
               onClick={() => router.push('/')}
             >
-              <div
-                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                  isDarkMode ? 'bg-transparent' : 'bg-black'
-                } transition-all duration-300`}
-                style={{
-                  minWidth: '32px',
-                  minHeight: '32px',
-                  padding: isDarkMode ? '0' : '4px',
-                }}
-              >
+              <div className="relative w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center flex-shrink-0">
                 <img
                   src={
                     isDarkMode
@@ -84,13 +75,12 @@ const CoursesNavbar: React.FC = () => {
                       : `/Team4StackLogo.svg`
                   }
                   alt="Team4Stack Logo"
-                  className="rounded-lg shadow-sm group-hover:shadow-md transition-all duration-300 object-contain"
-                  style={{ width: '100%', height: '100%', display: 'block' }}
+                  className="w-full h-full object-contain rounded-lg shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md"
                   loading="eager"
                 />
               </div>
               <span
-                className={`text-base sm:text-xl font-display font-bold transition-all duration-300 hidden sm:inline ${
+                className={`text-lg sm:text-xl font-bold tracking-tight transition-all duration-300 hidden sm:inline ${
                   isScrolled
                     ? (isDarkMode ? 'text-white' : 'text-black')
                     : 'text-white group-hover:text-orange-300'
