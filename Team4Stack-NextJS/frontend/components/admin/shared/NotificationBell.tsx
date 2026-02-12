@@ -278,7 +278,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ onClick }) => {
   }
 
   return (
-    <div className="relative" style={{ zIndex: 1000 }}>
+    <div className="relative inline-flex flex-shrink-0 overflow-visible" style={{ zIndex: 1000 }}>
       <button
         ref={buttonRef}
         onClick={handleBellClick}
@@ -286,12 +286,20 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ onClick }) => {
         title="Notifications"
       >
         <FiBell className="w-5 h-5 group-hover:scale-110 transition-transform" />
-        {notificationCount > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-[20px] h-5 flex items-center justify-center px-1.5 rounded-full bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold shadow-lg shadow-red-500/50 border-2 border-white dark:border-gray-900 animate-pulse">
-            {notificationCount > 99 ? '99+' : notificationCount}
-          </span>
-        )}
       </button>
+      {/* Badge: thora aur andar – zyada hissa button ke under */}
+      {notificationCount > 0 && (
+        <span
+          className="absolute min-w-[20px] h-5 flex items-center justify-center px-1.5 rounded-full bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold shadow-lg shadow-red-500/50 border-2 border-white dark:border-gray-900 animate-pulse pointer-events-none"
+          style={{
+            top: 0,
+            right: 0,
+            transform: 'translate(40%, -40%)',
+          }}
+        >
+          {notificationCount > 99 ? '99+' : notificationCount}
+        </span>
+      )}
 
       {/* Notification Popup */}
       {showPopup && (

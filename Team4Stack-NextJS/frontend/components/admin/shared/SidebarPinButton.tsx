@@ -9,6 +9,8 @@ interface SidebarPinButtonProps {
   isSidebarHovered: boolean
   dashboardLinkRef: React.RefObject<HTMLAnchorElement | null>
   sidebarWidth: number // 80 for collapsed, 256 for expanded
+  /** When set, pin button is positioned in this fixed top section (center) so it never scrolls away */
+  topSectionRef?: React.RefObject<HTMLDivElement | null>
 }
 
 const SidebarPinButton: React.FC<SidebarPinButtonProps> = ({
@@ -16,72 +18,135 @@ const SidebarPinButton: React.FC<SidebarPinButtonProps> = ({
   setIsCollapsed,
   isSidebarHovered,
   dashboardLinkRef,
-  sidebarWidth
+  sidebarWidth,
+  topSectionRef
 }) => {
   const [top, setTop] = useState<number>(0)
   const [left, setLeft] = useState<number>(0)
 
   useEffect(() => {
     const updatePosition = () => {
-      if (dashboardLinkRef.current) {
+      try {
+        const width = sidebarWidth ?? 256
+
+        // Prefer fixed top section: pin button stays at top, never scrolls away
+        if (topSectionRef?.current) {
+          const sidebarElement = topSectionRef.current.closest('aside')
+          if (!sidebarElement) return
+          let sidebarRect: DOMRect | null = null
+          let sectionRect: DOMRect | null = null
+          try {
+            sidebarRect = sidebarElement.getBoundingClientRect()
+            sectionRect = topSectionRef.current.getBoundingClientRect()
+          } catch (e) {
+            setTop(28)
+            setLeft(width)
+            return
+          }
+          if (!sidebarRect?.width || !sectionRect?.height) return
+          const buttonTop = sectionRect.height / 2 // center of top section
+          setTop(buttonTop)
+          setLeft(sidebarRect.width)
+          return
+        }
+
+        // Fallback when ref not yet attached (e.g. first paint): position at top-right of sidebar
+        if (!dashboardLinkRef?.current) {
+          setTop(40)
+          setLeft(width)
+          return
+        }
+
         // Find sidebar element (button is now inside sidebar)
         const sidebarElement = dashboardLinkRef.current.closest('aside')
-        
+
         if (!sidebarElement) return
-        
-        // Get positions relative to sidebar
-        const sidebarRect = sidebarElement.getBoundingClientRect()
-        const linkRect = dashboardLinkRef.current.getBoundingClientRect()
-        
-        // Calculate positions relative to sidebar (not viewport)
-        // Top: Dashboard link ke top se thoda upar (navbar ke kareeb)
-        // Dashboard link is the first link at the top
-        // Using link top instead of center to position it higher
+
+        // Get positions relative to sidebar with error handling
+        let sidebarRect: DOMRect | null = null
+        let linkRect: DOMRect | null = null
+
+        try {
+          sidebarRect = sidebarElement.getBoundingClientRect()
+          linkRect = dashboardLinkRef.current.getBoundingClientRect()
+        } catch (error) {
+          console.warn('SidebarPinButton: Failed to get bounding rect', error)
+          return
+        }
+
+        if (!sidebarRect || !linkRect || !sidebarRect.width || !sidebarRect.height) {
+          return
+        }
+
         const linkTopRelative = linkRect.top - sidebarRect.top
-        const buttonTop = linkTopRelative - 5 // -5px from link top (aur upar)
-        setTop(Math.max(buttonTop, 15)) // Minimum 15px from top to avoid going too high
-        
-        // Left: sidebar's right edge relative to sidebar itself
-        // Button center should be exactly at sidebar's right edge
-        // Since button is inside sidebar and absolutely positioned with translate(-50%, -50%),
-        // left = sidebar width positions button center at right edge
-        // This ensures button stays fixed at sidebar edge during expand/collapse
-        // Button is positioned outside nav area so it doesn't disturb tabs
-        const buttonLeft = sidebarRect.width
-        setLeft(buttonLeft)
+        const buttonTop = linkTopRelative - 5
+        setTop(Math.max(buttonTop, 15))
+        setLeft(sidebarRect.width || 0)
+      } catch (error) {
+        console.warn('SidebarPinButton: Error updating position', error)
       }
     }
 
     // Use requestAnimationFrame to ensure DOM is updated
     const rafUpdate = () => {
-      requestAnimationFrame(() => {
-        updatePosition()
-      })
+      try {
+        if (typeof requestAnimationFrame !== 'undefined') {
+          requestAnimationFrame(() => {
+            updatePosition()
+          })
+        } else {
+          // Fallback if requestAnimationFrame is not available
+          updatePosition()
+        }
+      } catch (error) {
+        console.warn('SidebarPinButton: Error in rafUpdate', error)
+      }
     }
 
     // Initial calculation
     rafUpdate()
 
-    // Update on resize and scroll
-    window.addEventListener('resize', rafUpdate)
-    window.addEventListener('scroll', rafUpdate)
+    // Update on resize and scroll (with safety checks)
+    let timeout: NodeJS.Timeout | null = null
+    let interval: NodeJS.Timeout | null = null
+    let clearIntervalTimeout: NodeJS.Timeout | null = null
 
-    // Small delay to ensure DOM is ready
-    const timeout = setTimeout(rafUpdate, 100)
-    
-    // Update when sidebar state changes (with smooth transition)
-    // More frequent updates during transition to keep button fixed at edge
-    const interval = setInterval(rafUpdate, 30)
-    const clearIntervalTimeout = setTimeout(() => clearInterval(interval), 600)
+    try {
+      if (typeof window !== 'undefined') {
+        window.addEventListener('resize', rafUpdate)
+        window.addEventListener('scroll', rafUpdate)
+      }
+
+      // Small delay to ensure DOM is ready
+      timeout = setTimeout(rafUpdate, 100)
+
+      // Update when sidebar state changes (with smooth transition)
+      // More frequent updates during transition to keep button fixed at edge
+      interval = setInterval(rafUpdate, 30)
+      clearIntervalTimeout = setTimeout(() => {
+        if (interval) {
+          clearInterval(interval)
+          interval = null
+        }
+      }, 600)
+    } catch (error) {
+      console.warn('SidebarPinButton: Error setting up listeners', error)
+    }
 
     return () => {
-      window.removeEventListener('resize', rafUpdate)
-      window.removeEventListener('scroll', rafUpdate)
-      clearTimeout(timeout)
-      clearTimeout(clearIntervalTimeout)
-      clearInterval(interval)
+      try {
+        if (typeof window !== 'undefined') {
+          window.removeEventListener('resize', rafUpdate)
+          window.removeEventListener('scroll', rafUpdate)
+        }
+        if (timeout) clearTimeout(timeout)
+        if (clearIntervalTimeout) clearTimeout(clearIntervalTimeout)
+        if (interval) clearInterval(interval)
+      } catch (error) {
+        console.warn('SidebarPinButton: Error cleaning up listeners', error)
+      }
     }
-  }, [isCollapsed, dashboardLinkRef, sidebarWidth])
+  }, [isCollapsed, dashboardLinkRef, sidebarWidth, topSectionRef])
 
   // Always render button but hide it when not hovered to prevent layout shift
   // This ensures button doesn't take space when appearing/disappearing

@@ -4,14 +4,14 @@ import React, { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { landingApi } from '@/lib/api'
-import { 
-  FiLayout, 
-  FiLock, 
-  FiUsers, 
-  FiShield, 
-  FiSettings, 
-  FiFileText, 
-  FiBook, 
+import {
+  FiLayout,
+  FiLock,
+  FiUsers,
+  FiShield,
+  FiSettings,
+  FiFileText,
+  FiBook,
   FiGrid,
   FiLogOut
 } from 'react-icons/fi'
@@ -19,22 +19,24 @@ import SidebarPinButton from '@/components/admin/shared/SidebarPinButton'
 
 const SuperAdminSidebar: React.FC = () => {
   const pathname = usePathname()
-  const [labels, setLabels] = useState<Record<string,string>>({})
+  const [labels, setLabels] = useState<Record<string, string>>({})
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [hoveredLink, setHoveredLink] = useState<string | null>(null)
   const [tooltipPosition, setTooltipPosition] = useState<{ top: number; left: number } | null>(null)
   const [isSidebarHovered, setIsSidebarHovered] = useState(false)
+
   const linkRefs = useRef<Record<string, HTMLAnchorElement | null>>({})
   const dashboardLinkRef = useRef<HTMLAnchorElement | null>(null)
+  const topSectionRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     const load = async () => {
       try {
         const result = await landingApi.getSiteSettings([
-          'tab_label_hero','tab_label_dashboard','tab_label_projects','tab_label_services','tab_label_reviews','tab_label_courses','tab_label_team','tab_label_mentor','tab_label_contact','tab_label_footer','tab_label_support','tab_label_stackstore','tab_label_settings'
+          'tab_label_hero', 'tab_label_dashboard', 'tab_label_projects', 'tab_label_services', 'tab_label_reviews', 'tab_label_courses', 'tab_label_team', 'tab_label_mentor', 'tab_label_contact', 'tab_label_footer', 'tab_label_support', 'tab_label_stackstore', 'tab_label_settings'
         ])
         if (result.data && Array.isArray(result.data)) {
-          const map: Record<string,string> = {}
+          const map: Record<string, string> = {}
           result.data.forEach((r: any) => { map[r.key] = r.value })
           setLabels(map)
         }
@@ -81,150 +83,151 @@ const SuperAdminSidebar: React.FC = () => {
   }
 
   return (
-    <div 
-      className="relative h-full flex overflow-visible"
+    <div
+      className="relative h-full flex overflow-visible w-fit min-w-0"
       onMouseEnter={() => setIsSidebarHovered(true)}
       onMouseLeave={() => setIsSidebarHovered(false)}
     >
-      <aside 
-        className={`${isCollapsed ? 'w-20' : 'w-64'} bg-black/40 backdrop-blur-2xl border-r border-cyan-500/20 flex flex-col relative shadow-2xl shadow-cyan-500/10 transition-all duration-300 ease-in-out h-full`}
+      <aside
+        className={`${isCollapsed ? 'w-20' : 'w-64'} bg-black/40 backdrop-blur-2xl border-r border-cyan-500/20 flex flex-col relative shadow-2xl shadow-cyan-500/10 transition-all duration-300 ease-in-out h-full overflow-hidden`}
       >
         {/* Dark Glassmorphism Background */}
         <div className="absolute inset-0 bg-gradient-to-b from-slate-900/90 via-black/80 to-slate-900/90"></div>
-        
+
         {/* Subtle Neon Accents */}
         <div className="pointer-events-none absolute inset-0 opacity-20 [background:radial-gradient(200px_100px_at_20%_10%,rgba(6,182,212,0.4)_0,transparent_60%),radial-gradient(250px_120px_at_80%_30%,rgba(249,115,22,0.3)_0,transparent_60%)]"></div>
-        
+
         {/* Glowing Border Effect */}
         <div className="absolute right-0 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-cyan-500/50 to-transparent"></div>
-      
-        {/* Pin/Toggle Button - Inside Sidebar (at top) */}
+
+        {/* Fixed top section: Pin button only – no scroll, always visible */}
+        <div ref={topSectionRef} className="flex-shrink-0 h-8 relative z-10" aria-hidden />
+
         <SidebarPinButton
           isCollapsed={isCollapsed}
           setIsCollapsed={setIsCollapsed}
           isSidebarHovered={isSidebarHovered}
           dashboardLinkRef={dashboardLinkRef}
           sidebarWidth={isCollapsed ? 80 : 256}
+          topSectionRef={topSectionRef}
         />
 
-      <div className="flex-1 p-4 relative z-10">
-        <nav>
-          <ul className="space-y-2">
-            {links.map((link, index) => {
-              const isActive = pathname === link.to || (link.to !== '/supadmin' && pathname?.startsWith(link.to))
-              const isDashboard = link.to === '/supadmin'
-              const IconComponent = link.icon
-              const isHovered = hoveredLink === link.to
-              return (
-                <li key={link.to} className="relative">
-                  <Link
-                    ref={(el) => { 
-                      linkRefs.current[link.to] = el
-                      if (isDashboard) {
-                        dashboardLinkRef.current = el
-                      }
-                    }}
-                    href={link.to}
-                    className={`flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-4'} py-3 rounded-xl text-sm font-medium transition-all duration-300 relative group overflow-visible ${
-                      isActive
+        {/* Scrollable area: nav + logout only */}
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-visible p-4 relative z-10 admin-custom-scrollbar">
+          <nav>
+            <ul className="space-y-2">
+              {links.map((link, index) => {
+                const isActive = pathname === link.to || (link.to !== '/supadmin' && pathname?.startsWith(link.to))
+                const isDashboard = link.to === '/supadmin'
+                const IconComponent = link.icon
+                const isHovered = hoveredLink === link.to
+                return (
+                  <li key={link.to} className="relative">
+                    <Link
+                      ref={(el) => {
+                        linkRefs.current[link.to] = el
+                        if (isDashboard) {
+                          dashboardLinkRef.current = el
+                        }
+                      }}
+                      href={link.to}
+                      className={`flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-4'} py-3 rounded-xl text-sm font-medium transition-all duration-300 relative group overflow-visible ${isActive
                         ? 'bg-gradient-to-r from-cyan-500/20 to-orange-500/20 text-white shadow-lg shadow-cyan-500/30 border border-cyan-400/40'
                         : 'text-white/70 hover:text-white hover:bg-white/5 border border-transparent'
-                    }`}
-                    onMouseEnter={(e) => handleLinkMouseEnter(link.to, e)}
-                    onMouseLeave={handleLinkMouseLeave}
-                  >
-                    {/* Active Glow Effect */}
-                    {isActive && (
-                      <>
-                        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-orange-500/10 opacity-50"></div>
-                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-cyan-400 to-orange-400 shadow-[0_0_10px_rgba(6,182,212,0.8)]"></div>
-                      </>
-                    )}
-                    
-                    {/* Icon with Glow */}
-                    <IconComponent 
-                      className={`${isCollapsed ? 'w-5 h-5' : 'w-5 h-5'} transition-all duration-300 relative z-10 ${
-                        isActive 
-                          ? 'scale-110 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]' 
+                        }`}
+                      onMouseEnter={(e) => handleLinkMouseEnter(link.to, e)}
+                      onMouseLeave={handleLinkMouseLeave}
+                    >
+                      {/* Active Glow Effect */}
+                      {isActive && (
+                        <>
+                          <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-orange-500/10 opacity-50"></div>
+                          <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-cyan-400 to-orange-400 shadow-[0_0_10px_rgba(6,182,212,0.8)]"></div>
+                        </>
+                      )}
+
+                      {/* Icon with Glow */}
+                      <IconComponent
+                        className={`${isCollapsed ? 'w-5 h-5' : 'w-5 h-5'} transition-all duration-300 relative z-10 ${isActive
+                          ? 'scale-110 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]'
                           : 'group-hover:scale-110 group-hover:drop-shadow-[0_0_8px_rgba(249,115,22,0.6)]'
-                      }`}
-                    />
-                    
-                    {!isCollapsed && (
-                      <>
-                        <span className="flex-1 relative z-10">{link.label}</span>
-                        
-                        {/* Super Admin Badge */}
-                        {link.isSuper && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-gradient-to-r from-cyan-500/30 to-orange-500/30 text-cyan-300 font-bold backdrop-blur-sm border border-cyan-400/40 shadow-[0_0_8px_rgba(6,182,212,0.4)]">SUPER</span>
-                        )}
-                      </>
-                    )}
-                    
-                    {/* Active Indicator */}
-                    {isActive && !isCollapsed && (
-                      <div className={`absolute right-3 w-2 h-2 rounded-full animate-pulse ${isDashboard ? 'bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,1)]' : 'bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,1)]'}`}></div>
-                    )}
-                    
-                    {/* Hover Glow */}
-                    {!isActive && (
-                      <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/0 via-orange-500/0 to-cyan-500/0 group-hover:from-cyan-500/5 group-hover:via-orange-500/5 group-hover:to-cyan-500/5 transition-all duration-300"></div>
-                    )}
-                  </Link>
+                          }`}
+                      />
 
-                </li>
-              )
-            })}
-          </ul>
-        </nav>
-      </div>
-      
-      {/* Logout Button at Bottom */}
-      <div className="mt-auto px-4 pt-4 pb-4 border-t border-cyan-500/20 relative z-10 flex-shrink-0">
-        <div className="relative">
-          <button 
-            onClick={handleLogout} 
-            className={`w-full ${isCollapsed ? 'px-2 justify-center' : 'px-4'} py-3 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 backdrop-blur-md text-white border border-red-500/30 hover:border-red-400/50 hover:shadow-[0_0_20px_rgba(239,68,68,0.4)] transition-all duration-300 relative overflow-hidden group font-medium text-sm flex items-center justify-center gap-2`}
-            onMouseEnter={(e) => {
-              if (isCollapsed) {
-                const rect = e.currentTarget.getBoundingClientRect()
-                setTooltipPosition({
-                  top: rect.top + rect.height / 2,
-                  left: rect.right + 8
-                })
-              }
-              setHoveredLink('logout')
-            }}
-            onMouseLeave={handleLinkMouseLeave}
-          >
-            <FiLogOut className="w-5 h-5" />
-            {!isCollapsed && <span>Logout</span>}
-          </button>
+                      {!isCollapsed && (
+                        <>
+                          <span className="flex-1 relative z-10">{link.label}</span>
 
-          {/* Logout Tooltip */}
-          {isCollapsed && hoveredLink === 'logout' && (
-            <div 
-              className="absolute left-full ml-2 top-1/2 -translate-y-1/2 z-[9999] px-3 py-2 rounded-lg bg-black/90 backdrop-blur-md text-white text-sm font-medium whitespace-nowrap shadow-xl border border-red-500/30 pointer-events-auto"
-              onMouseEnter={() => setHoveredLink('logout')}
-              onMouseLeave={() => setHoveredLink(null)}
+                          {/* Super Admin Badge */}
+                          {link.isSuper && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-gradient-to-r from-cyan-500/30 to-orange-500/30 text-cyan-300 font-bold backdrop-blur-sm border border-cyan-400/40 shadow-[0_0_8px_rgba(6,182,212,0.4)]">SUPER</span>
+                          )}
+                        </>
+                      )}
+
+                      {/* Active Indicator */}
+                      {isActive && !isCollapsed && (
+                        <div className={`absolute right-3 w-2 h-2 rounded-full animate-pulse ${isDashboard ? 'bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,1)]' : 'bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,1)]'}`}></div>
+                      )}
+
+                      {/* Hover Glow */}
+                      {!isActive && (
+                        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/0 via-orange-500/0 to-cyan-500/0 group-hover:from-cyan-500/5 group-hover:via-orange-500/5 group-hover:to-cyan-500/5 transition-all duration-300"></div>
+                      )}
+                    </Link>
+
+                  </li>
+                )
+              })}
+            </ul>
+          </nav>
+
+          {/* Logout Button at Bottom (inside scroll area) */}
+          <div className="mt-auto pt-4 pb-4 border-t border-cyan-500/20 flex-shrink-0">
+          <div className="relative">
+            <button
+              onClick={handleLogout}
+              className={`w-full ${isCollapsed ? 'px-2 justify-center' : 'px-4'} py-3 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 backdrop-blur-md text-white border border-red-500/30 hover:border-red-400/50 hover:shadow-[0_0_20px_rgba(239,68,68,0.4)] transition-all duration-300 relative overflow-hidden group font-medium text-sm flex items-center justify-center gap-2`}
+              onMouseEnter={(e) => {
+                if (isCollapsed) {
+                  const rect = e.currentTarget.getBoundingClientRect()
+                  setTooltipPosition({
+                    top: rect.top + rect.height / 2,
+                    left: rect.right + 8
+                  })
+                }
+                setHoveredLink('logout')
+              }}
+              onMouseLeave={handleLinkMouseLeave}
             >
-              <button
-                onClick={handleLogout}
-                className="block hover:text-red-400 transition-colors w-full text-left"
+              <FiLogOut className="w-5 h-5" />
+              {!isCollapsed && <span>Logout</span>}
+            </button>
+
+            {/* Logout Tooltip */}
+            {isCollapsed && hoveredLink === 'logout' && (
+              <div
+                className="absolute left-full ml-2 top-1/2 -translate-y-1/2 z-[9999] px-3 py-2 rounded-lg bg-black/90 backdrop-blur-md text-white text-sm font-medium whitespace-nowrap shadow-xl border border-red-500/30 pointer-events-auto"
+                onMouseEnter={() => setHoveredLink('logout')}
+                onMouseLeave={() => setHoveredLink(null)}
               >
-                Logout
-              </button>
-              {/* Arrow pointing to button */}
-              <div className="absolute right-full top-1/2 -translate-y-1/2 w-0 h-0 border-t-4 border-t-transparent border-b-4 border-b-transparent border-r-4 border-r-black/90"></div>
-            </div>
-          )}
+                <button
+                  onClick={handleLogout}
+                  className="block hover:text-red-400 transition-colors w-full text-left"
+                >
+                  Logout
+                </button>
+                <div className="absolute right-full top-1/2 -translate-y-1/2 w-0 h-0 border-t-4 border-t-transparent border-b-4 border-b-transparent border-r-4 border-r-black/90"></div>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+        </div>
       </aside>
 
       {/* Tooltip - Fixed Position Outside Sidebar */}
       {isCollapsed && hoveredLink && tooltipPosition && (
-        <div 
+        <div
           className="fixed z-[9999] px-3 py-2 rounded-lg bg-black/90 backdrop-blur-md text-white text-sm font-medium whitespace-nowrap shadow-xl border border-cyan-500/30 pointer-events-auto"
           style={{
             left: `${tooltipPosition.left}px`,

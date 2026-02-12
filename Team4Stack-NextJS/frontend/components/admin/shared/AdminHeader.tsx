@@ -45,7 +45,7 @@ const AdminHeader: React.FC = () => {
   }
 
   return (
-    <header className="sticky top-0 z-20 flex-shrink-0 overflow-x-hidden overflow-y-hidden relative">
+    <header className="sticky top-0 z-20 flex-shrink-0 overflow-visible relative">
       {/* Static Gradient Background - No Animation */}
       <div className="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900"></div>
       

@@ -127,7 +127,7 @@ const LandingAdminLayout: React.FC<LandingAdminLayoutProps> = ({ children }) => 
   }
 
   return (
-    <div className="h-screen flex flex-col bg-[#0a0a0f] overflow-hidden">
+    <div className="h-screen flex flex-col bg-[#0a0a0f] overflow-x-visible overflow-y-hidden">
       {/* Dark Background with Subtle Accents */}
       <div className="pointer-events-none fixed inset-0 bg-gradient-to-br from-black via-slate-950 to-black"></div>
       
@@ -137,28 +137,25 @@ const LandingAdminLayout: React.FC<LandingAdminLayoutProps> = ({ children }) => 
       {/* Ambient Glow Effects */}
       <div className="pointer-events-none fixed inset-0 opacity-20 [background:radial-gradient(circle_at_20%_20%,rgba(6,182,212,0.15)_0,transparent_50%),radial-gradient(circle_at_80%_30%,rgba(249,115,22,0.1)_0,transparent_50%),radial-gradient(circle_at_50%_80%,rgba(6,182,212,0.08)_0,transparent_50%)]"></div>
       
-      {/* Navbar - Fixed at Top */}
+      {/* Header - Fixed at top, height matches --admin-header-height (80px) */}
       <div className="fixed top-0 left-0 right-0 z-20">
         <AdminHeader />
       </div>
       
-      {/* Scrollable Container - Sidebar, Content, and Footer scroll together */}
-      <div className="flex-1 relative z-10 overflow-y-auto overflow-x-hidden admin-custom-scrollbar" style={{ marginTop: '80px', height: 'calc(100vh - 80px)' }}>
-        <div className="flex items-stretch">
-          {/* Sidebar - Scrolls with content, extends to top of footer */}
-          <div className="flex-shrink-0">
+      {/* Body: sidebar + content row, then footer full width (sidebar connects to footer top) */}
+      <div className="flex-1 flex flex-col min-h-0 relative z-10" style={{ paddingTop: 'var(--admin-header-height, 80px)' }}>
+        {/* Row: sidebar (width from component: 80px collapsed / 256px expanded) + content (flex-1 fills remaining space) */}
+        <div className="flex-1 flex min-h-0 min-w-0">
+          <aside className="flex-shrink-0 h-full overflow-hidden overflow-x-visible border-r border-white/5">
             <AdminSidebar />
-          </div>
-          
-          {/* Main Content Area */}
-          <div className="flex-1 flex flex-col">
-            <main className="flex-1 p-4 sm:p-6 text-white/90">
+          </aside>
+          <div className="flex-1 min-w-0 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden admin-custom-scrollbar">
+            <main className="flex-1 min-h-full p-4 sm:p-6 text-white/90">
               {children}
             </main>
           </div>
         </div>
-        
-        {/* Footer - Full Width at bottom of scrollable content (like navbar), below sidebar and content */}
+        {/* Footer - full width below sidebar & content, sidebar connects at footer top */}
         <div className="w-full flex-shrink-0">
           <AdminFooter />
         </div>
