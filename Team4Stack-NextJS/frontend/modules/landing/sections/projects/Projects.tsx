@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useTheme } from '@/contexts/ThemeContext';
 import { ProjectData, fetchYouTubeVideoData } from '@/lib/utils/youtube';
@@ -18,6 +18,9 @@ const Projects: React.FC = () => {
   const perPage = 6;
   const [featuredIndex, setFeaturedIndex] = useState(0);
   const [isCarouselHovered, setIsCarouselHovered] = useState(false);
+  const [isMobileView, setIsMobileView] = useState(false);
+  const touchStartXRef = useRef<number | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
   const [debugInfo, setDebugInfo] = useState<{apiKeyStatus: string, error?: string} | null>(null);
 
   // Extract a YouTube video ID from either a plain ID or a full URL
@@ -117,6 +120,13 @@ const Projects: React.FC = () => {
     // If needed, implement polling or WebSocket from backend in the future
   }, []);
 
+  useEffect(() => {
+    const updateViewport = () => setIsMobileView(window.innerWidth < 768);
+    updateViewport();
+    window.addEventListener('resize', updateViewport);
+    return () => window.removeEventListener('resize', updateViewport);
+  }, []);
+
   // additional projects are merged during load; no toggle needed
 
   const openGitHub = (url: string) => {
@@ -142,6 +152,36 @@ const Projects: React.FC = () => {
   const goNext = () => {
     if (totalProjects === 0) return;
     setFeaturedIndex((prev) => (prev + 1) % totalProjects);
+  };
+
+  const handleCarouselTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    const touch = e.touches[0];
+    if (!touch) return;
+    touchStartXRef.current = touch.clientX;
+    touchStartYRef.current = touch.clientY;
+    setIsCarouselHovered(true);
+  };
+
+  const handleCarouselTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+    const startX = touchStartXRef.current;
+    const startY = touchStartYRef.current;
+    const touch = e.changedTouches[0];
+
+    touchStartXRef.current = null;
+    touchStartYRef.current = null;
+    setIsCarouselHovered(false);
+
+    if (startX === null || startY === null || !touch || totalProjects <= 1) return;
+
+    const deltaX = touch.clientX - startX;
+    const deltaY = touch.clientY - startY;
+    const swipeThreshold = 40;
+
+    // Only react to clear horizontal swipes, keep vertical scrolling intact.
+    if (Math.abs(deltaX) > swipeThreshold && Math.abs(deltaX) > Math.abs(deltaY)) {
+      if (deltaX < 0) goNext();
+      else goPrev();
+    }
   };
 
   // Auto-flip: cycle to next card (garment-style carousel)
@@ -220,7 +260,7 @@ const Projects: React.FC = () => {
                 {/* Top row: Left (title + desc + arrows) | Right (featured card) */}
                 <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 mb-12 items-stretch">
                   {/* Left: Section name + short description (no buttons; auto-flip only) */}
-                  <div className="lg:w-[42%] flex flex-col justify-center order-2 lg:order-1">
+                  <div className="lg:w-[42%] flex flex-col justify-center order-1 lg:order-1">
                     <p className={`text-xs md:text-sm font-semibold uppercase tracking-[0.2em] mb-3 ${isDarkMode ? 'text-cyan-300' : 'text-blue-600'}`}>
                       Portfolio Showcase
                     </p>
@@ -244,16 +284,23 @@ const Projects: React.FC = () => {
                     </div>
                   </div>
                   {/* Right: Garment-style stacked card carousel */}
-                  <div className="lg:w-[58%] order-1 lg:order-2 flex flex-col items-center">
+                  <div className="lg:w-[58%] order-2 lg:order-2 flex flex-col items-center pt-3 lg:pt-0">
                     <div
                       className="relative w-full flex items-center justify-center"
                       style={{
                         height: 'clamp(300px, 60vw, 500px)',
                         minHeight: '300px',
-                        perspective: '1000px',
+                        touchAction: 'pan-y',
                       }}
                       onMouseEnter={() => setIsCarouselHovered(true)}
                       onMouseLeave={() => setIsCarouselHovered(false)}
+                      onTouchStart={handleCarouselTouchStart}
+                      onTouchEnd={handleCarouselTouchEnd}
+                      onTouchCancel={() => {
+                        touchStartXRef.current = null;
+                        touchStartYRef.current = null;
+                        setIsCarouselHovered(false);
+                      }}
                     >
                       {totalProjects > 0 && projects.map((project, index) => {
                         const isActive = index === safeFeaturedIndex;
@@ -264,31 +311,31 @@ const Projects: React.FC = () => {
                         if (zIndex > totalProjects) zIndex = totalProjects;
 
                         let translateY = 0;
-                        let rotateY = 0;
                         let scale = 1;
                         let opacity = 1;
+                        let cardTilt = 0;
 
                         if (isActive) {
                           translateY = 0;
-                          rotateY = 0;
                           scale = 1;
                           opacity = 1;
+                          cardTilt = isMobileView ? -4 : -4;
                           zIndex = totalProjects + 1;
                         } else if (isNext) {
-                          translateY = 30;
-                          rotateY = -15;
-                          scale = 0.9;
+                          translateY = isMobileView ? 20 : 30;
+                          scale = isMobileView ? 0.95 : 0.92;
                           opacity = 0.7;
+                          cardTilt = isMobileView ? -2 : -2;
                         } else if (isPrev) {
-                          translateY = -30;
-                          rotateY = 15;
-                          scale = 0.9;
+                          translateY = isMobileView ? -20 : -30;
+                          scale = isMobileView ? 0.95 : 0.92;
                           opacity = 0.7;
+                          cardTilt = isMobileView ? 2 : 2;
                         } else {
-                          translateY = index < safeFeaturedIndex ? -60 : 60;
-                          rotateY = index < safeFeaturedIndex ? 25 : -25;
-                          scale = 0.7;
+                          translateY = index < safeFeaturedIndex ? (isMobileView ? -35 : -60) : (isMobileView ? 35 : 60);
+                          scale = isMobileView ? 0.86 : 0.8;
                           opacity = 0.4;
+                          cardTilt = index < safeFeaturedIndex ? 3 : -3;
                         }
 
                         const cardShadow = isActive
@@ -299,7 +346,12 @@ const Projects: React.FC = () => {
                         const cardBg = isDarkMode
                           ? 'linear-gradient(145deg, #1f2937 0%, #111827 100%)'
                           : 'linear-gradient(145deg, #ffffff 0%, #f0f4ff 100%)';
-                        const cardBorder = isDarkMode ? '2px solid rgba(34, 211, 238, 0.4)' : '2px solid rgba(102, 126, 234, 0.4)';
+                        const cardBorderColor = isDarkMode
+                          ? 'rgba(34, 211, 238, 0.42)'
+                          : 'rgba(102, 126, 234, 0.38)';
+                        const cardGlow = isDarkMode
+                          ? '0 0 0 1px rgba(34, 211, 238, 0.14)'
+                          : '0 0 0 1px rgba(102, 126, 234, 0.12)';
 
                         return (
                           <motion.div
@@ -308,13 +360,12 @@ const Projects: React.FC = () => {
                             style={{
                               width: 'clamp(260px, 65vw, 360px)',
                               height: 'clamp(300px, 75vw, 420px)',
-                              transformStyle: 'preserve-3d',
                               zIndex,
+                              willChange: 'transform, opacity',
                             }}
                             initial={false}
                             animate={{
                               y: translateY,
-                              rotateY,
                               scale,
                               opacity,
                             }}
@@ -334,10 +385,10 @@ const Projects: React.FC = () => {
                                 borderRadius: '28px',
                                 overflow: 'hidden',
                                 background: cardBg,
-                                boxShadow: cardShadow,
-                                border: cardBorder,
+                                boxShadow: `${cardShadow}, ${cardGlow}`,
+                                border: `1.5px solid ${cardBorderColor}`,
                                 padding: '20px',
-                                transform: isActive ? 'rotate(-5deg)' : 'rotate(0deg)',
+                                transform: `rotate(${cardTilt}deg)`,
                                 transition: 'all 0.8s ease',
                               }}
                             >
@@ -409,8 +460,17 @@ const Projects: React.FC = () => {
                             }}
                             aria-label={`Project ${i + 1}`}
                             style={{
-                              width: i === activeDotIndex ? 30 : 10,
+                              width: 10,
                               height: 10,
+                              minWidth: 10,
+                              minHeight: 10,
+                              padding: 0,
+                              margin: 0,
+                              flex: '0 0 10px',
+                              appearance: 'none',
+                              WebkitAppearance: 'none',
+                              lineHeight: 0,
+                              display: 'block',
                               borderRadius: 5,
                               border: 'none',
                               backgroundColor: i === activeDotIndex ? (isDarkMode ? '#22d3ee' : '#1a1a2e') : (isDarkMode ? 'rgba(255,255,255,0.3)' : '#ccc'),
