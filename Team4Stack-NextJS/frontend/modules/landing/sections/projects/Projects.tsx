@@ -167,13 +167,30 @@ const Projects: React.FC = () => {
   };
 
   return (
-    <section id="projects" className={`section-padding ${isDarkMode ? 'bg-gradient-to-b from-gray-900 to-black' : 'bg-white'}`}>
+    <section
+      id="projects"
+      className={`section-padding relative overflow-hidden ${
+        isDarkMode
+          ? 'bg-gradient-to-b from-black via-gray-900 to-black'
+          : 'bg-gradient-to-b from-gray-50 via-white to-gray-50'
+      }`}
+    >
       {/* Structured Data */}
       <script type="application/ld+json">
         {JSON.stringify(projectsStructuredData)}
       </script>
+
+      {/* Courses-hero inspired background effects */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className={`absolute top-1/4 left-1/4 w-48 h-48 md:w-96 md:h-96 rounded-full blur-3xl opacity-20 ${
+          isDarkMode ? 'bg-purple-500' : 'bg-purple-200'
+        }`}></div>
+        <div className={`absolute bottom-1/4 right-1/4 w-48 h-48 md:w-96 md:h-96 rounded-full blur-3xl opacity-20 ${
+          isDarkMode ? 'bg-orange-500' : 'bg-orange-200'
+        }`}></div>
+      </div>
       
-      <div className="container-custom">
+      <div className="container-custom relative z-10">
         {/* Loading State */}
         {loading && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">

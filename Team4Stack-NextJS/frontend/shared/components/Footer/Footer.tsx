@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import './Footer.css';
 
@@ -16,6 +16,16 @@ interface SocialLink {
 }
 
 const Footer: React.FC = () => {
+  const footerRef = useRef<HTMLElement | null>(null);
+  const footerBottomRef = useRef<HTMLDivElement | null>(null);
+  const dotRefs = useRef<Array<HTMLSpanElement | null>>([]);
+  const dotPositionsRef = useRef<Array<{ x: number; y: number }>>([]);
+  const isFooterHoveredRef = useRef(false);
+  const idleTimeRef = useRef(0);
+  const lastFrameTimeRef = useRef<number | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const currentPosRef = useRef({ x: 0, y: 0 });
+  const targetPosRef = useRef({ x: 0, y: 0 });
   const [footerLinks, setFooterLinks] = useState<FooterLink[]>([
     { name: 'Privacy Policy', url: '/privacy' },
     { name: 'Cookies Policy', url: '/cookies' },
@@ -118,8 +128,114 @@ const Footer: React.FC = () => {
     ['Privacy Policy', 'Cookies Policy', 'Terms & Conditions'].includes(link.name)
   );
 
+  const animateCursorDots = (timestamp: number) => {
+    const footer = footerRef.current;
+    if (!footer) {
+      rafRef.current = null;
+      return;
+    }
+
+    const footerRect = footer.getBoundingClientRect();
+    const footerBottomRect = footerBottomRef.current?.getBoundingClientRect();
+    const delta = lastFrameTimeRef.current === null ? 16 : Math.min(50, timestamp - lastFrameTimeRef.current);
+    lastFrameTimeRef.current = timestamp;
+
+    if (!isFooterHoveredRef.current) {
+      idleTimeRef.current += delta * 0.001;
+      const lineY = footerBottomRect
+        ? Math.max(24, footerBottomRect.top - footerRect.top - 6)
+        : Math.max(24, footerRect.height - 72);
+      const xRange = Math.max(70, footerRect.width * 0.34);
+      const idleX = footerRect.width / 2 + Math.sin(idleTimeRef.current * 0.75) * xRange;
+      const idleY = lineY + Math.sin(idleTimeRef.current * 3.1) * 2;
+      targetPosRef.current = {
+        x: Math.min(footerRect.width - 24, Math.max(24, idleX)),
+        y: idleY
+      };
+    }
+
+    const easing = isFooterHoveredRef.current ? 0.24 : 0.08;
+    currentPosRef.current.x += (targetPosRef.current.x - currentPosRef.current.x) * easing;
+    currentPosRef.current.y += (targetPosRef.current.y - currentPosRef.current.y) * easing;
+
+    let leadX = currentPosRef.current.x;
+    let leadY = currentPosRef.current.y;
+
+    dotRefs.current.forEach((dot, index) => {
+      if (!dot) return;
+      const lag = Math.max(0.08, 0.24 - index * 0.018);
+      const pos = dotPositionsRef.current[index] ?? { x: leadX, y: leadY };
+
+      pos.x += (leadX - pos.x) * lag;
+      pos.y += (leadY - pos.y) * lag;
+      dotPositionsRef.current[index] = pos;
+
+      leadX = pos.x;
+      leadY = pos.y;
+
+      dot.style.transform = `translate(${pos.x}px, ${pos.y}px) translate(-50%, -50%) scale(${Math.max(0.35, 1 - index * 0.08)})`;
+      dot.style.opacity = `${Math.max(0.08, 0.9 - index * 0.1)}`;
+    });
+
+    rafRef.current = requestAnimationFrame(animateCursorDots);
+  };
+
+  const handleFooterMouseMove = (e: React.MouseEvent<HTMLElement>) => {
+    const footer = footerRef.current;
+    if (!footer) return;
+    const rect = footer.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    targetPosRef.current = { x, y };
+  };
+
+  const handleFooterMouseEnter = (e: React.MouseEvent<HTMLElement>) => {
+    const footer = footerRef.current;
+    if (!footer) return;
+    const rect = footer.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    isFooterHoveredRef.current = true;
+    currentPosRef.current = { x, y };
+    targetPosRef.current = { x, y };
+    dotPositionsRef.current = dotRefs.current.map(() => ({ x, y }));
+    dotRefs.current.forEach((dot, index) => {
+      if (!dot) return;
+      dot.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%) scale(${Math.max(0.35, 1 - index * 0.08)})`;
+      dot.style.opacity = `${Math.max(0.08, 0.9 - index * 0.1)}`;
+    });
+  };
+
+  const handleFooterMouseLeave = () => {
+    isFooterHoveredRef.current = false;
+  };
+
+  useEffect(() => {
+    rafRef.current = requestAnimationFrame(animateCursorDots);
+    return () => {
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+      }
+    };
+  }, []);
+
   return (
-    <footer className="footer dark">
+    <footer
+      ref={footerRef}
+      className="footer dark"
+      onMouseMove={handleFooterMouseMove}
+      onMouseEnter={handleFooterMouseEnter}
+      onMouseLeave={handleFooterMouseLeave}
+    >
+      <div className="footer-cursor-dots" aria-hidden>
+        {Array.from({ length: 9 }).map((_, index) => (
+          <span
+            key={`footer-dot-${index}`}
+            ref={(el) => { dotRefs.current[index] = el; }}
+            className="footer-cursor-dot"
+          />
+        ))}
+      </div>
       <div className="footer-top-border"></div>
       <div className="footer-container">
         <div className="footer-grid">
@@ -225,7 +341,7 @@ const Footer: React.FC = () => {
         </div>
 
         {/* Bottom Bar */}
-        <div className="footer-bottom">
+        <div ref={footerBottomRef} className="footer-bottom">
           <div className="footer-bottom-content">
             <p className="footer-copyright">
               © {new Date().getFullYear()} Team4Stack. All rights reserved.
