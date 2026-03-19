@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useRef, useState } from 'react'
-import { supabase } from '@/lib/supabase/client'
+import { supabase, isSupabaseConfigured } from '@/lib/supabase/client'
 import emailjs from '@emailjs/browser'
 import { RECAPTCHA_SITE_KEY } from '@/lib/utils/constants'
 
@@ -114,6 +114,12 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
 
   const signInOAuth = async (provider: 'google' | 'github') => {
     setError(null)
+    if (!isSupabaseConfigured()) {
+      setError(
+        'Google/GitHub login disabled: Supabase env missing. Uncomment NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in frontend/.env.local (real project values), save, then restart npm run dev.'
+      )
+      return
+    }
     try {
       // Get the current site URL for redirect after OAuth
       // The redirectTo should be where user lands after OAuth completes
@@ -1068,7 +1074,7 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
                   onChange={(e) => setEmail(e.target.value)} 
                   className="w-full rounded-lg px-3 py-2 bg-white/10 border border-white/15 focus:outline-none focus:ring-2 focus:ring-purple-500" 
                 />
-                <div className="relative">
+                <div className="relative overflow-hidden auth-password-field">
                   <input 
                     placeholder={isSignUp ? "New Password" : "Password"} 
                     type={showPassword ? "text" : "password"} 
@@ -1082,12 +1088,12 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
                         setError(null)
                       }
                     }} 
-                    className="w-full rounded-lg px-3 py-2 pr-10 bg-white/10 border border-white/15 focus:outline-none focus:ring-2 focus:ring-purple-500" 
+                    className="w-full rounded-lg px-3 py-2 pr-12 bg-white/10 border border-white/15 focus:outline-none focus:ring-2 focus:ring-purple-500" 
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/70 hover:text-white focus:outline-none z-10 p-1 rounded hover:bg-white/10 transition-colors"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-white/70 hover:text-white/85 focus:outline-none z-10 h-8 w-8 p-0 rounded-md bg-white/5 backdrop-blur-[2px] transition-colors btn-no-liquid flex items-center justify-center leading-none"
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? (
@@ -1101,20 +1107,23 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
                       </svg>
                     )}
                   </button>
-                  {!isSignUp && (
-                    <span 
+                </div>
+                {!isSignUp && (
+                  <div className="w-full flex justify-center mt-[2px]">
+                    <button
+                      type="button"
                       onClick={() => {
                         setIsForgotPassword(true)
                         setPassword('')
                         setError(null)
                         setSuccess(null)
-                      }} 
-                      className="absolute right-14 top-1/2 -translate-y-1/2 text-sm text-white/60 hover:text-white/80 underline cursor-pointer z-10"
+                      }}
+                      className="text-sm text-white/60 hover:text-white/80 underline cursor-pointer btn-no-liquid"
                     >
                       Forgot?
-                    </span>
-                  )}
-                </div>
+                    </button>
+                  </div>
+                )}
                 {isSignUp && (
                   <div className="relative">
                     <input 
@@ -1141,7 +1150,7 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
                     <button
                       type="button"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white/80 focus:outline-none"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-white/70 hover:text-white/85 focus:outline-none z-10 h-8 w-8 p-0 rounded-md bg-white/5 backdrop-blur-[2px] transition-colors btn-no-liquid flex items-center justify-center leading-none"
                       aria-label={showConfirmPassword ? "Hide password" : "Show password"}
                     >
                       {showConfirmPassword ? (

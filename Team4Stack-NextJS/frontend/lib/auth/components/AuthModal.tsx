@@ -1268,7 +1268,7 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-white/70 hover:text-white/85 focus:outline-none z-10 p-1 rounded-md bg-white/5 backdrop-blur-[2px] transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/70 hover:text-white/85 focus:outline-none z-10 h-8 w-8 p-0 rounded-md bg-white/5 backdrop-blur-[2px] transition-colors btn-no-liquid flex items-center justify-center leading-none"
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? (
@@ -1284,7 +1284,7 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
                   </button>
                 </div>
                 {!isSignUp && (
-                  <div className="flex justify-end -mt-1">
+                  <div className="w-full flex justify-center mt-[2px]">
                     <button
                       type="button"
                       onClick={() => {
@@ -1293,7 +1293,7 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
                         setError(null)
                         setSuccess(null)
                       }}
-                      className="text-sm text-white/60 hover:text-white/80 underline cursor-pointer"
+                      className="text-sm text-white/60 hover:text-white/80 underline cursor-pointer btn-no-liquid"
                     >
                       Forgot?
                     </button>
@@ -1325,7 +1325,7 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
                     <button
                       type="button"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/70 hover:text-white focus:outline-none z-10 p-1 rounded hover:bg-white/10 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/70 hover:text-white focus:outline-none z-10 h-8 w-8 p-0 rounded-md bg-white/5 backdrop-blur-[2px] transition-colors btn-no-liquid flex items-center justify-center leading-none hover:bg-white/10"
                       aria-label={showConfirmPassword ? "Hide password" : "Show password"}
                     >
                       {showConfirmPassword ? (

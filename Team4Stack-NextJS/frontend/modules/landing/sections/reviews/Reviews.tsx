@@ -50,10 +50,7 @@ const Reviews: React.FC = () => {
           setTotalReviews((prev) => prev > 0 ? prev : 0)
           return
         }
-        // For other errors, log but don't crash
-        if (process.env.NODE_ENV === 'development') {
-          console.error('Error loading reviews:', result.error);
-        }
+        // For other errors, keep UI stable and avoid noisy console logs.
         // Keep existing reviews if any
         setReviews((prev) => prev.length > 0 ? prev : [])
         setTotalReviews((prev) => prev > 0 ? prev : 0)
@@ -76,9 +73,7 @@ const Reviews: React.FC = () => {
       setReviews(paginatedReviews)
     } catch (error: any) {
       // Handle errors gracefully - don't crash the component
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Error loading reviews:', error);
-      }
+      // Avoid noisy console logs here as well.
       // Keep existing reviews if any, otherwise show empty state
       setReviews((prev) => prev.length > 0 ? prev : [])
       setTotalReviews((prev) => prev > 0 ? prev : 0)
