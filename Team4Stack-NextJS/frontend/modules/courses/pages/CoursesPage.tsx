@@ -36,7 +36,7 @@ const CoursesPage: React.FC = () => {
         'Certificate on completion',
         'Limited seats'
       ],
-      gradient: 'from-orange-500 via-red-500 to-pink-500'
+      gradient: 'from-slate-600 via-blue-800 to-slate-800'
     },
     {
       key: 'online' as const,
@@ -52,7 +52,7 @@ const CoursesPage: React.FC = () => {
         'Assignments and projects',
         'Flexible timings'
       ],
-      gradient: 'from-emerald-500 via-teal-500 to-cyan-500'
+      gradient: 'from-teal-700 via-cyan-800 to-slate-800'
     }
   ]), []);
   
@@ -357,7 +357,7 @@ const CoursesPage: React.FC = () => {
                 <div className={`relative h-full text-white hover:scale-[1.02] transition-all duration-500 hover:shadow-2xl rounded-2xl overflow-hidden ${
                   (course.gradient && course.gradient.trim().length > 0) 
                     ? `bg-gradient-to-br ${course.gradient}` 
-                    : 'bg-gradient-to-br from-orange-500 via-red-500 to-pink-500'
+                    : 'bg-gradient-to-br from-slate-600 via-blue-800 to-slate-800'
                 } border border-white/20 backdrop-blur-sm shadow-xl`}>
                   {/* Decorative Elements */}
                   <div className="absolute top-0 right-0 w-32 h-32 sm:w-48 sm:h-48 md:w-64 md:h-64 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>

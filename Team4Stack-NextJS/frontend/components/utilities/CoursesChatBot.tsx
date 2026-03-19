@@ -43,12 +43,21 @@ const CoursesChatBot: React.FC = () => {
     if (isOpen) inputRef.current?.focus();
   }, [isOpen]);
 
+  const closePanel = () => {
+    setIsOpen(false);
+    // Prevent blinking cursor after close: blur so focus doesn't stay on body
+    requestAnimationFrame(() => {
+      const el = document.activeElement as HTMLElement;
+      if (el?.blur) el.blur();
+    });
+  };
+
   // Close when clicking outside the chatbox
   useEffect(() => {
     if (!isOpen) return;
     const handleClickOutside = (e: MouseEvent) => {
       if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
+        closePanel();
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -88,17 +97,19 @@ const CoursesChatBot: React.FC = () => {
 
   return (
     <>
-      {/* Backdrop when open - click to close */}
+      {/* Backdrop when open - click to close (tabIndex -1 so it doesn't take focus / show cursor) */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
             key="backdrop"
+            role="presentation"
+            tabIndex={-1}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-0 z-[55] bg-black/20 dark:bg-black/30"
-            onClick={() => setIsOpen(false)}
+            className="fixed inset-0 z-[55] bg-black/20 dark:bg-black/30 cursor-default"
+            onClick={closePanel}
             aria-hidden
           />
         )}
@@ -133,7 +144,8 @@ const CoursesChatBot: React.FC = () => {
                 </div>
               </div>
               <button
-                onClick={() => setIsOpen(false)}
+                type="button"
+                onClick={closePanel}
                 className="relative rounded-xl p-2 text-white/90 transition-colors hover:bg-white/20 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/40"
                 aria-label="Close chat"
               >
