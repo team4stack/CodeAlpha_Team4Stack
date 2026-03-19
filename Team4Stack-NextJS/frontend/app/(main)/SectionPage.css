@@ -4,7 +4,8 @@
   background: var(--background, #ffffff);
   color: var(--text-primary, #1f2937);
   transition: background 0.3s ease, color 0.3s ease;
-  padding: 2rem 0;
+  /* Fixed navbar (h-14 sm:h-16) — enough top space so “Back to Home” isn’t flush under nav */
+  padding: 5.75rem 0 2rem;
 }
 
 .section-page.dark {
@@ -26,7 +27,8 @@
   text-decoration: none;
   font-weight: 500;
   font-size: 1rem;
-  margin-bottom: 2rem;
+  margin-top: 0.25rem;
+  margin-bottom: 1.75rem;
   transition: all 0.3s ease;
   padding: 0.5rem 0.75rem;
   border-radius: 0.5rem;
@@ -73,16 +75,124 @@
 .section-content {
   max-width: 800px;
   line-height: 1.7;
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(139, 92, 246, 0.18);
+  border-radius: 1.25rem;
+  padding: 1.75rem 2rem;
+  backdrop-filter: blur(10px);
+  text-align: left;
+}
+
+.section-page.dark .section-content {
+  background: rgba(0, 0, 0, 0.35);
+  border-color: rgba(139, 92, 246, 0.28);
 }
 
 .section-content p {
   color: var(--text-secondary, #6b7280);
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.25rem;
   font-size: 1.1rem;
 }
 
 .section-page.dark .section-content p {
   color: var(--text-tertiary, #9ca3af);
+}
+
+/* Improve headings inside text area (policy/help/terms pages) */
+.section-content h2 {
+  margin: 1.75rem 0 0.75rem 0;
+  letter-spacing: 0.2px;
+  position: relative;
+}
+
+.section-content h2::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -0.6rem;
+  width: 160px;
+  max-width: 55%;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(139, 92, 246, 0.9) 0%, rgba(16, 185, 129, 0.85) 100%);
+}
+
+.section-content h3 {
+  margin: 1.75rem 0 0.75rem 0;
+}
+
+/* Shared list styling for policy pages */
+.section-content ul {
+  list-style: disc;
+  padding-left: 1.35rem;
+  margin: 0 0 1.25rem 0;
+}
+
+.section-content li {
+  margin: 0.35rem 0;
+  color: inherit;
+}
+
+/* Shared anchor styling inside section pages */
+.section-content a {
+  color: var(--text-accent, #8b5cf6);
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s ease;
+}
+
+.section-content a:hover {
+  color: var(--primary-dark, #7c3aed);
+  text-decoration: underline;
+}
+
+/* Contact Support page blocks (missing styles in CSS) */
+.contact-info {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.contact-item {
+  background: var(--bg-card, rgba(255, 255, 255, 0.7));
+  border: 1px solid var(--border-primary, rgba(139, 92, 246, 0.18));
+  border-radius: 1rem;
+  padding: 1.25rem;
+  backdrop-filter: blur(10px);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.section-page.dark .contact-item {
+  background: var(--bg-card, rgba(0, 0, 0, 0.45));
+  border-color: rgba(139, 92, 246, 0.3);
+}
+
+.contact-item:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg, 0 10px 25px rgba(0, 0, 0, 0.08));
+}
+
+.contact-item h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.05rem;
+  color: var(--text-accent, #8b5cf6);
+}
+
+.contact-item p {
+  margin: 0.35rem 0;
+  color: var(--text-secondary, #6b7280);
+}
+
+.section-page.dark .contact-item p {
+  color: var(--text-tertiary, #9ca3af);
+}
+
+/* Responsive contact blocks */
+@media (min-width: 768px) {
+  .contact-info {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 /* Help Categories */
@@ -270,6 +380,10 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
+  .section-page {
+    padding: 5.25rem 0 1.75rem;
+  }
+
   .section-container {
     padding: 0 1rem;
   }
@@ -290,6 +404,7 @@
 
   .section-content {
     max-width: 100%;
+    padding: 1.35rem 1.25rem;
   }
 
   .section-content p {
@@ -316,11 +431,41 @@
     padding: 0.875rem 1.5rem;
     font-size: 0.95rem;
   }
+
+  .back-link {
+    margin-top: 0.15rem;
+    margin-bottom: 1.5rem;
+    padding: 0.45rem 0.65rem;
+  }
+}
+
+/* Desktop: center the whole block nicely */
+@media (min-width: 769px) {
+  .section-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  /* Keep body text readable */
+  .section-content {
+    margin: 0 auto;
+  }
 }
 
 @media (max-width: 480px) {
+  .section-page {
+    padding: 5rem 0 1.5rem;
+  }
+
   .section-container {
     padding: 0 0.75rem;
+  }
+
+  .section-content {
+    padding: 1.1rem 1rem;
+    border-radius: 1.1rem;
   }
 
   .section-container h1 {
@@ -341,6 +486,8 @@
 
   .back-link {
     font-size: 0.9rem;
-    padding: 0.4rem 0.6rem;
+    margin-top: 0.1rem;
+    margin-bottom: 1.35rem;
+    padding: 0.4rem 0.55rem;
   }
 }
