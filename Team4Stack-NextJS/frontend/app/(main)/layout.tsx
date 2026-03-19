@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import MainNavbar from '@/navigation/MainNavbar';
 import { MainFooter } from '@/shared/components/Footer';
 import WhatsAppButton from '@/components/utilities/WhatsAppButton';
+import CoursesChatBot from '@/components/utilities/CoursesChatBot';
 import PWAInstallPrompt from '@/modals/PWAInstallPrompt';
 
 interface MainLayoutProps {
@@ -16,7 +17,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
   
   // Hide MainNavbar on courses pages (courses navbar is rendered in CoursesPage)
   const isCoursesPage = pathname?.startsWith('/courses') || pathname?.startsWith('/student');
-  
+  // Show WhatsApp + Fiverr floating buttons only on landing (home) page
+  const isLandingPage = pathname === '/';
+
   return (
     <>
       {!isCoursesPage && <MainNavbar />}
@@ -24,7 +27,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
         {children}
       </main>
       <MainFooter />
-      <WhatsAppButton />
+      {isLandingPage && <WhatsAppButton />}
+      {isCoursesPage && <CoursesChatBot />}
       <PWAInstallPrompt />
     </>
   );
