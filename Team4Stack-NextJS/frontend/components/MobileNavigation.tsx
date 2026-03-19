@@ -4,6 +4,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { AnimatePresence, motion } from 'framer-motion';
 
 type NavbarLink = {
   name: string;
@@ -23,8 +24,6 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({ isOpen, onClose, on
   const { user, loading, signOut } = useAuth();
   const router = useRouter();
   const navRef = useRef<HTMLDivElement>(null);
-  const [logoLoaded, setLogoLoaded] = useState(false);
-  const [logoKey, setLogoKey] = useState(0);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [navbarLinks, setNavbarLinks] = useState<NavbarLink[]>([
     { name: 'Home', href: '#home' },
@@ -34,12 +33,6 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({ isOpen, onClose, on
     { name: 'Courses', href: '#courses' },
     { name: 'Contact', href: '#contact' }
   ]);
-
-  // Force logo reload when theme changes
-  useEffect(() => {
-    setLogoKey(prev => prev + 1);
-    setLogoLoaded(false);
-  }, [isDarkMode]);
 
   // Handle clicks outside the navigation
   useEffect(() => {
@@ -182,77 +175,48 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({ isOpen, onClose, on
   return (
     <>
       {/* Overlay */}
-      <div 
-        className={`fixed inset-0 z-40 bg-black transition-opacity duration-300 ${
-          isOpen ? 'opacity-50' : 'opacity-0 pointer-events-none'
-        }`}
-        onClick={onClose}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Mobile Navigation"
-      />
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            key="mobile-nav-overlay"
+            className="fixed left-0 right-0 bottom-0 top-16 z-40 bg-black/60 backdrop-blur-[2px]"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18, ease: [0.25, 0.46, 0.45, 0.94] }}
+            onClick={onClose}
+            role="presentation"
+            aria-hidden
+          />
+        )}
+      </AnimatePresence>
 
       {/* Mobile Navigation Panel */}
-      <div
-        ref={navRef}
-        className={`mobile-nav-panel fixed top-0 left-0 h-full w-4/5 max-w-sm z-[10000] transform transition-transform duration-300 ease-in-out ${
-          isDarkMode ? 'bg-gray-900' : 'bg-white'
-        } shadow-2xl ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Mobile Navigation"
-      >
-        <div className="flex flex-col h-full">
-          {/* Header */}
-          <div className={`p-4 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-transparent' : 'bg-black'} transition-all duration-300`} style={{ minWidth: '40px', minHeight: '40px', padding: isDarkMode ? '0' : '4px' }}>
-                  <img
-                    src={`/Team4stack_Logo.png?v=8&t=${logoKey}`}
-                    alt="Team4Stack Logo"
-                    className={`rounded-lg shadow-sm object-contain transition-all duration-300 ${logoLoaded ? 'opacity-100' : 'opacity-0'}`}
-                    style={{ width: '32px', height: '32px', display: 'block' }}
-                    loading="eager"
-                    onLoad={() => setLogoLoaded(true)}
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      if (!target.src.includes('fallback')) {
-                        target.src = `/Team4stack_Logo.png?v=8&fallback=1&t=${logoKey}`;
-                      }
-                      setLogoLoaded(true);
-                    }}
-                    key={`logo-${isDarkMode ? 'dark' : 'light'}-${logoKey}`}
-                  />
-                </div>
-                <span className={`text-xl font-display font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
-                  Team4Stack
-                </span>
-              </div>
-              <button
-                onClick={onClose}
-                className={`mobile-nav-close-button p-2 rounded-lg transition-colors flex items-center justify-center ${
-                  isDarkMode 
-                    ? 'bg-white/10 hover:bg-white/20' 
-                    : 'bg-gray-100 hover:bg-gray-200'
-                } focus:outline-none focus:ring-2 focus:ring-purple-500`}
-                aria-label="Close menu"
-              >
-                <svg 
-                  className={`w-6 h-6 ${isDarkMode ? 'text-white' : 'text-gray-600'}`} 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          </div>
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            ref={navRef}
+            key="mobile-nav-panel"
+            className={`mobile-nav-panel fixed top-16 left-0 w-[16.5rem] max-w-[85vw] z-[10000] shadow-2xl overflow-hidden rounded-r-3xl rounded-l-none ${
+              isDarkMode
+                ? 'bg-slate-950/85 text-white border-r border-white/10'
+                : 'bg-white/85 text-slate-900 border-r border-slate-900/10'
+            } backdrop-blur-xl max-h-[calc(100vh-4rem)] h-auto`}
+            initial={{ x: '-100%', opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: '-100%', opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 30 }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Mobile Navigation"
+            style={{ willChange: 'transform' }}
+          >
+            <div className="flex flex-col">
+          {/* Spacer header (no logo/name and no inside X button) */}
+          <div className={`h-12 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`} />
 
           {/* Navigation Items */}
-          <div className="flex-1 overflow-y-auto py-4">
+          <div className="overflow-y-auto py-4 max-h-[calc(100vh-7rem)]">
             <div className="flex flex-col space-y-2 px-4">
               {/* StackStore (Coming soon) - COMMENTED OUT */}
               {/* <button
@@ -301,8 +265,10 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({ isOpen, onClose, on
                           }, 200);
                         }
                       }}
-                      className={`text-left px-4 py-3 rounded-lg transition-all duration-200 ${
-                        isDarkMode ? 'text-white hover:bg-white/10' : 'text-gray-800 hover:bg-gray-100'
+                      className={`text-left px-4 py-3 rounded-xl transition-colors duration-200 border border-transparent ${
+                        isDarkMode
+                          ? 'text-white hover:bg-white/10 hover:border-white/15'
+                          : 'text-gray-800 hover:bg-gray-100 hover:border-gray-200'
                       } focus:outline-none focus:ring-2 focus:ring-purple-500`}
                       aria-label={`Go to ${link.name} section`}
                       role="menuitem"
@@ -322,8 +288,10 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({ isOpen, onClose, on
                         onClose();
                         setTimeout(() => router.push('/courses'), 200);
                       }}
-                      className={`w-full text-left px-4 py-3 rounded-lg transition-all duration-200 ${
-                        isDarkMode ? 'text-white hover:bg-white/10' : 'text-gray-800 hover:bg-gray-100'
+                      className={`w-full text-left px-4 py-3 rounded-xl transition-colors duration-200 border border-transparent ${
+                        isDarkMode
+                          ? 'text-white hover:bg-white/10 hover:border-white/15'
+                          : 'text-gray-800 hover:bg-gray-100 hover:border-gray-200'
                       } focus:outline-none focus:ring-2 focus:ring-purple-500`}
                       role="menuitem"
                     >
@@ -337,8 +305,10 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({ isOpen, onClose, on
                     key={link.href}
                     onClick={() => handleNavItemClick(link.href)}
                     onKeyDown={(e) => handleKeyDown(e, link.href)}
-                    className={`text-left px-4 py-3 rounded-lg transition-all duration-200 ${
-                      isDarkMode ? 'text-white hover:bg-white/10' : 'text-gray-800 hover:bg-gray-100'
+                    className={`text-left px-4 py-3 rounded-xl transition-colors duration-200 border border-transparent ${
+                      isDarkMode
+                        ? 'text-white hover:bg-white/10 hover:border-white/15'
+                        : 'text-gray-800 hover:bg-gray-100 hover:border-gray-200'
                     } focus:outline-none focus:ring-2 focus:ring-purple-500`}
                     aria-label={`Go to ${link.name} section`}
                     role="menuitem"
@@ -441,7 +411,9 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({ isOpen, onClose, on
 
           {/* Footer spacing */}
         </div>
-      </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 };

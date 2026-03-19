@@ -284,7 +284,7 @@ const Navbar: React.FC = () => {
             <a 
               href="#home" 
               className={`flex items-center gap-2 sm:gap-3 group focus:outline-none rounded-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-95 flex-shrink-0 ${
-                isMenuOpen ? 'opacity-0 pointer-events-none md:opacity-100 md:pointer-events-auto' : 'opacity-100'
+                'opacity-100'
               }`}
               aria-label="Team4Stack Home"
               onClick={(e) => handleLinkClick(e, '#home')}
@@ -575,19 +575,38 @@ const Navbar: React.FC = () => {
               )}
               {/* Mobile Menu Button */}
               <button
-                onClick={() => setIsMenuOpen(true)}
-                className={`p-2 rounded-lg transition-colors flex items-center justify-center ${
+                type="button"
+                onPointerDown={(e) => {
+                  // Ensure toggle fires even when some layers are animating.
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onClick={() => {
+                  // Fallback for browsers that don't reliably fire pointer events.
+                  setIsMenuOpen((prev) => !prev);
+                }}
+                className={`p-2 relative z-[10002] rounded-lg transition-colors flex items-center justify-center ${
                   isScrolled
                     ? (isDarkMode 
                         ? 'bg-white/20 backdrop-blur-lg hover:bg-white/30 border border-white/30' 
                         : 'bg-gray-100 hover:bg-gray-200 border border-gray-200')
                     : 'bg-white/20 backdrop-blur-lg hover:bg-white/30 border border-white/30 text-white'
-                } focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2`}
-                aria-label="Open mobile menu"
+                } focus:outline-none focus:ring-0 focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-0`}
+                aria-label={isMenuOpen ? "Close mobile menu" : "Open mobile menu"}
                 aria-expanded={isMenuOpen}
               >
-                <svg className={`w-6 h-6 ${isScrolled ? (isDarkMode ? 'text-white' : 'text-gray-600') : 'text-white'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                <svg
+                  className={`w-6 h-6 ${isScrolled ? (isDarkMode ? 'text-white' : 'text-gray-600') : 'text-white'}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  {isMenuOpen ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  )}
                 </svg>
               </button>
             </div>
