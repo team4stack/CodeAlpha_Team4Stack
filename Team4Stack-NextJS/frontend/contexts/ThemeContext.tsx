@@ -16,15 +16,13 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const [theme, setTheme] = useState<ColorTheme>(defaultTheme);
-  const [isDarkMode, setIsDarkMode] = useState(true); // Set default to true for dark mode
+  // Only dark mode is supported now
+  const [isDarkMode] = useState(true);
 
   // Theme application is now handled by ThemeManager component
 
   const toggleDarkMode = () => {
-    // Add a small delay to ensure smooth transition
-    setTimeout(() => {
-      setIsDarkMode(!isDarkMode);
-    }, 10);
+    // no-op (dark-only)
   };
 
   return (

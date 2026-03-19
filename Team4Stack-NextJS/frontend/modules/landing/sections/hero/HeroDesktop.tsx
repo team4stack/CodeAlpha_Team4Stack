@@ -324,13 +324,9 @@ const HeroDesktop: React.FC<HeroDesktopProps> = ({
                       <span className="absolute right-2 bottom-2 w-2 h-4 bg-cyan-400/90 motion-safe:animate-pulse"></span>
                     </div>
 
-                    {/* StackStore blurb */}
-                    <div className="rounded-lg border border-white/10 bg-white/[0.06] p-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div className="sm:col-span-1 flex items-center gap-2">
-                        <span className="px-2 py-1 rounded-md text-xs font-semibold bg-gradient-to-r from-purple-500/80 to-cyan-500/80 text-white">StackStore</span>
-                        <span className="text-xs text-white/70">coming soon</span>
-                      </div>
-                      <div className="sm:col-span-2 flex items-center sm:justify-end">
+                    {/* For Sale Projects (StackStore coming soon removed) */}
+                    <div className="rounded-lg border border-white/10 bg-white/[0.06] p-3">
+                      <div className="flex items-center sm:justify-end">
                         <div className="px-3 py-1.5 rounded-full border border-white/25 bg-white/10 text-white/90 text-xs shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]">
                           For Sale Projects: <span className="font-semibold">{projectsCount}</span>
                         </div>

@@ -1,13 +1,9 @@
 'use client'
 
 import React, { useEffect } from 'react';
-import { useTheme } from '@/contexts/ThemeContext';
-import LightThemeClean from './lightThemeClean';
 import DarkThemeClean from './darkThemeClean';
 
 const ThemeManager: React.FC = () => {
-  const { isDarkMode } = useTheme();
-
   useEffect(() => {
     // Apply theme classes to document
     const root = document.documentElement;
@@ -25,14 +21,9 @@ const ThemeManager: React.FC = () => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const _ = root.offsetHeight;
     
-    // Add current theme class
-    if (isDarkMode) {
-      root.classList.add('dark');
-      body.classList.add('dark');
-    } else {
-      root.classList.add('light');
-      body.classList.add('light');
-    }
+    // Only dark mode is supported
+    root.classList.add('dark');
+    body.classList.add('dark');
 
     // Keep favicon as consistent across all states - no change needed
     // Favicon is already set in index.html, no need to change it dynamically
@@ -44,11 +35,11 @@ const ThemeManager: React.FC = () => {
     }, 300);
     
     return () => clearTimeout(timeout);
-  }, [isDarkMode]);
+  }, []);
 
   return (
     <>
-      {isDarkMode ? <DarkThemeClean /> : <LightThemeClean />}
+      <DarkThemeClean />
     </>
   );
 };

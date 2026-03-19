@@ -1,3 +1,6 @@
+'use client'
+export { default } from '@/components/HeroMobile';
+
 // import React, { useMemo } from 'react';
 // import { useAuth } from '@/contexts/AuthContext';
 

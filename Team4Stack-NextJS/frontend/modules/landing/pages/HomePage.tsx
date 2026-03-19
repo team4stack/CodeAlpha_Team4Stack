@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { home, about, services, projects, courses, reviews, contact } from '../sections';
+import { home, about, services, projects, reviews, contact } from '../sections';
 
 const HomePage: React.FC = () => {
   return (
@@ -15,9 +15,6 @@ const HomePage: React.FC = () => {
       </Suspense>
       <Suspense fallback={<div className="h-96 flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div></div>}>
         <projects.Projects />
-      </Suspense>
-      <Suspense fallback={<div className="h-96 flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div></div>}>
-        <courses.Courses />
       </Suspense>
       <Suspense fallback={<div className="h-96 flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div></div>}>
         <reviews.Reviews />

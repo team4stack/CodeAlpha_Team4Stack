@@ -2381,6 +2381,13 @@ nav .navbar-grid-animate[class*="animate-spin"],
     }
   }
 
+  @media (max-width: 480px) {
+    .responsive-main {
+      padding-left: 0;
+      padding-right: 0;
+    }
+  }
+
   /* Ensure admin panels are not affected by responsive-main styles */
   [class*="AdminLayout"] .responsive-main,
   [class*="admin"] .responsive-main {

@@ -3,8 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import HeroDesktop from './HeroDesktop';
-// Mobile component commented out temporarily
-// import HeroMobile from './HeroMobile';
+import HeroMobile from './HeroMobile';
 
 const Hero: React.FC = () => {
   const [isMobile, setIsMobile] = useState(false);
@@ -134,7 +133,23 @@ const Hero: React.FC = () => {
     setTilt({ rx: 0, ry: 0 });
   };
 
-  // Always render desktop version since mobile is commented out
+  if (isMobile) {
+    return (
+      <HeroMobile
+        currentText={currentText}
+        texts={texts}
+        bulletPoints={bulletPoints}
+        projectsCount={projectsCount}
+        servicesCount={servicesCount}
+        coursesCount={coursesCount}
+        tilt={tilt}
+        prefersReducedMotionState={prefersReducedMotionState}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+      />
+    );
+  }
+
   return (
     <HeroDesktop
       currentText={currentText}

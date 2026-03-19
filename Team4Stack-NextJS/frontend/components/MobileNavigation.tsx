@@ -19,7 +19,7 @@ interface MobileNavigationProps {
 }
 
 const MobileNavigation: React.FC<MobileNavigationProps> = ({ isOpen, onClose, onOpenStackStore, onOpenSettings, onOpenAuth }) => {
-  const { isDarkMode, toggleDarkMode } = useTheme();
+  const { isDarkMode } = useTheme();
   const { user, loading, signOut } = useAuth();
   const router = useRouter();
   const navRef = useRef<HTMLDivElement>(null);
@@ -439,37 +439,7 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({ isOpen, onClose, on
             </div>
           )}
 
-          {/* Footer with Dark Mode Toggle */}
-          <div className={`p-4 border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>
-                {isDarkMode ? 'Dark Mode' : 'Light Mode'}
-              </span>
-              <button
-                onClick={toggleDarkMode}
-                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-purple-500 ${
-                  isDarkMode 
-                    ? 'bg-white/10 hover:bg-white/15 border border-white/20 text-white' 
-                    : 'bg-gray-100/80 hover:bg-gray-200/80 border border-gray-300 text-gray-700'
-                } backdrop-blur-sm`}
-                aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-                role="switch"
-                aria-checked={isDarkMode}
-              >
-                {isDarkMode ? (
-                  // Moon icon for dark mode
-                  <svg className="w-5 h-5 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                  </svg>
-                ) : (
-                  // Sun icon for light mode
-                  <svg className="w-5 h-5 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                  </svg>
-                )}
-              </button>
-            </div>
-          </div>
+          {/* Footer spacing */}
         </div>
       </div>
     </>

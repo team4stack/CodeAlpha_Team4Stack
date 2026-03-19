@@ -49,7 +49,7 @@ const HeroMobile: React.FC<HeroMobileProps> = ({
   };
 
   return (
-    <section id="home" className="relative overflow-hidden flex items-center justify-center min-h-[65vh] pb-3">
+    <section id="home" className="relative overflow-hidden flex items-start justify-center min-h-[65vh] pb-3 pt-16">
       {/* Structured Data */}
       <script type="application/ld+json">
         {JSON.stringify(heroStructuredData)}
@@ -96,9 +96,9 @@ const HeroMobile: React.FC<HeroMobileProps> = ({
         </div>
       </div>
 
-      <div className="container-custom relative z-10 pt-16">
+      <div className="container-custom relative z-10 pt-0">
         {/* Mobile Optimized Layout - Tight Spacing */}
-        <div className="flex flex-col gap-2 pt-2 pb-3">
+        <div className="flex flex-col gap-1 pt-0 pb-3">
           {/* Left: Content */}
           <div className="text-left space-y-4">
             {/* Badge */}
@@ -148,7 +148,7 @@ const HeroMobile: React.FC<HeroMobileProps> = ({
             </div>
 
             {/* CTAs */}
-            <div className="pt-0 mb-6">
+            <div className="pt-0 mb-4">
               <div className="flex items-center gap-2 flex-wrap">
                 {!loading && (!user ? (
                   <button
@@ -183,7 +183,7 @@ const HeroMobile: React.FC<HeroMobileProps> = ({
             </div>
 
             {/* Feature points - Minimal spacing */}
-            <div className="space-y-2 pt-1">
+            <div className="space-y-2 pt-0">
               {bulletPoints.map((point, idx) => (
                 <div key={idx} className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-cyan-400"></div>
@@ -194,9 +194,9 @@ const HeroMobile: React.FC<HeroMobileProps> = ({
           </div>
 
           {/* Right: Animated Card - Mobile Optimized Design */}
-          <div className="mt-1">
-            <div
-              className="mx-auto w-[92vw] max-w-[380px] min-h-[340px] relative"
+          <div className="mt-0">
+              <div
+                className="mx-auto w-[92vw] max-w-[380px] min-h-[320px] relative"
               onMouseMove={onMouseMove}
               onMouseLeave={onMouseLeave}
             >
@@ -268,7 +268,7 @@ const HeroMobile: React.FC<HeroMobileProps> = ({
                   </div>
 
                   {/* Content: Mobile Optimized Layout */}
-                  <div className="absolute inset-0 p-3.5 flex flex-col gap-2.5 overflow-y-auto">
+                  <div className="absolute inset-0 p-2.5 flex flex-col gap-1.5 overflow-y-auto">
                     {/* Stack Chips */}
                     <div className="flex flex-wrap gap-1.5">
                       {['MongoDB','Express','React','Node.js'].map((t, i) => (
@@ -288,14 +288,10 @@ const HeroMobile: React.FC<HeroMobileProps> = ({
                       <span className="absolute right-2 bottom-2 w-1.5 h-3 bg-cyan-400/90 motion-safe:animate-pulse"></span>
                     </div>
 
-                    {/* StackStore - Compact Single Row */}
-                    <div className="rounded-md border border-white/10 bg-white/[0.06] p-2 flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-gradient-to-r from-purple-500/80 to-cyan-500/80 text-white">StackStore</span>
-                        <span className="text-[9px] text-white/70">coming soon</span>
-                      </div>
+                    {/* For Sale Projects (StackStore coming soon removed) */}
+                    <div className="rounded-md border border-white/10 bg-white/[0.06] p-2">
                       <div className="px-2 py-1 rounded-full border border-white/25 bg-white/10 text-white/90 text-[9px] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]">
-                        Sale: <span className="font-semibold">{projectsCount}</span>
+                        For Sale Projects: <span className="font-semibold">{projectsCount}</span>
                       </div>
                     </div>
 
