@@ -28,6 +28,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<AppUser | null>(null)
   const [loading, setLoading] = useState(true)
 
+  const AUTH_SESSION_COOKIE_NAME = 'auth_session'
+
+  const getCookie = (name: string): string | null => {
+    try {
+      if (typeof document === 'undefined') return null
+      const match = document.cookie
+        .split('; ')
+        .find((c) => c.startsWith(`${name}=`))
+      if (!match) return null
+      return decodeURIComponent(match.split('=').slice(1).join('='))
+    } catch {
+      return null
+    }
+  }
+
+  const clearSessionCookie = () => {
+    try {
+      // Delete cookie immediately
+      document.cookie = `${AUTH_SESSION_COOKIE_NAME}=; Max-Age=0; path=/; samesite=Lax`
+    } catch {
+      // ignore
+    }
+  }
+
   const generateUniqueUsername = useCallback(async (baseUsername: string): Promise<string> => {
     let username = baseUsername.toLowerCase().replace(/[^a-z0-9_]/g, '').substring(0, 20) || 'user'
     let counter = 1
@@ -105,8 +129,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loadSession = useCallback(async () => {
     setLoading(true)
     try {
-      // Get session from localStorage (stored by AuthModal after backend authentication)
-      const sessionStr = localStorage.getItem('auth_session')
+      // Get session from localStorage (primary), fallback to cookie (remember-me)
+      const sessionStr =
+        localStorage.getItem('auth_session') ||
+        getCookie(AUTH_SESSION_COOKIE_NAME)
       
       if (!sessionStr) {
         setUser(null)
@@ -119,6 +145,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (!session.access_token || !session.refresh_token) {
           localStorage.removeItem('auth_session')
+          clearSessionCookie()
           setUser(null)
           setLoading(false)
           return
@@ -130,6 +157,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (!isNaN(expiresAt) && Date.now() > expiresAt) {
             // Session expired, remove it
             localStorage.removeItem('auth_session')
+            clearSessionCookie()
             setUser(null)
             setLoading(false)
             return
@@ -156,6 +184,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             } else {
               // No user data available, session is invalid
               localStorage.removeItem('auth_session')
+              clearSessionCookie()
               setUser(null)
               setLoading(false)
               return
@@ -169,6 +198,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           } else {
             // No user data available, session is invalid
             localStorage.removeItem('auth_session')
+            clearSessionCookie()
             setUser(null)
             setLoading(false)
             return
@@ -216,6 +246,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (userProfile && (userProfile as any).is_blocked === true) {
           // User is blocked, remove session
           localStorage.removeItem('auth_session')
+          clearSessionCookie()
           setUser(null)
           setLoading(false)
           return
@@ -227,6 +258,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (parseError: any) {
         // Invalid session data, remove it
         localStorage.removeItem('auth_session')
+        clearSessionCookie()
         setUser(null)
       }
     } catch (err: any) {
@@ -465,6 +497,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       // Remove session from localStorage
       localStorage.removeItem('auth_session')
+      clearSessionCookie()
       setUser(null) 
     },
     refresh: loadSession,

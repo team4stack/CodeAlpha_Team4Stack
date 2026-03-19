@@ -732,11 +732,6 @@ nav.scrolled .theme-toggle {
   border-radius: 30px;
 }
 
-.theme-toggle.light {
-  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-  border-color: #f59e0b;
-}
-
 .theme-toggle.dark {
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   border-color: #10b981;
@@ -796,11 +791,6 @@ nav.scrolled .theme-toggle-mobile {
   box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
   border-color: #059669;
   border-radius: 26px;
-}
-
-.theme-toggle-mobile.light {
-  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-  border-color: #f59e0b;
 }
 
 .theme-toggle-mobile.dark {
@@ -1015,124 +1005,6 @@ button:active {
   --background: var(--gradient-bg);
 }
 
-/* Light Mode - White Background with Purple & Green Mixing */
-.cyberpunk.light,
-.light {
-  /* Light Mode Colors - Purple & Green Mixing */
-  --primary: #8b5cf6;
-  --primary-dark: #7c3aed;
-  --primary-light: #a78bfa;
-  --secondary: #10b981;
-  --secondary-dark: #059669;
-  --secondary-light: #34d399;
-  --accent: #06b6d4;
-  --accent-dark: #0891b2;
-  --accent-light: #22d3ee;
-  
-  /* Background Colors - Pure White with Purple/Green Mixing */
-  --bg-primary: #ffffff;
-  --bg-secondary: #fafafa;
-  --bg-tertiary: #f5f5f5;
-  --bg-glass: rgba(139, 92, 246, 0.1);
-  --bg-glass-hover: rgba(139, 92, 246, 0.15);
-  --bg-glass-strong: rgba(139, 92, 246, 0.05);
-  --bg-card: rgba(16, 185, 129, 0.08);
-  --bg-card-hover: rgba(16, 185, 129, 0.12);
-  
-  /* Text Colors - Dark on White */
-  --text-primary: #1f2937;
-  --text-secondary: #4b5563;
-  --text-tertiary: #6b7280;
-  --text-inverse: #ffffff;
-  --text-accent: #8b5cf6;
-  --text-muted: #9ca3af;
-  
-  /* Border Colors */
-  --border-primary: rgba(139, 92, 246, 0.3);
-  --border-secondary: rgba(16, 185, 129, 0.2);
-  --border-accent: #8b5cf6;
-  --border-glow: rgba(139, 92, 246, 0.4);
-  
-  /* Shadow Colors - Subtle for Light Mode */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
-  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.1);
-  --shadow-glow: 0 0 30px rgba(139, 92, 246, 0.3);
-  --shadow-neon: 0 0 20px rgba(139, 92, 246, 0.4), 0 0 40px rgba(16, 185, 129, 0.2);
-  --shadow-purple: 0 0 20px rgba(139, 92, 246, 0.3);
-  
-  /* Premium Gradients - Purple & Green Mixing */
-  --gradient-primary: linear-gradient(135deg, #8b5cf6 0%, #10b981 100%);
-  --gradient-secondary: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
-  --gradient-accent: linear-gradient(135deg, #06b6d4 0%, #8b5cf6 100%);
-  --gradient-glass: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%);
-  --gradient-bg: linear-gradient(135deg, #ffffff 0%, #fafafa 50%, #ffffff 100%);
-  --gradient-card: linear-gradient(135deg, rgba(139, 92, 246, 0.05) 0%, rgba(16, 185, 129, 0.05) 100%);
-  
-  /* Background */
-  --background: var(--gradient-bg);
-}
-
-/* Additional Light Mode Selector */
-html.light,
-body.light {
-  /* Light Mode Colors - Purple & Green Mixing */
-  --primary: #8b5cf6;
-  --primary-dark: #7c3aed;
-  --primary-light: #a78bfa;
-  --secondary: #10b981;
-  --secondary-dark: #059669;
-  --secondary-light: #34d399;
-  --accent: #06b6d4;
-  --accent-dark: #0891b2;
-  --accent-light: #22d3ee;
-  
-  /* Background Colors - Pure White with Purple/Green Mixing */
-  --bg-primary: #ffffff;
-  --bg-secondary: #fafafa;
-  --bg-tertiary: #f5f5f5;
-  --bg-glass: rgba(139, 92, 246, 0.1);
-  --bg-glass-hover: rgba(139, 92, 246, 0.15);
-  --bg-glass-strong: rgba(139, 92, 246, 0.05);
-  --bg-card: rgba(16, 185, 129, 0.08);
-  --bg-card-hover: rgba(16, 185, 129, 0.12);
-  
-  /* Text Colors - Dark on White */
-  --text-primary: #1f2937;
-  --text-secondary: #4b5563;
-  --text-tertiary: #6b7280;
-  --text-inverse: #ffffff;
-  --text-accent: #8b5cf6;
-  --text-muted: #9ca3af;
-  
-  /* Border Colors */
-  --border-primary: rgba(139, 92, 246, 0.3);
-  --border-secondary: rgba(16, 185, 129, 0.2);
-  --border-accent: #8b5cf6;
-  --border-glow: rgba(139, 92, 246, 0.4);
-  
-  /* Shadow Colors - Subtle for Light Mode */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
-  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.1);
-  --shadow-glow: 0 0 30px rgba(139, 92, 246, 0.3);
-  --shadow-neon: 0 0 20px rgba(139, 92, 246, 0.4), 0 0 40px rgba(16, 185, 129, 0.2);
-  --shadow-purple: 0 0 20px rgba(139, 92, 246, 0.3);
-  
-  /* Premium Gradients - Purple & Green Mixing */
-  --gradient-primary: linear-gradient(135deg, #8b5cf6 0%, #10b981 100%);
-  --gradient-secondary: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
-  --gradient-accent: linear-gradient(135deg, #06b6d4 0%, #8b5cf6 100%);
-  --gradient-glass: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%);
-  --gradient-bg: linear-gradient(135deg, #ffffff 0%, #fafafa 50%, #ffffff 100%);
-  --gradient-card: linear-gradient(135deg, rgba(139, 92, 246, 0.05) 0%, rgba(16, 185, 129, 0.05) 100%);
-  
-  /* Background */
-  --background: var(--gradient-bg);
-}
-
 @layer base {
   * {
     box-sizing: border-box;
@@ -1158,212 +1030,6 @@ body.light {
     background-color: var(--bg-primary);
   }
 
-/* SEPARATE LIGHT MODE DESIGN - White Background */
-.light {
-  /* Light Mode Colors - Clean White Design */
-  --primary: #8b5cf6;
-  --primary-dark: #7c3aed;
-  --primary-light: #a78bfa;
-  --secondary: #10b981;
-  --secondary-dark: #059669;
-  --secondary-light: #34d399;
-  --accent: #06b6d4;
-  --accent-dark: #0891b2;
-  --accent-light: #22d3ee;
-  
-  /* Background Colors - Pure White */
-  --bg-primary: #ffffff;
-  --bg-secondary: #f8fafc;
-  --bg-tertiary: #f1f5f9;
-  --bg-glass: rgba(139, 92, 246, 0.1);
-  --bg-glass-hover: rgba(139, 92, 246, 0.15);
-  --bg-glass-strong: rgba(139, 92, 246, 0.05);
-  --bg-card: rgba(255, 255, 255, 0.9);
-  --bg-card-hover: rgba(255, 255, 255, 1);
-  
-  /* Text Colors - Dark on White */
-  --text-primary: #1f2937;
-  --text-secondary: #4b5563;
-  --text-tertiary: #6b7280;
-  --text-inverse: #ffffff;
-  --text-accent: #8b5cf6;
-  --text-muted: #9ca3af;
-  
-  /* Border Colors */
-  --border-primary: rgba(139, 92, 246, 0.3);
-  --border-secondary: rgba(16, 185, 129, 0.2);
-  --border-accent: #8b5cf6;
-  --border-glow: rgba(139, 92, 246, 0.4);
-  
-  /* Shadow Colors - Subtle for Light Mode */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
-  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.1);
-  --shadow-glow: 0 0 30px rgba(139, 92, 246, 0.2);
-  --shadow-neon: 0 0 20px rgba(139, 92, 246, 0.3), 0 0 40px rgba(16, 185, 129, 0.1);
-  --shadow-purple: 0 0 20px rgba(139, 92, 246, 0.2);
-  
-  /* Premium Gradients - Purple & Green Mixing */
-  --gradient-primary: linear-gradient(135deg, #8b5cf6 0%, #10b981 100%);
-  --gradient-secondary: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
-  --gradient-accent: linear-gradient(135deg, #06b6d4 0%, #8b5cf6 100%);
-  --gradient-glass: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%);
-  --gradient-bg: linear-gradient(135deg, #ffffff 0%, #f8fafc 50%, #ffffff 100%);
-  --gradient-card: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.9) 100%);
-  
-  /* Background */
-  background: var(--gradient-bg);
-  color: var(--text-primary);
-}
-
-/* Light Mode Body Override */
-.light body {
-  background: #ffffff !important;
-  color: #1f2937 !important;
-}
-
-/* Light Mode Section Overrides */
-.light .section-padding {
-  background: #ffffff !important;
-}
-
-/* Section light backgrounds are now controlled in lightThemeClean.tsx */
-
-/* Light Mode Card Styles */
-.light .card {
-  background: rgba(255, 255, 255, 0.9) !important;
-  border: 2px solid rgba(139, 92, 246, 0.2) !important;
-  color: #1f2937 !important;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
-}
-
-.light .card * {
-  color: #1f2937 !important;
-}
-
-/* Light Mode Text Overrides */
-.light h1, .light h2, .light h3, .light h4, .light h5, .light h6 {
-  color: #1f2937 !important;
-}
-
-.light p, .light span, .light div {
-  color: #4b5563 !important;
-}
-
-/* Light Mode Navigation */
-.light .nav-glass {
-  background: rgba(255, 255, 255, 0.9) !important;
-  border-bottom: 2px solid rgba(139, 92, 246, 0.2) !important;
-  color: #1f2937 !important;
-}
-
-.light .nav-link {
-  color: #4b5563 !important;
-}
-
-.light .nav-link:hover {
-  color: #8b5cf6 !important;
-  background: rgba(139, 92, 246, 0.1) !important;
-}
-
-/* HERO SECTION - Always Dark in Both Modes */
-.light #home {
-  background: linear-gradient(135deg, #581c87 0%, #1e3a8a 50%, #312e81 100%) !important;
-}
-
-.light #home * {
-  color: white !important;
-}
-
-.light #home h1 {
-  color: white !important;
-}
-
-.light #home p {
-  color: #d1d5db !important;
-}
-
-.light #home .text-gray-300 {
-  color: #d1d5db !important;
-}
-
-.light #home .text-pink-400 {
-  color: #f472b6 !important;
-}
-
-.light #home .bg-white\/10 {
-  background: rgba(255, 255, 255, 0.1) !important;
-}
-
-.light #home .border-white\/20 {
-  border-color: rgba(255, 255, 255, 0.2) !important;
-}
-
-/* HERO SECTION - Force Dark Mode Colors in Light Mode */
-.light #home .bg-gradient-to-r.from-pink-500.to-purple-500 {
-  background: linear-gradient(to right, #ec4899, #a855f7) !important;
-}
-
-.light #home .bg-gradient-to-r.from-blue-500.to-cyan-500 {
-  background: linear-gradient(to right, #3b82f6, #06b6d4) !important;
-}
-
-.light #home .bg-gradient-to-r.from-purple-500.to-pink-500 {
-  background: linear-gradient(to right, #a855f7, #ec4899) !important;
-}
-
-.light #home .bg-gradient-to-r.from-cyan-500.to-blue-500 {
-  background: linear-gradient(to right, #06b6d4, #3b82f6) !important;
-}
-
-.light #home .bg-gradient-to-r.from-green-500.to-emerald-500 {
-  background: linear-gradient(to right, #10b981, #059669) !important;
-}
-
-.light #home .bg-pink-400 {
-  background-color: #f472b6 !important;
-}
-
-.light #home .bg-cyan-400 {
-  background-color: #22d3ee !important;
-}
-
-.light #home .bg-purple-400 {
-  background-color: #c084fc !important;
-}
-
-.light #home .bg-blue-400 {
-  background-color: #60a5fa !important;
-}
-
-.light #home .text-white {
-  color: white !important;
-}
-
-.light #home .text-gray-300 {
-  color: #d1d5db !important;
-}
-
-.light #home .text-pink-400 {
-  color: #f472b6 !important;
-}
-
-.light #home .bg-white\/10 {
-  background: rgba(255, 255, 255, 0.1) !important;
-}
-
-.light #home .border-white\/20 {
-  border-color: rgba(255, 255, 255, 0.2) !important;
-}
-
-.light #home .bg-white {
-  background-color: white !important;
-}
-
-.light #home .shadow-lg {
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
-}
 
 * {
     margin: 0;
@@ -1944,13 +1610,6 @@ nav .navbar-grid-animate[class*="animate-spin"],
     isolation: isolate;
   }
 
-  /* Light mode glass button styling */
-  .light .glass-btn {
-    background: linear-gradient(to bottom, rgba(139, 92, 246, 0.1), rgba(139, 92, 246, 0.05));
-    border: 1px solid rgba(139, 92, 246, 0.3);
-    color: #1f2937; /* Dark text for light mode */
-  }
-
   /* Dark mode glass button styling */
   .dark .glass-btn {
     background: linear-gradient(to bottom, rgba(255,255,255,0.15), rgba(255,255,255,0.05));
@@ -1994,18 +1653,6 @@ nav .navbar-grid-animate[class*="animate-spin"],
   .glass-btn:hover::after { 
     opacity: 1 !important; 
     filter: url(#turbulence-displacement);
-  }
-
-  /* Light mode glass button hover */
-  .light .glass-btn:hover {
-    background: linear-gradient(to bottom, rgba(139, 92, 246, 0.2), rgba(139, 92, 246, 0.15));
-    border: 1px solid rgba(139, 92, 246, 0.6);
-    box-shadow:
-      inset 1px 1px 6px rgba(139, 92, 246, 0.4),
-      inset -1px -1px 6px rgba(0, 0, 0, 0.25),
-      0 8px 24px rgba(0, 0, 0, 0.2),
-      0 0 20px rgba(139, 92, 246, 0.5);
-    filter: brightness(1.08);
   }
 
   /* Dark mode glass button hover */
@@ -2067,14 +1714,6 @@ nav .navbar-grid-animate[class*="animate-spin"],
       0 8px 24px rgba(0,0,0,0.4),
       0 0 20px rgba(79, 156, 255, 0.5) !important;
     filter: brightness(1.15) !important;
-  }
-
-  /* Light mode preview button hover */
-  .light .preview-btn:hover {
-    box-shadow: 
-      inset 0 0 10px rgba(255,255,255,0.45), 
-      0 8px 24px rgba(0,0,0,0.25),
-      0 0 20px rgba(79, 156, 255, 0.6) !important;
   }
 
   /* Dark mode preview button hover */
@@ -2778,15 +2417,6 @@ nav .navbar-grid-animate[class*="animate-spin"],
     text-align: center;
   }
   
-  /* Light mode specific star rating styles */
-  .light .star-rating .star {
-    color: var(--star-filled, #f59e0b); /* amber-500 for light mode */
-  }
-  
-  .light .star-rating .star.empty {
-    color: var(--star-empty, #d1d5db) !important; /* gray-300 for light mode */
-  }
-  
   /* Dark mode specific star rating styles */
   .dark .star-rating .star {
     color: var(--star-filled, #fbbf24); /* yellow-400 for dark mode */
@@ -3042,185 +2672,108 @@ img[alt*="avatar"],
 #about .t4s-card a.portfolio-btn-new,
 #about .t4s-card.team-neon a.portfolio-btn-new,
 #about article.t4s-card a.portfolio-btn-new,
-.light #about .t4s-card .actions .cta-row a.portfolio-btn-new,
-.light #about .t4s-card.team-neon .actions .cta-row a.portfolio-btn-new,
-.light #about article.t4s-card .actions .cta-row a.portfolio-btn-new,
-.light #about .t4s-card a.portfolio-btn-new,
-.light #about .t4s-card.team-neon a.portfolio-btn-new,
-.light #about article.t4s-card a.portfolio-btn-new {
-  color: #ffffff !important;
-}
-
 #about .t4s-card .actions .cta-row a.portfolio-btn-new span,
 #about .t4s-card.team-neon .actions .cta-row a.portfolio-btn-new span,
 #about article.t4s-card .actions .cta-row a.portfolio-btn-new span,
 #about .t4s-card a.portfolio-btn-new span,
 #about .t4s-card.team-neon a.portfolio-btn-new span,
-#about article.t4s-card a.portfolio-btn-new span,
-.light #about .t4s-card .actions .cta-row a.portfolio-btn-new span,
-.light #about .t4s-card.team-neon .actions .cta-row a.portfolio-btn-new span,
-.light #about article.t4s-card .actions .cta-row a.portfolio-btn-new span,
-.light #about .t4s-card a.portfolio-btn-new span,
-.light #about .t4s-card.team-neon a.portfolio-btn-new span,
-.light #about article.t4s-card a.portfolio-btn-new span {
+#about article.t4s-card a.portfolio-btn-new span {
   color: #ffffff !important;
 }
 
 /* Mentor section (Sir Abdullah) Profile button - ensure white text in light mode */
 #about a.portfolio-btn-new,
-.light #about a.portfolio-btn-new,
-#about a.portfolio-btn-new span,
-.light #about a.portfolio-btn-new span {
+#about a.portfolio-btn-new span {
   color: #ffffff !important;
 }
 
 /* Admission form submit button - ensure white text in all modes - override light mode card styles */
-.light .card .admission-submit-btn,
-.light .card button.admission-submit-btn,
-.light #contact .admission-submit-btn,
-.light #contact form .admission-submit-btn,
-.light #contact .card .admission-submit-btn,
-.light #contact .card button.admission-submit-btn,
 .admission-submit-btn,
-.light .admission-submit-btn {
+.admission-submit-btn {
   color: #ffffff !important;
 }
 
-.light .card .admission-submit-btn svg,
-.light .card button.admission-submit-btn svg,
-.light #contact .admission-submit-btn svg,
-.light #contact form .admission-submit-btn svg,
-.light #contact .card .admission-submit-btn svg,
-.light #contact .card button.admission-submit-btn svg,
 .admission-submit-btn svg,
-.light .admission-submit-btn svg {
+.admission-submit-btn svg {
   color: #ffffff !important;
   stroke: #ffffff !important;
   fill: #ffffff !important;
 }
 
-.light .card .admission-submit-btn span,
-.light .card button.admission-submit-btn span,
-.light #contact .admission-submit-btn span,
-.light #contact form .admission-submit-btn span,
-.light #contact .card .admission-submit-btn span,
-.light #contact .card button.admission-submit-btn span,
 .admission-submit-btn span,
-.light .admission-submit-btn span {
+.admission-submit-btn span {
   color: #ffffff !important;
 }
 
 /* Force white text for all text content inside the button - override light mode card styles */
-.light .card .admission-submit-btn *,
-.light .card button.admission-submit-btn *,
-.light #contact .admission-submit-btn *,
-.light #contact form .admission-submit-btn *,
-.light #contact .card .admission-submit-btn *,
-.light #contact .card button.admission-submit-btn *,
 .admission-submit-btn *,
-.light .admission-submit-btn * {
+.admission-submit-btn * {
   color: #ffffff !important;
 }
 
 /* Open in Google Maps button - ensure white text in all modes - override light mode card styles */
-.light .card .google-maps-btn,
-.light .card a.google-maps-btn,
-.light #contact .google-maps-btn,
-.light #contact .card .google-maps-btn,
-.light #contact .card a.google-maps-btn,
 .google-maps-btn,
-.light .google-maps-btn {
+.google-maps-btn {
   color: #ffffff !important;
 }
 
-.light .card .google-maps-btn svg,
-.light .card a.google-maps-btn svg,
-.light #contact .google-maps-btn svg,
-.light #contact .card .google-maps-btn svg,
-.light #contact .card a.google-maps-btn svg,
 .google-maps-btn svg,
-.light .google-maps-btn svg {
+.google-maps-btn svg {
   color: #ffffff !important;
   stroke: #ffffff !important;
   fill: #ffffff !important;
 }
 
-.light .card .google-maps-btn span,
-.light .card a.google-maps-btn span,
-.light #contact .google-maps-btn span,
-.light #contact .card .google-maps-btn span,
-.light #contact .card a.google-maps-btn span,
 .google-maps-btn span,
-.light .google-maps-btn span {
+.google-maps-btn span {
   color: #ffffff !important;
 }
 
 /* Force white text for all text content inside the Google Maps button - override light mode card styles */
-.light .card .google-maps-btn *,
-.light .card a.google-maps-btn *,
-.light #contact .google-maps-btn *,
-.light #contact .card .google-maps-btn *,
-.light #contact .card a.google-maps-btn *,
 .google-maps-btn *,
-.light .google-maps-btn * {
+.google-maps-btn * {
   color: #ffffff !important;
 }
 
 /* Footer support button - ensure white text in all modes */
 .footer-support-btn,
-.light .footer-support-btn,
-.light footer .footer-support-btn,
 footer .footer-support-btn {
   color: #ffffff !important;
 }
 
 .footer-support-btn svg,
-.light .footer-support-btn svg,
-.light footer .footer-support-btn svg,
 footer .footer-support-btn svg {
   color: #ffffff !important;
   stroke: #ffffff !important;
 }
 
 .footer-support-btn span,
-.light .footer-support-btn span,
-.light footer .footer-support-btn span,
 footer .footer-support-btn span {
   color: #ffffff !important;
 }
 
 .footer-support-btn *,
-.light .footer-support-btn *,
-.light footer .footer-support-btn *,
 footer .footer-support-btn * {
   color: #ffffff !important;
 }
 
 /* Footer text - ensure white in light mode */
 .footer-about-text,
-.light .footer-about-text,
-.light footer .footer-about-text,
 footer .footer-about-text {
   color: #ffffff !important;
 }
 
 .footer-copyright,
-.light .footer-copyright,
-.light footer .footer-copyright,
 footer .footer-copyright {
   color: #ffffff !important;
 }
 
 .footer-owners,
-.light .footer-owners,
-.light footer .footer-owners,
 footer .footer-owners {
   color: #ffffff !important;
 }
 
 .footer-version,
-.light .footer-version,
-.light footer .footer-version,
 footer .footer-version {
   color: #ffffff !important;
 }
@@ -3290,44 +2843,7 @@ footer .footer-version {
   will-change: scroll-position;
 }
 
-/* Auth Modal Button Positioning Fixes */
-/* Close button (X) positioning - ensure it's in top-right corner */
-div[class*="rounded-2xl"][class*="backdrop-blur-xl"][class*="relative"] > button[aria-label="Close"] {
-  position: absolute !important;
-  top: 1rem !important;
-  right: 1rem !important;
-  z-index: 100 !important;
-  width: 2rem !important;
-  height: 2rem !important;
-}
 
-/* Password toggle buttons - ensure proper positioning inside input fields */
-div.relative > input[type="password"] ~ button[type="button"][aria-label*="password"],
-div.relative > input[placeholder*="Password"] ~ button[type="button"][aria-label*="password"],
-div.relative > input[placeholder*="password"] ~ button[type="button"][aria-label*="password"] {
-  position: absolute !important;
-  right: 0.75rem !important;
-  top: 50% !important;
-  transform: translateY(-50%) !important;
-  z-index: 10 !important;
-  padding: 0.25rem !important;
-  border-radius: 0.25rem !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-}
-
-/* Password toggle button hover effect */
-div.relative > input[type="password"] ~ button[type="button"]:hover,
-div.relative > input[placeholder*="Password"] ~ button[type="button"]:hover {
-  background-color: rgba(255, 255, 255, 0.1) !important;
-}
-
-/* Forgot password link - adjust position to not overlap with toggle button */
-div.relative > span[class*="absolute"][class*="right"]:not(button):not([class*="button"]) {
-  right: 3.5rem !important;
-  z-index: 10 !important;
-}
 
 /* Preview Modal Close Button (X) - Fix positioning relative to popup content */
 .preview-modal-close-btn {
