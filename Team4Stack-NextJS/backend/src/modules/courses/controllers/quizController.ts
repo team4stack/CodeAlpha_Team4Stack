@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { badRequestError } from '../../../shared/utils/supabaseAdminWrite';
 import quizService from '../services/quizService';
 
 export class QuizController {
@@ -40,7 +41,7 @@ export class QuizController {
     // Try to parse as integer
     const parsed = parseInt(id, 10);
     if (isNaN(parsed)) {
-      throw new Error(`Invalid ID format: ${id}`);
+      throw badRequestError(`Invalid ID format: ${id}`);
     }
     return parsed;
   }

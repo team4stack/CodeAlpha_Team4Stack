@@ -1,8 +1,53 @@
 import { supabaseAdmin } from '../../../config/supabase';
+import {
+  pickAllowedKeys,
+  updateByIdWithTimestampRetry,
+  notFoundError
+} from '../../../shared/utils/supabaseAdminWrite';
 import { Course, Video, AdmissionForm, ProgressRecord } from '../types';
 
+const COURSE_KEYS = [
+  'name',
+  'title',
+  'description',
+  'thumbnail_url',
+  'image_url',
+  'level',
+  'duration',
+  'price',
+  'note',
+  'features',
+  'gradient',
+  'order_index',
+  'active'
+] as const;
+
+const VIDEO_KEYS = ['course_id', 'title', 'description', 'video_url', 'duration', 'order_index'] as const;
+
+const ADMISSION_KEYS = [
+  'name',
+  'father_name',
+  'phone',
+  'email',
+  'address',
+  'course_name',
+  'course_name_2',
+  'message',
+  'gender',
+  'age',
+  'cnic',
+  'image_attached',
+  'viewed',
+  'approved',
+  'approved_1',
+  'approved_2',
+  'rejection_message',
+  'rejection_message_1',
+  'rejection_message_2',
+  'roll_number'
+] as const;
+
 export class CourseService {
-  // Get all courses
   async getAllCourses(): Promise<Course[]> {
     const { data, error } = await supabaseAdmin
       .from('courses')
@@ -15,54 +60,33 @@ export class CourseService {
     return data || [];
   }
 
-  // Get course by ID
   async getCourseById(id: number): Promise<Course | null> {
-    const { data, error } = await supabaseAdmin
-      .from('courses')
-      .select('*')
-      .eq('id', id)
-      .single();
+    const { data, error } = await supabaseAdmin.from('courses').select('*').eq('id', id).maybeSingle();
 
     if (error) throw error;
     return data;
   }
 
-  // Create course
   async createCourse(course: Partial<Course>): Promise<Course> {
-    const { data, error } = await supabaseAdmin
-      .from('courses')
-      .insert(course)
-      .select()
-      .single();
+    const insert = pickAllowedKeys(course, COURSE_KEYS);
+    const { data, error } = await supabaseAdmin.from('courses').insert(insert).select().single();
 
     if (error) throw error;
     return data;
   }
 
-  // Update course
   async updateCourse(id: number, course: Partial<Course>): Promise<Course> {
-    const { data, error } = await supabaseAdmin
-      .from('courses')
-      .update({ ...course, updated_at: new Date().toISOString() })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
+    const patch = pickAllowedKeys(course, COURSE_KEYS);
+    const row = await updateByIdWithTimestampRetry('courses', id, patch, { notFoundMessage: 'Course not found' });
+    return row as unknown as Course;
   }
 
-  // Delete course
   async deleteCourse(id: number): Promise<void> {
-    const { error } = await supabaseAdmin
-      .from('courses')
-      .delete()
-      .eq('id', id);
+    const { error } = await supabaseAdmin.from('courses').delete().eq('id', id);
 
     if (error) throw error;
   }
 
-  // Get videos for a course
   async getCourseVideos(courseId: number): Promise<Video[]> {
     const { data, error } = await supabaseAdmin
       .from('videos')
@@ -74,42 +98,26 @@ export class CourseService {
     return data || [];
   }
 
-  // Create video
   async createVideo(video: Partial<Video>): Promise<Video> {
-    const { data, error } = await supabaseAdmin
-      .from('videos')
-      .insert(video)
-      .select()
-      .single();
+    const insert = pickAllowedKeys(video, VIDEO_KEYS);
+    const { data, error } = await supabaseAdmin.from('videos').insert(insert).select().single();
 
     if (error) throw error;
     return data;
   }
 
-  // Update video
   async updateVideo(id: number, video: Partial<Video>): Promise<Video> {
-    const { data, error } = await supabaseAdmin
-      .from('videos')
-      .update({ ...video, updated_at: new Date().toISOString() })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
+    const patch = pickAllowedKeys(video, VIDEO_KEYS);
+    const row = await updateByIdWithTimestampRetry('videos', id, patch, { notFoundMessage: 'Video not found' });
+    return row as unknown as Video;
   }
 
-  // Delete video
   async deleteVideo(id: number): Promise<void> {
-    const { error } = await supabaseAdmin
-      .from('videos')
-      .delete()
-      .eq('id', id);
+    const { error } = await supabaseAdmin.from('videos').delete().eq('id', id);
 
     if (error) throw error;
   }
 
-  // Get admission forms
   async getAdmissionForms(filters?: {
     email?: string;
     approved?: boolean;
@@ -133,47 +141,30 @@ export class CourseService {
     return data || [];
   }
 
-  // Create admission form
   async createAdmissionForm(form: Partial<AdmissionForm>): Promise<AdmissionForm> {
-    const { data, error } = await supabaseAdmin
-      .from('admission_form')
-      .insert(form)
-      .select()
-      .single();
+    const insert = pickAllowedKeys(form, ADMISSION_KEYS);
+    const { data, error } = await supabaseAdmin.from('admission_form').insert(insert).select().single();
 
     if (error) throw error;
     return data;
   }
 
-  // Update admission form
   async updateAdmissionForm(id: number, form: Partial<AdmissionForm>): Promise<AdmissionForm> {
-    const { data, error } = await supabaseAdmin
-      .from('admission_form')
-      .update(form)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
+    const patch = pickAllowedKeys(form, ADMISSION_KEYS);
+    const row = await updateByIdWithTimestampRetry('admission_form', id, patch, {
+      notFoundMessage: 'Admission form not found'
+    });
+    return row as unknown as AdmissionForm;
   }
 
-  // Delete admission form
   async deleteAdmissionForm(id: number): Promise<void> {
-    const { error } = await supabaseAdmin
-      .from('admission_form')
-      .delete()
-      .eq('id', id);
+    const { error } = await supabaseAdmin.from('admission_form').delete().eq('id', id);
 
     if (error) throw error;
   }
 
-  // Get user progress
   async getUserProgress(userId: string, courseId?: number): Promise<ProgressRecord[]> {
-    let query = supabaseAdmin
-      .from('progress_records')
-      .select('*')
-      .eq('user_id', userId);
+    let query = supabaseAdmin.from('progress_records').select('*').eq('user_id', userId);
 
     if (courseId) {
       query = query.eq('course_id', courseId);
@@ -185,12 +176,9 @@ export class CourseService {
     return data || [];
   }
 
-  // Get all progress records (for admin)
   async getAllProgress(filters?: { courseId?: string; userId?: string; completed?: boolean }): Promise<ProgressRecord[]> {
     try {
-      let query = supabaseAdmin
-        .from('progress_records')
-        .select('*');
+      let query = supabaseAdmin.from('progress_records').select('*');
 
       if (filters?.courseId) {
         query = query.eq('course_id', filters.courseId);
@@ -215,16 +203,18 @@ export class CourseService {
     }
   }
 
-  // Update progress
   async updateProgress(progress: Partial<ProgressRecord>): Promise<ProgressRecord> {
+    const progressKeys = ['user_id', 'course_id', 'video_id', 'completed', 'score'] as const;
+    const row = pickAllowedKeys(progress, progressKeys);
     const { data, error } = await supabaseAdmin
       .from('progress_records')
-      .upsert(progress, { onConflict: 'user_id,course_id,video_id' })
+      .upsert(row, { onConflict: 'user_id,course_id,video_id' })
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
-    return data;
+    if (!data) throw notFoundError('Progress record not found');
+    return data as ProgressRecord;
   }
 }
 

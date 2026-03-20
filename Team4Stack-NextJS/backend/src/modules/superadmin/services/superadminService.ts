@@ -1,5 +1,15 @@
 import { supabaseAdmin } from '../../../config/supabase';
+import {
+  pickAllowedKeys,
+  updateByIdWithTimestampRetry,
+  notFoundError,
+  shouldRetryUpdateWithoutUpdatedAt
+} from '../../../shared/utils/supabaseAdminWrite';
+import { sanitizeUserUpdateBody } from '../../../shared/utils/sanitizeUserPatch';
 import { AdminUser, AuditLog, User } from '../types';
+
+const ADMIN_USER_WRITE_KEYS = ['email', 'role', 'password_hash'] as const;
+const AUDIT_LOG_WRITE_KEYS = ['user_id', 'action', 'table_name', 'record_id', 'details'] as const;
 
 export class SuperAdminService {
   // Admin Users
@@ -13,24 +23,18 @@ export class SuperAdminService {
   }
 
   async createAdminUser(admin: Partial<AdminUser>): Promise<AdminUser> {
-    const { data, error } = await supabaseAdmin
-      .from('admin_users')
-      .insert(admin)
-      .select()
-      .single();
+    const insert = pickAllowedKeys(admin as Record<string, unknown>, ADMIN_USER_WRITE_KEYS);
+    const { data, error } = await supabaseAdmin.from('admin_users').insert(insert).select().single();
     if (error) throw error;
     return data;
   }
 
   async updateAdminUser(id: number, admin: Partial<AdminUser>): Promise<AdminUser> {
-    const { data, error } = await supabaseAdmin
-      .from('admin_users')
-      .update({ ...admin, updated_at: new Date().toISOString() })
-      .eq('id', id)
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
+    const patch = pickAllowedKeys(admin as Record<string, unknown>, ADMIN_USER_WRITE_KEYS);
+    const row = await updateByIdWithTimestampRetry('admin_users', id, patch, {
+      notFoundMessage: 'Admin user not found'
+    });
+    return row as unknown as AdminUser;
   }
 
   async deleteAdminUser(id: number): Promise<void> {
@@ -88,11 +92,8 @@ export class SuperAdminService {
   }
 
   async createAuditLog(log: Partial<AuditLog>): Promise<AuditLog> {
-    const { data, error } = await supabaseAdmin
-      .from('audit_logs')
-      .insert(log)
-      .select()
-      .single();
+    const insert = pickAllowedKeys(log as Record<string, unknown>, AUDIT_LOG_WRITE_KEYS);
+    const { data, error } = await supabaseAdmin.from('audit_logs').insert(insert).select().single();
     if (error) throw error;
     return data;
   }
@@ -113,20 +114,40 @@ export class SuperAdminService {
       .from('users')
       .select('*')
       .eq('id', id)
-      .single();
+      .maybeSingle();
     if (error) throw error;
     return data;
   }
 
-  async updateUser(id: string, user: Partial<User>): Promise<User> {
-    const { data, error } = await supabaseAdmin
+  async updateUser(id: string, user: Partial<User> | Record<string, unknown>): Promise<User> {
+    const patch = sanitizeUserUpdateBody(user);
+    if (Object.keys(patch).length === 0) {
+      const existing = await this.getUserById(id);
+      if (!existing) {
+        const err: Error & { status?: number } = new Error('User not found');
+        err.status = 404;
+        throw err;
+      }
+      return existing;
+    }
+    const stamp = new Date().toISOString();
+    let { data, error } = await supabaseAdmin
       .from('users')
-      .update({ ...user, updated_at: new Date().toISOString() })
+      .update({ ...patch, updated_at: stamp })
       .eq('id', id)
       .select()
-      .single();
+      .maybeSingle();
+    if (error && shouldRetryUpdateWithoutUpdatedAt(error)) {
+      ({ data, error } = await supabaseAdmin
+        .from('users')
+        .update(patch)
+        .eq('id', id)
+        .select()
+        .maybeSingle());
+    }
     if (error) throw error;
-    return data;
+    if (!data) throw notFoundError('User not found');
+    return data as User;
   }
 
   async blockUser(id: string): Promise<User> {
@@ -138,13 +159,15 @@ export class SuperAdminService {
   }
 
   async deleteUser(id: string): Promise<void> {
-    // Store user info before deletion
     const user = await this.getUserById(id);
-    if (user) {
-      await supabaseAdmin.from('deleted_accounts').insert({
+    if (user?.email) {
+      const { error: archiveError } = await supabaseAdmin.from('deleted_accounts').insert({
         user_id: id,
         email: user.email
       });
+      if (archiveError && process.env.NODE_ENV === 'development') {
+        console.warn('[superadmin] deleted_accounts insert skipped:', archiveError.message);
+      }
     }
 
     const { error } = await supabaseAdmin.from('users').delete().eq('id', id);

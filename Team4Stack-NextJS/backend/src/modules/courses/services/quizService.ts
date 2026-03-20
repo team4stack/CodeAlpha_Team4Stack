@@ -1,19 +1,28 @@
 import { supabaseAdmin } from '../../../config/supabase';
+import {
+  pickAllowedKeys,
+  updateByIdWithTimestampRetry,
+  notFoundError,
+  shouldRetryUpdateWithoutUpdatedAt
+} from '../../../shared/utils/supabaseAdminWrite';
 import { Quiz, QuizQuestion, QuizOption, QuizAttempt, QuizAttemptAnswer } from '../types';
 
-export class QuizService {
-  // Get quiz by video ID
-  async getQuizByVideoId(videoId: number): Promise<Quiz | null> {
-    const { data, error } = await supabaseAdmin
-      .from('quizzes')
-      .select('*')
-      .eq('video_id', videoId)
-      .single();
+const QUIZ_UPDATE_KEYS = [
+  'video_id',
+  'title',
+  'description',
+  'total_marks',
+  'passing_percentage',
+  'time_limit_minutes'
+] as const;
+const QUESTION_KEYS = ['quiz_id', 'question_text', 'order_index', 'marks'] as const;
+const OPTION_KEYS = ['question_id', 'option_text', 'is_correct', 'order_index'] as const;
 
-    if (error) {
-      if (error.code === 'PGRST116') return null; // Not found
-      throw error;
-    }
+export class QuizService {
+  async getQuizByVideoId(videoId: number): Promise<Quiz | null> {
+    const { data, error } = await supabaseAdmin.from('quizzes').select('*').eq('video_id', videoId).maybeSingle();
+
+    if (error) throw error;
     return data;
   }
 
@@ -125,15 +134,9 @@ export class QuizService {
 
   // Update quiz
   async updateQuiz(id: number | string, quiz: Partial<Quiz>): Promise<Quiz> {
-    const { data, error } = await supabaseAdmin
-      .from('quizzes')
-      .update(quiz)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
+    const patch = pickAllowedKeys(quiz, QUIZ_UPDATE_KEYS);
+    const row = await updateByIdWithTimestampRetry('quizzes', id, patch, { notFoundMessage: 'Quiz not found' });
+    return row as unknown as Quiz;
   }
 
   // Delete quiz
@@ -148,11 +151,8 @@ export class QuizService {
 
   // Create question
   async createQuestion(question: Partial<QuizQuestion>): Promise<QuizQuestion> {
-    const { data, error } = await supabaseAdmin
-      .from('quiz_questions')
-      .insert(question)
-      .select()
-      .single();
+    const insert = pickAllowedKeys(question, QUESTION_KEYS);
+    const { data, error } = await supabaseAdmin.from('quiz_questions').insert(insert).select().single();
 
     if (error) throw error;
     return data;
@@ -160,15 +160,11 @@ export class QuizService {
 
   // Update question
   async updateQuestion(id: number | string, question: Partial<QuizQuestion>): Promise<QuizQuestion> {
-    const { data, error } = await supabaseAdmin
-      .from('quiz_questions')
-      .update(question)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
+    const patch = pickAllowedKeys(question, QUESTION_KEYS);
+    const row = await updateByIdWithTimestampRetry('quiz_questions', id, patch, {
+      notFoundMessage: 'Quiz question not found'
+    });
+    return row as unknown as QuizQuestion;
   }
 
   // Delete question
@@ -183,11 +179,8 @@ export class QuizService {
 
   // Create option
   async createOption(option: Partial<QuizOption>): Promise<QuizOption> {
-    const { data, error } = await supabaseAdmin
-      .from('quiz_options')
-      .insert(option)
-      .select()
-      .single();
+    const insert = pickAllowedKeys(option, OPTION_KEYS);
+    const { data, error } = await supabaseAdmin.from('quiz_options').insert(insert).select().single();
 
     if (error) throw error;
     return data;
@@ -195,15 +188,11 @@ export class QuizService {
 
   // Update option
   async updateOption(id: number | string, option: Partial<QuizOption>): Promise<QuizOption> {
-    const { data, error } = await supabaseAdmin
-      .from('quiz_options')
-      .update(option)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
+    const patch = pickAllowedKeys(option, OPTION_KEYS);
+    const row = await updateByIdWithTimestampRetry('quiz_options', id, patch, {
+      notFoundMessage: 'Quiz option not found'
+    });
+    return row as unknown as QuizOption;
   }
 
   // Delete option
@@ -268,9 +257,10 @@ export class QuizService {
       .from('quiz_attempts')
       .select('*, quizzes(*)')
       .eq('id', attemptId)
-      .single();
+      .maybeSingle();
 
     if (attemptError) throw attemptError;
+    if (!attempt) throw notFoundError('Quiz attempt not found');
 
     const quiz = attempt.quizzes as Quiz;
 
@@ -365,21 +355,35 @@ export class QuizService {
     }
 
     // Update attempt
-    const { data: updatedAttempt, error: updateError } = await supabaseAdmin
+    const stamp = submittedAt.toISOString();
+    const updatePayload = {
+      score: totalScore,
+      total_marks: quiz.total_marks,
+      percentage: percentage,
+      passed: passed,
+      submitted_at: stamp,
+      time_taken_seconds: timeTakenSeconds,
+      updated_at: stamp
+    };
+    let { data: updatedAttempt, error: updateError } = await supabaseAdmin
       .from('quiz_attempts')
-      .update({
-        score: totalScore,
-        total_marks: quiz.total_marks,
-        percentage: percentage,
-        passed: passed,
-        submitted_at: submittedAt.toISOString(),
-        time_taken_seconds: timeTakenSeconds
-      })
+      .update(updatePayload)
       .eq('id', attemptId)
       .select()
-      .single();
+      .maybeSingle();
+
+    if (updateError && shouldRetryUpdateWithoutUpdatedAt(updateError)) {
+      const { score, total_marks, percentage, passed, submitted_at, time_taken_seconds } = updatePayload;
+      ({ data: updatedAttempt, error: updateError } = await supabaseAdmin
+        .from('quiz_attempts')
+        .update({ score, total_marks, percentage, passed, submitted_at, time_taken_seconds })
+        .eq('id', attemptId)
+        .select()
+        .maybeSingle());
+    }
 
     if (updateError) throw updateError;
+    if (!updatedAttempt) throw notFoundError('Quiz attempt not found');
 
     return updatedAttempt;
   }

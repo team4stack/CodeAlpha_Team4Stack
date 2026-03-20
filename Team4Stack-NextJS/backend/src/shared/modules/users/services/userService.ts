@@ -1,4 +1,6 @@
 import { supabaseAdmin } from '../../../../config/supabase';
+import { notFoundError, shouldRetryUpdateWithoutUpdatedAt } from '../../../utils/supabaseAdminWrite';
+import { sanitizeUserUpdateBody } from '../../../utils/sanitizeUserPatch';
 import { User } from '../types';
 
 export class UserService {
@@ -7,7 +9,7 @@ export class UserService {
       .from('users')
       .select('*')
       .eq('id', id)
-      .single();
+      .maybeSingle();
     if (error) throw error;
     return data;
   }
@@ -42,15 +44,35 @@ export class UserService {
     return data;
   }
 
-  async updateUser(id: string, user: Partial<User>): Promise<User> {
-    const { data, error } = await supabaseAdmin
+  async updateUser(id: string, user: Partial<User> | Record<string, unknown>): Promise<User> {
+    const patch = sanitizeUserUpdateBody(user);
+    if (Object.keys(patch).length === 0) {
+      const existing = await this.getUserById(id);
+      if (!existing) {
+        const err: Error & { status?: number } = new Error('User not found');
+        err.status = 404;
+        throw err;
+      }
+      return existing;
+    }
+    const stamp = new Date().toISOString();
+    let { data, error } = await supabaseAdmin
       .from('users')
-      .update({ ...user, updated_at: new Date().toISOString() })
+      .update({ ...patch, updated_at: stamp })
       .eq('id', id)
       .select()
-      .single();
+      .maybeSingle();
+    if (error && shouldRetryUpdateWithoutUpdatedAt(error)) {
+      ({ data, error } = await supabaseAdmin
+        .from('users')
+        .update(patch)
+        .eq('id', id)
+        .select()
+        .maybeSingle());
+    }
     if (error) throw error;
-    return data;
+    if (!data) throw notFoundError('User not found');
+    return data as User;
   }
 
   async upsertUser(user: Partial<User>): Promise<User> {

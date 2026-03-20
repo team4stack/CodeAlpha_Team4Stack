@@ -16,11 +16,10 @@ const UsersPage: React.FC = () => {
     setLoading(true); setError(null)
     try {
       const result = await superadminApi.getUsers()
-      if (result.error) {
-        setError(result.error)
+      if (result.error || result.success === false) {
+        setError(result.error || 'Failed to load users')
       } else {
-        // Sort by created_at descending
-        const sortedData = (result.data || []).sort((a: any, b: any) => 
+        const sortedData = (result.data || []).sort((a: any, b: any) =>
           new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
         )
         setRows(sortedData)
@@ -89,9 +88,11 @@ const UsersPage: React.FC = () => {
                           const ok = window.confirm(`Are you sure you want to ${action} this user?`)
                           if (!ok) return
                           try {
-                            const result = await superadminApi.updateUser(r.id, { is_blocked: newBlockedStatus })
-                            if (result.error) {
-                              setError(result.error)
+                            const result = newBlockedStatus
+                              ? await superadminApi.blockUser(r.id)
+                              : await superadminApi.unblockUser(r.id)
+                            if (result.error || result.success === false) {
+                              setError(result.error || `Failed to ${action} user`)
                             } else {
                               setError(null)
                               load()
@@ -118,8 +119,8 @@ const UsersPage: React.FC = () => {
                           if (!ok) return
                           try {
                             const result = await superadminApi.deleteUser(r.id)
-                            if (result.error) {
-                              setError(result.error)
+                            if (result.error || result.success === false) {
+                              setError(result.error || 'Failed to delete user')
                             } else {
                               load()
                             }

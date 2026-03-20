@@ -1,5 +1,35 @@
 import { supabaseAdmin } from '../../../config/supabase';
+import {
+  updateByIdWithTimestampRetry,
+  shouldRetryUpdateWithoutUpdatedAt,
+  pickAllowedKeys
+} from '../../../shared/utils/supabaseAdminWrite';
 import { Review, Project, Service, SiteSetting, SupportRequest } from '../types';
+
+const PROJECT_WRITE_KEYS = ['title', 'description', 'video_id', 'github_url', 'image_url', 'order_index'] as const;
+const REVIEW_WRITE_KEYS = ['name', 'rating', 'comment', 'status'] as const;
+const SERVICE_WRITE_KEYS = [
+  'title',
+  'description',
+  'image_url',
+  'emoji',
+  'gradient_color',
+  'contact',
+  'order_index',
+  'active'
+] as const;
+const SUPPORT_WRITE_KEYS = ['reason', 'email', 'subject', 'message', 'user_id', 'status', 'viewed'] as const;
+
+function pickProjectPatch(body: unknown): Record<string, unknown> {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return {};
+  const raw = body as Record<string, unknown>;
+  const patch: Record<string, unknown> = {};
+  for (const k of PROJECT_WRITE_KEYS) {
+    if (raw[k] !== undefined) patch[k] = raw[k];
+  }
+  return patch;
+}
+
 
 export class LandingService {
   // Reviews
@@ -14,24 +44,16 @@ export class LandingService {
   }
 
   async createReview(review: Partial<Review>): Promise<Review> {
-    const { data, error } = await supabaseAdmin
-      .from('reviews')
-      .insert(review)
-      .select()
-      .single();
+    const insert = pickAllowedKeys(review, REVIEW_WRITE_KEYS);
+    const { data, error } = await supabaseAdmin.from('reviews').insert(insert).select().single();
     if (error) throw error;
     return data;
   }
 
   async updateReview(id: number, review: Partial<Review>): Promise<Review> {
-    const { data, error } = await supabaseAdmin
-      .from('reviews')
-      .update(review)
-      .eq('id', id)
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
+    const patch = pickAllowedKeys(review, REVIEW_WRITE_KEYS);
+    const row = await updateByIdWithTimestampRetry('reviews', id, patch, { notFoundMessage: 'Review not found' });
+    return row as unknown as Review;
   }
 
   async deleteReview(id: number): Promise<void> {
@@ -51,24 +73,30 @@ export class LandingService {
   }
 
   async createProject(project: Partial<Project>): Promise<Project> {
+    const insert = pickProjectPatch(project)
     const { data, error } = await supabaseAdmin
       .from('projects')
-      .insert(project)
+      .insert(insert)
       .select()
       .single();
     if (error) throw error;
     return data;
   }
 
-  async updateProject(id: number, project: Partial<Project>): Promise<Project> {
+  async getProjectById(id: number): Promise<Project | null> {
     const { data, error } = await supabaseAdmin
       .from('projects')
-      .update({ ...project, updated_at: new Date().toISOString() })
+      .select('*')
       .eq('id', id)
-      .select()
-      .single();
+      .maybeSingle();
     if (error) throw error;
     return data;
+  }
+
+  async updateProject(id: number, project: Partial<Project> | Record<string, unknown>): Promise<Project> {
+    const patch = pickProjectPatch(project);
+    const row = await updateByIdWithTimestampRetry('projects', id, patch, { notFoundMessage: 'Project not found' });
+    return row as unknown as Project;
   }
 
   async deleteProject(id: number): Promise<void> {
@@ -88,24 +116,16 @@ export class LandingService {
   }
 
   async createService(service: Partial<Service>): Promise<Service> {
-    const { data, error } = await supabaseAdmin
-      .from('services')
-      .insert(service)
-      .select()
-      .single();
+    const insert = pickAllowedKeys(service, SERVICE_WRITE_KEYS);
+    const { data, error } = await supabaseAdmin.from('services').insert(insert).select().single();
     if (error) throw error;
     return data;
   }
 
   async updateService(id: number, service: Partial<Service>): Promise<Service> {
-    const { data, error } = await supabaseAdmin
-      .from('services')
-      .update({ ...service, updated_at: new Date().toISOString() })
-      .eq('id', id)
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
+    const patch = pickAllowedKeys(service, SERVICE_WRITE_KEYS);
+    const row = await updateByIdWithTimestampRetry('services', id, patch, { notFoundMessage: 'Service not found' });
+    return row as unknown as Service;
   }
 
   async deleteService(id: number): Promise<void> {
@@ -125,35 +145,41 @@ export class LandingService {
   }
 
   async getSiteSetting(key: string): Promise<SiteSetting | null> {
-    const { data, error } = await supabaseAdmin
-      .from('site_settings')
-      .select('*')
-      .eq('key', key)
-      .single();
-    if (error && error.code !== 'PGRST116') throw error;
+    const { data, error } = await supabaseAdmin.from('site_settings').select('*').eq('key', key).maybeSingle();
+    if (error) throw error;
     return data;
   }
 
   async upsertSiteSetting(key: string, value: string): Promise<SiteSetting> {
-    const { data, error } = await supabaseAdmin
+    const stamp = new Date().toISOString();
+    let { data, error } = await supabaseAdmin
       .from('site_settings')
-      .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' })
+      .upsert({ key, value, updated_at: stamp }, { onConflict: 'key' })
       .select()
       .single();
+    if (error && shouldRetryUpdateWithoutUpdatedAt(error)) {
+      ({ data, error } = await supabaseAdmin
+        .from('site_settings')
+        .upsert({ key, value }, { onConflict: 'key' })
+        .select()
+        .single());
+    }
     if (error) throw error;
     return data;
   }
 
   async upsertSiteSettings(entries: Array<{ key: string; value: string }>): Promise<SiteSetting[]> {
+    const stamp = new Date().toISOString();
     const settings = entries.map(entry => ({
       key: entry.key,
       value: entry.value,
-      updated_at: new Date().toISOString()
+      updated_at: stamp
     }));
-    const { data, error } = await supabaseAdmin
-      .from('site_settings')
-      .upsert(settings, { onConflict: 'key' })
-      .select();
+    let { data, error } = await supabaseAdmin.from('site_settings').upsert(settings, { onConflict: 'key' }).select();
+    if (error && shouldRetryUpdateWithoutUpdatedAt(error)) {
+      const plain = entries.map(entry => ({ key: entry.key, value: entry.value }));
+      ({ data, error } = await supabaseAdmin.from('site_settings').upsert(plain, { onConflict: 'key' }).select());
+    }
     if (error) throw error;
     return data || [];
   }
@@ -184,24 +210,18 @@ export class LandingService {
   }
 
   async createSupportRequest(request: Partial<SupportRequest>): Promise<SupportRequest> {
-    const { data, error } = await supabaseAdmin
-      .from('support_requests')
-      .insert(request)
-      .select()
-      .single();
+    const insert = pickAllowedKeys(request, SUPPORT_WRITE_KEYS);
+    const { data, error } = await supabaseAdmin.from('support_requests').insert(insert).select().single();
     if (error) throw error;
     return data;
   }
 
   async updateSupportRequest(id: number, request: Partial<SupportRequest>): Promise<SupportRequest> {
-    const { data, error } = await supabaseAdmin
-      .from('support_requests')
-      .update({ ...request, updated_at: new Date().toISOString() })
-      .eq('id', id)
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
+    const patch = pickAllowedKeys(request, SUPPORT_WRITE_KEYS);
+    const row = await updateByIdWithTimestampRetry('support_requests', id, patch, {
+      notFoundMessage: 'Support request not found'
+    });
+    return row as unknown as SupportRequest;
   }
 }
 

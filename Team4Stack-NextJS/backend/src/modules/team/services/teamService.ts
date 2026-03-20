@@ -1,8 +1,35 @@
 import { supabaseAdmin } from '../../../config/supabase';
+import { pickAllowedKeys, updateByIdWithTimestampRetry } from '../../../shared/utils/supabaseAdminWrite';
 import { TeamMember, MentorProfile } from '../types';
 
+const TEAM_MEMBER_KEYS = [
+  'name',
+  'role_text',
+  'image_url',
+  'is_head',
+  'profile_image_url',
+  'banner_image_url',
+  'portfolio_url',
+  'github_url',
+  'primary_tag',
+  'order_index',
+  'active'
+] as const;
+
+const MENTOR_KEYS = [
+  'name',
+  'role_text',
+  'image_url',
+  'profile_image_url',
+  'banner_image_url',
+  'portfolio_url',
+  'github_url',
+  'primary_tag',
+  'order_index',
+  'active'
+] as const;
+
 export class TeamService {
-  // Team Members
   async getTeamMembers(): Promise<TeamMember[]> {
     const { data, error } = await supabaseAdmin
       .from('team_members')
@@ -15,24 +42,18 @@ export class TeamService {
   }
 
   async createTeamMember(member: Partial<TeamMember>): Promise<TeamMember> {
-    const { data, error } = await supabaseAdmin
-      .from('team_members')
-      .insert(member)
-      .select()
-      .single();
+    const insert = pickAllowedKeys(member, TEAM_MEMBER_KEYS);
+    const { data, error } = await supabaseAdmin.from('team_members').insert(insert).select().single();
     if (error) throw error;
     return data;
   }
 
   async updateTeamMember(id: number, member: Partial<TeamMember>): Promise<TeamMember> {
-    const { data, error } = await supabaseAdmin
-      .from('team_members')
-      .update({ ...member, updated_at: new Date().toISOString() })
-      .eq('id', id)
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
+    const patch = pickAllowedKeys(member, TEAM_MEMBER_KEYS);
+    const row = await updateByIdWithTimestampRetry('team_members', id, patch, {
+      notFoundMessage: 'Team member not found'
+    });
+    return row as unknown as TeamMember;
   }
 
   async deleteTeamMember(id: number): Promise<void> {
@@ -40,7 +61,6 @@ export class TeamService {
     if (error) throw error;
   }
 
-  // Mentor Profiles
   async getMentorProfiles(): Promise<MentorProfile[]> {
     const { data, error } = await supabaseAdmin
       .from('mentor_profile')
@@ -53,24 +73,18 @@ export class TeamService {
   }
 
   async createMentorProfile(mentor: Partial<MentorProfile>): Promise<MentorProfile> {
-    const { data, error } = await supabaseAdmin
-      .from('mentor_profile')
-      .insert(mentor)
-      .select()
-      .single();
+    const insert = pickAllowedKeys(mentor, MENTOR_KEYS);
+    const { data, error } = await supabaseAdmin.from('mentor_profile').insert(insert).select().single();
     if (error) throw error;
     return data;
   }
 
   async updateMentorProfile(id: number, mentor: Partial<MentorProfile>): Promise<MentorProfile> {
-    const { data, error } = await supabaseAdmin
-      .from('mentor_profile')
-      .update({ ...mentor, updated_at: new Date().toISOString() })
-      .eq('id', id)
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
+    const patch = pickAllowedKeys(mentor, MENTOR_KEYS);
+    const row = await updateByIdWithTimestampRetry('mentor_profile', id, patch, {
+      notFoundMessage: 'Mentor profile not found'
+    });
+    return row as unknown as MentorProfile;
   }
 
   async deleteMentorProfile(id: number): Promise<void> {

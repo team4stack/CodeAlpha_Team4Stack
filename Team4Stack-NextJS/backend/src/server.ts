@@ -102,6 +102,18 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   if ((err as any).hint) {
     console.error('[Server] Error hint:', (err as any).hint);
   }
+
+  const statusRaw = (err as any).status;
+  const status =
+    typeof statusRaw === 'number' && statusRaw >= 400 && statusRaw < 600 ? statusRaw : 500;
+
+  if (status !== 500) {
+    return res.status(status).json({
+      success: false,
+      error: err.message || 'Request failed'
+    });
+  }
+
   res.status(500).json({
     error: 'Internal server error',
     message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong',

@@ -1,6 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
 import landingService from '../services/landingService';
 
+function parseNumericId(param: string): number | null {
+  const id = parseInt(param, 10);
+  if (Number.isNaN(id)) return null;
+  return id;
+}
+
 export class LandingController {
   // Reviews
   getReviews = async (req: Request, res: Response, next: NextFunction) => {
@@ -24,8 +30,11 @@ export class LandingController {
 
   updateReview = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { id } = req.params;
-      const review = await landingService.updateReview(parseInt(id), req.body);
+      const id = parseNumericId(req.params.id);
+      if (id === null) {
+        return res.status(400).json({ success: false, error: 'Invalid review id' });
+      }
+      const review = await landingService.updateReview(id, req.body);
       res.json({ success: true, data: review });
     } catch (error: any) {
       next(error);
@@ -34,8 +43,11 @@ export class LandingController {
 
   deleteReview = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { id } = req.params;
-      await landingService.deleteReview(parseInt(id));
+      const id = parseNumericId(req.params.id);
+      if (id === null) {
+        return res.status(400).json({ success: false, error: 'Invalid review id' });
+      }
+      await landingService.deleteReview(id);
       res.json({ success: true, message: 'Review deleted successfully' });
     } catch (error: any) {
       next(error);
@@ -52,6 +64,22 @@ export class LandingController {
     }
   };
 
+  getProjectById = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (Number.isNaN(id)) {
+        return res.status(400).json({ success: false, error: 'Invalid project id' });
+      }
+      const project = await landingService.getProjectById(id);
+      if (!project) {
+        return res.status(404).json({ success: false, error: 'Project not found' });
+      }
+      res.json({ success: true, data: project });
+    } catch (error: any) {
+      next(error);
+    }
+  };
+
   createProject = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const project = await landingService.createProject(req.body);
@@ -63,18 +91,27 @@ export class LandingController {
 
   updateProject = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { id } = req.params;
-      const project = await landingService.updateProject(parseInt(id), req.body);
+      const id = parseInt(req.params.id, 10);
+      if (Number.isNaN(id)) {
+        return res.status(400).json({ success: false, error: 'Invalid project id' });
+      }
+      const project = await landingService.updateProject(id, req.body);
       res.json({ success: true, data: project });
     } catch (error: any) {
+      if (error?.status === 404) {
+        return res.status(404).json({ success: false, error: error.message || 'Project not found' });
+      }
       next(error);
     }
   };
 
   deleteProject = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { id } = req.params;
-      await landingService.deleteProject(parseInt(id));
+      const id = parseInt(req.params.id, 10);
+      if (Number.isNaN(id)) {
+        return res.status(400).json({ success: false, error: 'Invalid project id' });
+      }
+      await landingService.deleteProject(id);
       res.json({ success: true, message: 'Project deleted successfully' });
     } catch (error: any) {
       next(error);
@@ -102,8 +139,11 @@ export class LandingController {
 
   updateService = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { id } = req.params;
-      const service = await landingService.updateService(parseInt(id), req.body);
+      const id = parseNumericId(req.params.id);
+      if (id === null) {
+        return res.status(400).json({ success: false, error: 'Invalid service id' });
+      }
+      const service = await landingService.updateService(id, req.body);
       res.json({ success: true, data: service });
     } catch (error: any) {
       next(error);
@@ -112,8 +152,11 @@ export class LandingController {
 
   deleteService = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { id } = req.params;
-      await landingService.deleteService(parseInt(id));
+      const id = parseNumericId(req.params.id);
+      if (id === null) {
+        return res.status(400).json({ success: false, error: 'Invalid service id' });
+      }
+      await landingService.deleteService(id);
       res.json({ success: true, message: 'Service deleted successfully' });
     } catch (error: any) {
       next(error);
@@ -196,8 +239,11 @@ export class LandingController {
 
   updateSupportRequest = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { id } = req.params;
-      const request = await landingService.updateSupportRequest(parseInt(id), req.body);
+      const id = parseNumericId(req.params.id);
+      if (id === null) {
+        return res.status(400).json({ success: false, error: 'Invalid support request id' });
+      }
+      const request = await landingService.updateSupportRequest(id, req.body);
       res.json({ success: true, data: request });
     } catch (error: any) {
       next(error);

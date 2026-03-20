@@ -1,6 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
 import superadminService from '../services/superadminService';
 
+function parseNumericId(param: string): number | null {
+  const id = parseInt(param, 10);
+  if (Number.isNaN(id)) return null;
+  return id;
+}
+
 export class SuperAdminController {
   // Admin Users
   getAdminUsers = async (req: Request, res: Response, next: NextFunction) => {
@@ -23,8 +29,11 @@ export class SuperAdminController {
 
   updateAdminUser = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { id } = req.params;
-      const admin = await superadminService.updateAdminUser(parseInt(id), req.body);
+      const id = parseNumericId(req.params.id);
+      if (id === null) {
+        return res.status(400).json({ success: false, error: 'Invalid admin id' });
+      }
+      const admin = await superadminService.updateAdminUser(id, req.body);
       res.json({ success: true, data: admin });
     } catch (error: any) {
       next(error);
@@ -33,8 +42,11 @@ export class SuperAdminController {
 
   deleteAdminUser = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { id } = req.params;
-      await superadminService.deleteAdminUser(parseInt(id));
+      const id = parseNumericId(req.params.id);
+      if (id === null) {
+        return res.status(400).json({ success: false, error: 'Invalid admin id' });
+      }
+      await superadminService.deleteAdminUser(id);
       res.json({ success: true, message: 'Admin user deleted successfully' });
     } catch (error: any) {
       next(error);

@@ -11,6 +11,7 @@ router.delete('/reviews/:id', landingController.deleteReview);
 
 // Projects
 router.get('/projects', landingController.getProjects);
+router.get('/projects/:id', landingController.getProjectById);
 router.post('/projects', landingController.createProject);
 router.put('/projects/:id', landingController.updateProject);
 router.delete('/projects/:id', landingController.deleteProject);

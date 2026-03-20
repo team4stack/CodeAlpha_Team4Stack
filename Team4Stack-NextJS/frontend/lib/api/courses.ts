@@ -1,15 +1,16 @@
 // Courses API endpoints
 import apiClient from './client';
+import { cachedPublicGet } from '@/lib/performance/functionalExperienceCache';
 
 export const coursesApi = {
   // Get all courses
   getAllCourses: async () => {
-    return apiClient.get('/courses');
+    return cachedPublicGet('courses:all', 2 * 60 * 1000, () => apiClient.get('/courses'));
   },
 
   // Get course by ID
   getCourseById: async (id: number) => {
-    return apiClient.get(`/courses/${id}`);
+    return cachedPublicGet(`courses:byId:${id}`, 90 * 1000, () => apiClient.get(`/courses/${id}`));
   },
 
   // Create course

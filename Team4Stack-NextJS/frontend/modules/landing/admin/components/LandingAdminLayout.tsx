@@ -146,11 +146,11 @@ const LandingAdminLayout: React.FC<LandingAdminLayoutProps> = ({ children }) => 
       <div className="flex-1 flex flex-col min-h-0 relative z-10" style={{ paddingTop: 'var(--admin-header-height, 80px)' }}>
         {/* Row: sidebar (width from component: 80px collapsed / 256px expanded) + content (flex-1 fills remaining space) */}
         <div className="flex-1 flex min-h-0 min-w-0">
-          <aside className="flex-shrink-0 h-full overflow-hidden overflow-x-visible border-r border-white/5">
+          <aside className="relative z-30 flex h-full w-fit flex-shrink-0 overflow-visible border-r border-white/5">
             <AdminSidebar />
           </aside>
           <div className="flex-1 min-w-0 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden admin-custom-scrollbar">
-            <main className="flex-1 min-h-full p-4 sm:p-6 text-white/90">
+            <main className="flex-1 min-h-full p-4 pb-8 sm:p-6 sm:pb-10 text-white/90">
               {children}
             </main>
           </div>

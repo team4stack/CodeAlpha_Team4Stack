@@ -35,7 +35,7 @@ const QuickActions: React.FC = () => {
           <div className="absolute inset-0 bg-gradient-to-r from-red-600 to-orange-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
         </button>
         <button 
-          onClick={() => router.push('/adminlandingt4s/stackstore')} 
+          onClick={() => router.push('/adminstackt4s')} 
           className="w-full px-4 py-3 rounded-xl bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-sm text-white font-semibold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 relative overflow-hidden group flex items-center justify-center gap-2 border border-white/20"
         >
           <span className="relative z-10 text-lg">✨</span>

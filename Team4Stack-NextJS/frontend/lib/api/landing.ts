@@ -1,5 +1,6 @@
 // Landing API endpoints
 import apiClient from './client';
+import { cachedPublicGet } from '@/lib/performance/functionalExperienceCache';
 
 export const landingApi = {
   // Reviews
@@ -22,7 +23,11 @@ export const landingApi = {
 
   // Projects
   getProjects: async () => {
-    return apiClient.get('/landing/projects');
+    return cachedPublicGet('landing:projects', 2.5 * 60 * 1000, () => apiClient.get('/landing/projects'));
+  },
+
+  getProject: async (id: number) => {
+    return apiClient.get(`/landing/projects/${id}`);
   },
 
   createProject: async (project: any) => {
@@ -39,7 +44,7 @@ export const landingApi = {
 
   // Services
   getServices: async () => {
-    return apiClient.get('/landing/services');
+    return cachedPublicGet('landing:services', 2.5 * 60 * 1000, () => apiClient.get('/landing/services'));
   },
 
   createService: async (service: any) => {
@@ -57,7 +62,10 @@ export const landingApi = {
   // Site Settings
   getSiteSettings: async (keys?: string[]) => {
     const query = keys && keys.length > 0 ? `?keys=${keys.join(',')}` : '';
-    return apiClient.get(`/landing/settings${query}`);
+    const sorted = keys?.length ? [...keys].sort().join(',') : 'all';
+    return cachedPublicGet(`landing:settings:${sorted}`, 3 * 60 * 1000, () =>
+      apiClient.get(`/landing/settings${query}`)
+    );
   },
 
   upsertSiteSetting: async (key: string, value: string) => {

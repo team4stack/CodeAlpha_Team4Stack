@@ -1,7 +1,10 @@
 'use client'
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useParams } from 'next/navigation'
+import toast from 'react-hot-toast'
+import AdminCollapsibleSection from '@/modules/landing/admin/components/AdminCollapsibleSection'
 import { landingApi, coursesApi, teamApi } from '@/lib/api'
 import { retryWithBackoff } from '@/lib/utils/retry'
 
@@ -20,7 +23,6 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
   const [form, setForm] = useState<Row>({ title: '', description: '', role_text: '', image_url: '', is_head: false, profile_image_url: '', banner_image_url: '', portfolio_url: '', github_url: '', primary_tag: '', order_index: undefined, active: true, emoji: '', gradient_color: '', contact: '' })
   const [editingId, setEditingId] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [notice, setNotice] = useState<string | null>(null)
   const [selectedService, setSelectedService] = useState<Row | null>(null)
   const [availableOrders, setAvailableOrders] = useState<number[]>([])
 
@@ -53,6 +55,143 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
   const isSupport = table === 'support'
   const isProjects = table === 'projects'
   const isHero = table === 'hero'
+  /** Hero tab: opaque fields, no glass-style inputs */
+  const heroFieldClass =
+    'w-full rounded border border-slate-700 bg-slate-950 py-1 px-1.5 text-xs text-white placeholder:text-slate-600 shadow-none focus:border-slate-500 focus:outline-none focus:ring-0'
+  const heroSelectClass =
+    'w-full min-w-0 rounded border border-slate-700 bg-slate-950 py-0.5 px-1 text-[11px] text-white shadow-none focus:border-slate-500 focus:outline-none focus:ring-0'
+  /** Remove row: flat slate icon, top-right aligned */
+  const heroRemoveBtnClass =
+    'landing-admin-glass landing-admin-glass-icon z-[2] flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-slate-600 bg-slate-900/85 text-[13px] font-medium leading-none text-slate-400 hover:border-rose-500/55 hover:bg-rose-950/90 hover:text-rose-200'
+  const moveArrayItem = <T,>(list: T[], from: number, to: number): T[] => {
+    if (from === to || from < 0 || to < 0 || from >= list.length || to >= list.length) return [...list]
+    const next = [...list]
+    const [item] = next.splice(from, 1)
+    next.splice(to, 0, item)
+    return next
+  }
+  const isRecordEditorPage = isProjects || isServices || isCourses || isTeamLike
+  const recordTypeLabel =
+    isProjects ? 'Project' : isServices ? 'Service' : isCourses ? 'Course' : table === 'team_members' ? 'Team member' : 'Mentor'
+
+  const [editorOpen, setEditorOpen] = useState(false)
+  /** Hero: form opens in modal only (saved data is the default view). */
+  const [heroSettingsOpen, setHeroSettingsOpen] = useState(false)
+
+  const closeEditor = useCallback(() => {
+    setEditorOpen(false)
+    setEditingId(null)
+    setForm({
+      title: '',
+      description: '',
+      role_text: '',
+      image_url: '',
+      is_head: false,
+      profile_image_url: '',
+      banner_image_url: '',
+      portfolio_url: '',
+      github_url: '',
+      primary_tag: '',
+      order_index: undefined,
+      active: true,
+      level: '',
+      duration: '',
+      price: '',
+      note: '',
+      features: '',
+      emoji: '',
+      gradient_color: '',
+      contact: ''
+    })
+  }, [])
+
+  const openNewRecord = useCallback(() => {
+    setEditingId(null)
+    setForm({
+      title: '',
+      description: '',
+      role_text: '',
+      image_url: '',
+      is_head: false,
+      profile_image_url: '',
+      banner_image_url: '',
+      portfolio_url: '',
+      github_url: '',
+      primary_tag: '',
+      order_index: undefined,
+      active: true,
+      level: '',
+      duration: '',
+      price: '',
+      note: '',
+      features: '',
+      emoji: '',
+      gradient_color: '',
+      contact: ''
+    })
+    setEditorOpen(true)
+  }, [])
+
+  const closeHeroSettings = useCallback(() => {
+    setHeroSettingsOpen(false)
+  }, [])
+
+  /** Open hero editor with form fields synced from saved site settings (`rows`). */
+  const openHeroSettings = useCallback(() => {
+    const map: Record<string, string> = {}
+    rows.forEach((it: any) => {
+      map[it.key] = it.value ?? ''
+    })
+    if (map.hero_animated_texts) {
+      try {
+        const parsed = JSON.parse(map.hero_animated_texts)
+        if (Array.isArray(parsed)) setHeroAnimatedTexts(parsed)
+      } catch {
+        /* ignore */
+      }
+    }
+    if (map.hero_bullet_points) {
+      try {
+        const parsed = JSON.parse(map.hero_bullet_points)
+        if (Array.isArray(parsed)) setHeroBulletPoints(parsed)
+      } catch {
+        /* ignore */
+      }
+    }
+    if (map.navbar_links) {
+      try {
+        const parsed = JSON.parse(map.navbar_links)
+        if (Array.isArray(parsed)) setNavbarLinks(parsed)
+      } catch {
+        /* ignore */
+      }
+    }
+    setForm((s) => ({ ...s, ...(map as any) }))
+    setHeroSettingsOpen(true)
+  }, [rows])
+
+  useEffect(() => {
+    setEditorOpen(false)
+    setEditingId(null)
+    setHeroSettingsOpen(false)
+  }, [table])
+
+  const landingFormModalOpen = (isRecordEditorPage && editorOpen) || (isHero && heroSettingsOpen)
+
+  useEffect(() => {
+    if (!landingFormModalOpen) return
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      if (isRecordEditorPage && editorOpen) closeEditor()
+      if (isHero && heroSettingsOpen) closeHeroSettings()
+    }
+    document.addEventListener('keydown', onEsc)
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', onEsc)
+      document.body.style.overflow = 'unset'
+    }
+  }, [landingFormModalOpen, isRecordEditorPage, editorOpen, isHero, heroSettingsOpen, closeEditor, closeHeroSettings])
 
   // Contact socials UI: up to 15 preset slots
   const defaultSocialSlots = useMemo(() => Array.from({ length: 15 }, () => ({ name: '', href: '' })), [])
@@ -195,7 +334,10 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
       // Fallback: upsert empty values so UI clears
       const entries = keys.map((k) => ({ key: k, value: '' }))
       const upRes = await landingApi.upsertSiteSettings(entries)
-      if (upRes.error) setError(upRes.error)
+      if (upRes.error) {
+        toast.error(upRes.error)
+        setError(upRes.error)
+      }
     }
   }
 
@@ -374,7 +516,9 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
         if (process.env.NODE_ENV === 'development') {
         console.error('Error loading data:', error)
         }
-        setError(error.message)
+        const msg = error.message || 'Failed to load content'
+        toast.error(msg)
+        setError(msg)
         setLoading(false)
         return
       }
@@ -533,11 +677,14 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
       entries.push({ key: 'contact_socials_json', value: socialsJson })
       if (entries.length) {
         const result = await landingApi.upsertSiteSettings(entries)
-        if (result.error) return setError(result.error)
+        if (result.error) {
+          toast.error(result.error)
+          return setError(result.error)
+        }
         // refresh immediately
         const refreshedResult = await landingApi.getSiteSettings(['contact_address','contact_website','contact_phone','contact_map_src','contact_primary_name','contact_primary_tagline','contact_whatsapp','contact_socials_json'])
         setRows((refreshedResult.data as any) || [])
-        setNotice('Saved contact settings')
+        toast.success('Saved contact settings')
       }
       return
     }
@@ -556,10 +703,13 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
       entries.push({ key: 'footer_links_json', value: linksJson })
       if (entries.length) {
         const result = await landingApi.upsertSiteSettings(entries)
-        if (result.error) return setError(result.error)
+        if (result.error) {
+          toast.error(result.error)
+          return setError(result.error)
+        }
         const refreshedResult = await landingApi.getSiteSettings(['footer_about_text','footer_socials_json','footer_version','footer_links_json'])
         setRows((refreshedResult.data as any) || [])
-        setNotice('Saved footer settings')
+        toast.success('Saved footer settings')
       }
       return
     }
@@ -588,10 +738,14 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
       }
       if (entries.length) {
         const result = await landingApi.upsertSiteSettings(entries)
-        if (result.error) return setError(result.error)
+        if (result.error) {
+          toast.error(result.error)
+          return setError(result.error)
+        }
         const refreshedResult = await landingApi.getSiteSettings(['hero_projects_count','hero_services_count','hero_courses_count','hero_animated_texts','hero_bullet_points','navbar_links'])
         setRows((refreshedResult.data as any) || [])
-        setNotice('Saved hero settings')
+        toast.success('Saved hero settings')
+        setHeroSettingsOpen(false)
       }
       return
     }
@@ -649,9 +803,18 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
     // No conflict check needed - dropdown only shows available orders (including current service's order when editing)
     
     const result = await updateTableRecord(table, editingId, payload)
-    if (result.error) return setError(result.error)
-      setEditingId(null)
-      setForm({ title: '', description: '', image_url: '', is_head: false, profile_image_url: '', banner_image_url: '', portfolio_url: '', github_url: '', primary_tag: '', order_index: undefined, active: true, emoji: '', gradient_color: '', contact: '' })
+    if (result.error) {
+      toast.error(result.error)
+      return setError(result.error)
+    }
+      await load()
+      toast.success('Updated successfully')
+      if (isRecordEditorPage) {
+        closeEditor()
+      } else {
+        setEditingId(null)
+        setForm({ title: '', description: '', image_url: '', is_head: false, profile_image_url: '', banner_image_url: '', portfolio_url: '', github_url: '', primary_tag: '', order_index: undefined, active: true, emoji: '', gradient_color: '', contact: '' })
+      }
       return
     }
     const payload = isTeamLike
@@ -706,8 +869,17 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
     // No conflict check needed - dropdown only shows available orders
     
     const result = await createTableRecord(table, payload)
-    if (result.error) return setError(result.error)
-    setForm({ title: '', description: '', role_text: '', image_url: '', is_head: false, profile_image_url: '', banner_image_url: '', portfolio_url: '', github_url: '', primary_tag: '', order_index: undefined, active: true, level: '', duration: '', price: '', note: '', features: '', emoji: '', gradient_color: '', contact: '' })
+    if (result.error) {
+      toast.error(result.error)
+      return setError(result.error)
+    }
+    await load()
+    toast.success('Created successfully')
+    if (isRecordEditorPage) {
+      closeEditor()
+    } else {
+      setForm({ title: '', description: '', role_text: '', image_url: '', is_head: false, profile_image_url: '', banner_image_url: '', portfolio_url: '', github_url: '', primary_tag: '', order_index: undefined, active: true, level: '', duration: '', price: '', note: '', features: '', emoji: '', gradient_color: '', contact: '' })
+    }
   }
 
   const startEdit = (r: Row | any) => {
@@ -750,9 +922,18 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
         order_index: (r as any).order_index ?? undefined,
         active: (r as any).active !== false,
       })
+    } else if (isProjects) {
+      setForm({
+        title: r.title || '',
+        description: r.description || '',
+        image_url: r.image_url || '',
+        order_index: (r as any).order_index ?? undefined,
+        ...({ video_id: (r as any).video_id ?? '', github_url: (r as any).github_url ?? '' } as Record<string, unknown>)
+      } as Row)
     } else {
       setForm({ title: r.title || '', description: r.description || '', image_url: r.image_url || '', is_head: false })
     }
+    if (isRecordEditorPage) setEditorOpen(true)
   }
 
   const del = async (id?: number) => {
@@ -763,16 +944,19 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
     try {
       const result = await deleteTableRecord(table, id)
       if (result.error) {
-        setError(result.error || 'Failed to delete record. Please check permissions.')
+        const msg = result.error || 'Failed to delete record. Please check permissions.'
+        toast.error(msg)
+        setError(msg)
         return
       }
       
       // Success - reload data to update UI
-      setNotice('Record deleted successfully')
-      setTimeout(() => setNotice(null), 3000)
+      toast.success('Record deleted successfully')
       await load()
     } catch (err: any) {
-      setError(err.message || 'An error occurred while deleting the record.')
+      const msg = err.message || 'An error occurred while deleting the record.'
+      toast.error(msg)
+      setError(msg)
     }
   }
 
@@ -797,11 +981,30 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-xl rounded-xl p-5 text-white shadow-xl relative overflow-hidden border border-white/20">
-        <div className="absolute inset-0 bg-black/5"></div>
-        <div className="relative z-10">
-          <h1 className="text-2xl font-bold">Manage {contentType || table}</h1>
-          <p className="text-white/90 text-sm mt-1">Add, edit, and manage {contentType || table} content</p>
+      <div
+        className={
+          isHero
+            ? 'relative overflow-hidden rounded-xl border border-slate-700 bg-slate-900 p-4 text-white shadow-md sm:p-5'
+            : 'relative overflow-hidden rounded-xl border border-white/20 bg-gradient-to-r from-orange-500/90 to-red-500/90 p-5 text-white shadow-xl backdrop-blur-xl'
+        }
+      >
+        {!isHero ? <div className="absolute inset-0 bg-black/5" /> : null}
+        <div className="relative z-10 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="text-xl font-bold sm:text-2xl">Manage {contentType || table}</h1>
+            <p className={`mt-1 text-sm ${isHero ? 'text-slate-400' : 'text-white/90'}`}>
+              {isHero ? 'Review saved values below. Open the editor to change them.' : `Add, edit, and manage ${contentType || table} content`}
+            </p>
+          </div>
+          {isHero ? (
+            <button
+              type="button"
+              onClick={openHeroSettings}
+              className="shrink-0 rounded-lg border border-cyan-500/25 bg-slate-800/90 px-4 py-2 text-sm font-medium text-cyan-200/95 shadow-sm backdrop-blur-sm transition hover:border-cyan-400/40 hover:bg-slate-800"
+            >
+              Edit hero settings
+            </button>
+          ) : null}
         </div>
       </div>
       {error && (
@@ -809,14 +1012,55 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
           {error}
         </div>
       )}
-      {notice && (
-        <div className="rounded-lg p-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-sm">
-          {notice}
-        </div>
-      )}
-      {!isReviews && !isSupport && (
-        <div className="rounded-xl p-4 bg-white/80 dark:bg-gray-800/70 backdrop-blur border border-white/20 dark:border-white/10 shadow">
-          <form className="grid grid-cols-1 md:grid-cols-3 gap-3" onSubmit={handleSubmit}>
+      {!isReviews && !isSupport && (!isRecordEditorPage || editorOpen) && (!isHero || heroSettingsOpen) && (
+        <LandingAdminFormMount
+          usePortal={landingFormModalOpen}
+          onBackdropClose={isRecordEditorPage ? closeEditor : closeHeroSettings}
+        >
+          <div
+            className={
+              isRecordEditorPage && editorOpen
+                ? 'relative z-[1] my-auto w-full max-w-4xl rounded-2xl border border-cyan-500/20 bg-slate-950/95 p-4 shadow-2xl backdrop-blur-md sm:p-5'
+                : isHero && heroSettingsOpen
+                  ? 'landing-admin-plain-ui relative z-[1] my-auto flex w-full max-h-[min(90dvh,calc(100dvh-1.25rem))] min-h-0 max-w-2xl flex-col rounded-lg border border-slate-700 bg-slate-950/95 p-3 shadow-none backdrop-blur-md sm:p-4'
+                  : 'rounded-xl border border-cyan-500/20 bg-slate-900/50 p-4 shadow-lg'
+            }
+          >
+            {isRecordEditorPage && editorOpen ? (
+              <div className="mb-4 flex items-center justify-between gap-3 border-b border-white/10 pb-3">
+                <h2 className="text-lg font-semibold text-white">
+                  {editingId ? `Edit ${recordTypeLabel}` : `Add ${recordTypeLabel}`}
+                </h2>
+                <button
+                  type="button"
+                  className="rounded-lg px-3 py-1.5 text-sm font-medium text-white/80 transition hover:bg-white/10"
+                  onClick={closeEditor}
+                >
+                  Close
+                </button>
+              </div>
+            ) : null}
+            {isHero && heroSettingsOpen ? (
+              <div className="mb-3 flex shrink-0 items-start justify-between gap-2 border-b border-slate-800 bg-slate-950 pb-2">
+                <h2 className="text-base font-semibold text-white">Hero settings</h2>
+                <button
+                  type="button"
+                  className={heroRemoveBtnClass}
+                  aria-label="Close hero settings"
+                  onClick={closeHeroSettings}
+                >
+                  <span className="relative z-[2]">×</span>
+                </button>
+              </div>
+            ) : null}
+          <form
+            className={`grid grid-cols-1 md:grid-cols-3 ${isHero ? 'gap-1' : 'gap-3'} ${
+              isHero && heroSettingsOpen
+                ? 'admin-custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 pb-3'
+                : ''
+            }`}
+            onSubmit={handleSubmit}
+          >
             {!isContact && !isFooter && !isHero && !isSupport && (
               <>
                 <input className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300 hover:border-orange-300 dark:hover:border-orange-600" placeholder={isTeamLike ? 'Name' : 'Title'} value={form.title || ''} onChange={(e) => setForm(s => ({ ...s, title: e.target.value }))} />
@@ -827,7 +1071,7 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
                 )}
               </>
             )}
-            {!isTeamLike && !isCourses && !isProjects && !isServices && !isContact && !isFooter && !isSupport && (
+            {!isTeamLike && !isCourses && !isProjects && !isServices && !isContact && !isFooter && !isHero && !isSupport && (
               <input className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-600" placeholder="Image URL (GitHub/Internet)" value={form.image_url || ''} onChange={(e) => setForm(s => ({ ...s, image_url: e.target.value }))} />
             )}
             {isProjects && (
@@ -904,308 +1148,313 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
             )}
             {isContact && (
               <>
-                {/* Physical Location Section */}
-                <div className="md:col-span-3 text-sm font-semibold text-gray-700 dark:text-gray-200 mt-1">Physical Location</div>
-                <input className="px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-sm md:col-span-2" placeholder="Address" value={(form as any)['contact_address'] || ''} onChange={(e) => setForm(s => ({ ...s, contact_address: e.target.value }))} />
-                <input className="px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-sm" placeholder="Website (https://...)" value={(form as any)['contact_website'] || ''} onChange={(e) => setForm(s => ({ ...s, contact_website: e.target.value }))} />
-                <input className="px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-sm" placeholder="Phone" value={(form as any)['contact_phone'] || ''} onChange={(e) => setForm(s => ({ ...s, contact_phone: e.target.value }))} />
-                <input className="px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-sm md:col-span-2" placeholder="Google Maps Embed src" value={(form as any)['contact_map_src'] || ''} onChange={(e) => setForm(s => ({ ...s, contact_map_src: e.target.value }))} />
-
-                {/* Divider */}
-                <div className="md:col-span-3 h-px bg-white/40 dark:bg-white/10 my-2" />
-
-                {/* Primary Contact Section */}
-                <div className="md:col-span-3 text-sm font-semibold text-gray-700 dark:text-gray-200">Primary Contact</div>
-                <input className="px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-sm" placeholder="Primary Name" value={(form as any)['contact_primary_name'] || ''} onChange={(e) => setForm(s => ({ ...s, contact_primary_name: e.target.value }))} />
-                <input className="px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-sm" placeholder="Primary Tagline" value={(form as any)['contact_primary_tagline'] || ''} onChange={(e) => setForm(s => ({ ...s, contact_primary_tagline: e.target.value }))} />
-                <input className="px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-sm" placeholder="WhatsApp Number" value={(form as any)['contact_whatsapp'] || ''} onChange={(e) => setForm(s => ({ ...s, contact_whatsapp: e.target.value }))} />
-                {/* Preset Socials UI */}
-                <div className="md:col-span-3 rounded-md border border-white/20 dark:border-white/10 bg-white/60 dark:bg-gray-800/50 p-3">
-                  <div className="text-sm font-medium mb-2 text-gray-800 dark:text-gray-200">Social Links (choose up to 15)</div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {contactSocials.map((s, idx) => (
-                      <div key={idx} className="flex gap-2 items-center">
-                        {/* No icon preview in admin to reduce noise */}
-                        <div className="w-9 h-9" />
-                        <select className="w-36 px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-600" value={s.name} onChange={(e) => setSocialAt(idx, 'name', e.target.value)}>
-                          <option value="">Select</option>
-                          {socialOptions.map(opt => (<option key={opt}>{opt}</option>))}
-                        </select>
-                        <input className="flex-1 px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-600" placeholder="https://..." value={s.href} onChange={(e) => setSocialAt(idx, 'href', e.target.value)} />
-                      </div>
-                    ))}
-                  </div>
-                  <div className="text-xs opacity-70 mt-2">Advanced: you can still paste custom JSON below; preset entries will override it.</div>
+                <div className="md:col-span-3">
+                  <AdminCollapsibleSection title="Physical location" description="Address, website, phone, map embed" defaultOpen>
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                      <input className="px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-sm md:col-span-2" placeholder="Address" value={(form as any)['contact_address'] || ''} onChange={(e) => setForm(s => ({ ...s, contact_address: e.target.value }))} />
+                      <input className="px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-sm" placeholder="Website (https://...)" value={(form as any)['contact_website'] || ''} onChange={(e) => setForm(s => ({ ...s, contact_website: e.target.value }))} />
+                      <input className="px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-sm" placeholder="Phone" value={(form as any)['contact_phone'] || ''} onChange={(e) => setForm(s => ({ ...s, contact_phone: e.target.value }))} />
+                      <input className="px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-sm md:col-span-2" placeholder="Google Maps Embed src" value={(form as any)['contact_map_src'] || ''} onChange={(e) => setForm(s => ({ ...s, contact_map_src: e.target.value }))} />
+                    </div>
+                  </AdminCollapsibleSection>
                 </div>
-                <textarea className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-600 md:col-span-3" rows={3} placeholder='Socials JSON (optional override)' value={(form as any)['contact_socials_json'] || ''} onChange={(e) => setForm(s => ({ ...s, contact_socials_json: e.target.value }))} />
+                <div className="md:col-span-3">
+                  <AdminCollapsibleSection title="Primary contact & socials" description="Lead line, WhatsApp, presets, optional JSON">
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                      <input className="px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-sm" placeholder="Primary Name" value={(form as any)['contact_primary_name'] || ''} onChange={(e) => setForm(s => ({ ...s, contact_primary_name: e.target.value }))} />
+                      <input className="px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-sm" placeholder="Primary Tagline" value={(form as any)['contact_primary_tagline'] || ''} onChange={(e) => setForm(s => ({ ...s, contact_primary_tagline: e.target.value }))} />
+                      <input className="px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-sm" placeholder="WhatsApp Number" value={(form as any)['contact_whatsapp'] || ''} onChange={(e) => setForm(s => ({ ...s, contact_whatsapp: e.target.value }))} />
+                      <div className="md:col-span-3 rounded-md border border-white/20 dark:border-white/10 bg-white/60 dark:bg-gray-800/50 p-3">
+                        <div className="text-sm font-medium mb-2 text-gray-800 dark:text-gray-200">Social Links (choose up to 15)</div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          {contactSocials.map((s, idx) => (
+                            <div key={idx} className="flex gap-2 items-center">
+                              <div className="w-9 h-9" />
+                              <select className="w-36 px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-600" value={s.name} onChange={(e) => setSocialAt(idx, 'name', e.target.value)}>
+                                <option value="">Select</option>
+                                {socialOptions.map(opt => (<option key={opt}>{opt}</option>))}
+                              </select>
+                              <input className="flex-1 px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-600" placeholder="https://..." value={s.href} onChange={(e) => setSocialAt(idx, 'href', e.target.value)} />
+                            </div>
+                          ))}
+                        </div>
+                        <div className="text-xs opacity-70 mt-2">Advanced: you can still paste custom JSON below; preset entries will override it.</div>
+                      </div>
+                      <textarea className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-600 md:col-span-3" rows={3} placeholder='Socials JSON (optional override)' value={(form as any)['contact_socials_json'] || ''} onChange={(e) => setForm(s => ({ ...s, contact_socials_json: e.target.value }))} />
+                    </div>
+                  </AdminCollapsibleSection>
+                </div>
               </>
             )}
             {/* No hero settings fields (floating WhatsApp/Fiverr removed) */}
             {isFooter && (
               <>
-                <textarea className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-600 md:col-span-3" rows={3} placeholder="Footer About Text" value={(form as any)['footer_about_text'] || ''} onChange={(e) => setForm(s => ({ ...s, footer_about_text: e.target.value }))} />
-                <input className="px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-sm" placeholder="Website Version (e.g., 1.0.3)" value={(form as any)['footer_version'] || ''} onChange={(e) => setForm(s => ({ ...s, footer_version: e.target.value }))} />
-                {/* Preset Socials UI */}
-                <div className="md:col-span-3 rounded-md border border-white/20 dark:border-white/10 bg-white/60 dark:bg-gray-800/50 p-3">
-                  <div className="text-sm font-medium mb-2 text-gray-800 dark:text-gray-200">Social Links (choose up to 15)</div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {footerSocials.map((s, idx) => (
-                      <div key={idx} className="flex gap-2 items-center">
-                        {renderBrandImg(s.name)}
-                        <select className="w-36 px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-sm" value={s.name} onChange={(e) => setFooterSocialAt(idx, 'name', e.target.value)}>
-                          <option value="">Select</option>
-                          {socialOptions.map(opt => (<option key={opt}>{opt}</option>))}
-                        </select>
-                        <input className="flex-1 px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-sm" placeholder="https://..." value={s.href} onChange={(e) => setFooterSocialAt(idx, 'href', e.target.value)} />
-                      </div>
-                    ))}
-                  </div>
-                  <div className="text-xs opacity-70 mt-2">Advanced: you can still paste custom JSON below; preset entries will override it.</div>
+                <div className="md:col-span-3">
+                  <AdminCollapsibleSection title="About & version" description="Footer copy and release label" defaultOpen>
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                      <textarea className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-600 md:col-span-3" rows={3} placeholder="Footer About Text" value={(form as any)['footer_about_text'] || ''} onChange={(e) => setForm(s => ({ ...s, footer_about_text: e.target.value }))} />
+                      <input className="px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-sm" placeholder="Website Version (e.g., 1.0.3)" value={(form as any)['footer_version'] || ''} onChange={(e) => setForm(s => ({ ...s, footer_version: e.target.value }))} />
+                    </div>
+                  </AdminCollapsibleSection>
                 </div>
-                <textarea className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-600 md:col-span-3" rows={3} placeholder='Footer Socials JSON (optional override)' value={(form as any)['footer_socials_json'] || ''} onChange={(e) => setForm(s => ({ ...s, footer_socials_json: e.target.value }))} />
-                {/* Footer Links UI */}
-                <div className="md:col-span-3 rounded-md border border-white/20 dark:border-white/10 bg-white/60 dark:bg-gray-800/50 p-3 mt-4">
-                  <div className="text-sm font-medium mb-2 text-gray-800 dark:text-gray-200">Footer Links (up to 10)</div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {footerLinks.map((link, idx) => (
-                      <div key={idx} className="flex gap-2 items-center">
-                        <input 
-                          className="flex-1 px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-sm" 
-                          placeholder="Link Name (e.g., Privacy Policy)" 
-                          value={link.name} 
-                          onChange={(e) => setFooterLinkAt(idx, 'name', e.target.value)} 
-                        />
-                        <input 
-                          className="flex-1 px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-sm" 
-                          placeholder="URL (e.g., /privacy or https://...)" 
-                          value={link.url} 
-                          onChange={(e) => setFooterLinkAt(idx, 'url', e.target.value)} 
-                        />
-                        <label className="flex items-center gap-1 text-xs text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                          <input 
-                            type="checkbox" 
-                            checked={link.external || false} 
-                            onChange={(e) => setFooterLinkAt(idx, 'external', e.target.checked)} 
-                            className="rounded"
-                          />
-                          External
-                        </label>
+                <div className="md:col-span-3">
+                  <AdminCollapsibleSection title="Social links" description="Up to 15 presets or JSON override">
+                    <div className="space-y-3">
+                      <div className="rounded-md border border-white/20 dark:border-white/10 bg-white/60 dark:bg-gray-800/50 p-3">
+                        <div className="text-sm font-medium mb-2 text-gray-800 dark:text-gray-200">Social Links (choose up to 15)</div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          {footerSocials.map((s, idx) => (
+                            <div key={idx} className="flex gap-2 items-center">
+                              {renderBrandImg(s.name)}
+                              <select className="w-36 px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-sm" value={s.name} onChange={(e) => setFooterSocialAt(idx, 'name', e.target.value)}>
+                                <option value="">Select</option>
+                                {socialOptions.map(opt => (<option key={opt}>{opt}</option>))}
+                              </select>
+                              <input className="flex-1 px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-sm" placeholder="https://..." value={s.href} onChange={(e) => setFooterSocialAt(idx, 'href', e.target.value)} />
+                            </div>
+                          ))}
+                        </div>
+                        <div className="text-xs opacity-70 mt-2">Advanced: you can still paste custom JSON below; preset entries will override it.</div>
                       </div>
-                    ))}
-                  </div>
-                  <div className="text-xs opacity-70 mt-2">Set "External" for links that open in a new tab (e.g., https://www.team4stack.com)</div>
+                      <textarea className="w-full px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-600" rows={3} placeholder='Footer Socials JSON (optional override)' value={(form as any)['footer_socials_json'] || ''} onChange={(e) => setForm(s => ({ ...s, footer_socials_json: e.target.value }))} />
+                    </div>
+                  </AdminCollapsibleSection>
                 </div>
-                <textarea className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-600 md:col-span-3" rows={3} placeholder='Footer Links JSON (optional override)' value={(form as any)['footer_links_json'] || ''} onChange={(e) => setForm(s => ({ ...s, footer_links_json: e.target.value }))} />
+                <div className="md:col-span-3">
+                  <AdminCollapsibleSection title="Footer page links" description="Legal / utility links, optional JSON">
+                    <div className="space-y-3">
+                      <div className="rounded-md border border-white/20 dark:border-white/10 bg-white/60 dark:bg-gray-800/50 p-3">
+                        <div className="text-sm font-medium mb-2 text-gray-800 dark:text-gray-200">Footer Links (up to 10)</div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          {footerLinks.map((link, idx) => (
+                            <div key={idx} className="flex gap-2 items-center">
+                              <input 
+                                className="flex-1 px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-sm" 
+                                placeholder="Link Name (e.g., Privacy Policy)" 
+                                value={link.name} 
+                                onChange={(e) => setFooterLinkAt(idx, 'name', e.target.value)} 
+                              />
+                              <input 
+                                className="flex-1 px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-sm" 
+                                placeholder="URL (e.g., /privacy or https://...)" 
+                                value={link.url} 
+                                onChange={(e) => setFooterLinkAt(idx, 'url', e.target.value)} 
+                              />
+                              <label className="flex items-center gap-1 text-xs text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                                <input 
+                                  type="checkbox" 
+                                  checked={link.external || false} 
+                                  onChange={(e) => setFooterLinkAt(idx, 'external', e.target.checked)} 
+                                  className="rounded"
+                                />
+                                External
+                              </label>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="text-xs opacity-70 mt-2">Set "External" for links that open in a new tab (e.g., https://www.team4stack.com)</div>
+                      </div>
+                      <textarea className="w-full px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-600" rows={3} placeholder='Footer Links JSON (optional override)' value={(form as any)['footer_links_json'] || ''} onChange={(e) => setForm(s => ({ ...s, footer_links_json: e.target.value }))} />
+                    </div>
+                  </AdminCollapsibleSection>
+                </div>
               </>
             )}
             {isHero && (
-              <>
-                <div className="md:col-span-3 text-sm font-semibold text-gray-700 dark:text-gray-200 mt-1">Hero Counters (override actual counts)</div>
-                <input className="px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-sm" placeholder="Projects Count (leave empty to use live)" value={(form as any)['hero_projects_count'] || ''} onChange={(e) => setForm(s => ({ ...s, hero_projects_count: e.target.value }))} />
-                <input className="px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-sm" placeholder="Services Count (leave empty to use live)" value={(form as any)['hero_services_count'] || ''} onChange={(e) => setForm(s => ({ ...s, hero_services_count: e.target.value }))} />
-                <input className="px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-sm" placeholder="Courses Count (leave empty to use live)" value={(form as any)['hero_courses_count'] || ''} onChange={(e) => setForm(s => ({ ...s, hero_courses_count: e.target.value }))} />
-                
-                {/* Animated Texts Management */}
-                <div className="md:col-span-3 text-sm font-semibold text-gray-700 dark:text-gray-200 mt-4">Animated Sentences (Big Text)</div>
-                <div className="md:col-span-3 space-y-2">
-                  {heroAnimatedTexts.map((text, idx) => (
-                    <div key={idx} className="flex gap-2 items-center">
-                      <div className="flex flex-col gap-1">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (idx > 0) {
-                              const updated = [...heroAnimatedTexts];
-                              [updated[idx - 1], updated[idx]] = [updated[idx], updated[idx - 1]];
-                              setHeroAnimatedTexts(updated);
-                            }
-                          }}
-                          disabled={idx === 0}
-                          className="px-2 py-1 rounded-md bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 text-xs hover:bg-gray-400 dark:hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="Move up"
-                        >
-                          ↑
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (idx < heroAnimatedTexts.length - 1) {
-                              const updated = [...heroAnimatedTexts];
-                              [updated[idx], updated[idx + 1]] = [updated[idx + 1], updated[idx]];
-                              setHeroAnimatedTexts(updated);
-                            }
-                          }}
-                          disabled={idx === heroAnimatedTexts.length - 1}
-                          className="px-2 py-1 rounded-md bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 text-xs hover:bg-gray-400 dark:hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="Move down"
-                        >
-                          ↓
-                        </button>
-                      </div>
-                      <input 
-                        className="flex-1 px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-sm" 
-                        placeholder="Animated text (e.g., Full-Stack Power)" 
-                        value={text} 
-                        onChange={(e) => {
-                          const updated = [...heroAnimatedTexts];
-                          updated[idx] = e.target.value;
-                          setHeroAnimatedTexts(updated);
-                        }} 
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const updated = heroAnimatedTexts.filter((_, i) => i !== idx);
-                          setHeroAnimatedTexts(updated);
-                        }}
-                        className="px-3 py-2 rounded-md bg-red-500 text-white text-sm hover:bg-red-600"
+              <div className="md:col-span-3 space-y-2 bg-slate-950">
+                <AdminCollapsibleSection title="Counters" description="Leave blank to use live counts" defaultOpen variant="flat">
+                  <div className="grid grid-cols-3 gap-2 bg-slate-950">
+                    <label className="flex flex-col gap-0.5">
+                      <span className="text-[10px] font-medium uppercase tracking-wide text-slate-500">Proj</span>
+                      <input className={heroFieldClass} placeholder="—" value={(form as any)['hero_projects_count'] || ''} onChange={(e) => setForm(s => ({ ...s, hero_projects_count: e.target.value }))} />
+                    </label>
+                    <label className="flex flex-col gap-0.5">
+                      <span className="text-[10px] font-medium uppercase tracking-wide text-slate-500">Svc</span>
+                      <input className={heroFieldClass} placeholder="—" value={(form as any)['hero_services_count'] || ''} onChange={(e) => setForm(s => ({ ...s, hero_services_count: e.target.value }))} />
+                    </label>
+                    <label className="flex flex-col gap-0.5">
+                      <span className="text-[10px] font-medium uppercase tracking-wide text-slate-500">Crs</span>
+                      <input className={heroFieldClass} placeholder="—" value={(form as any)['hero_courses_count'] || ''} onChange={(e) => setForm(s => ({ ...s, hero_courses_count: e.target.value }))} />
+                    </label>
+                  </div>
+                </AdminCollapsibleSection>
+                <AdminCollapsibleSection title="Headlines" description="Pick # to reorder" variant="flat">
+                  <div className="space-y-1 bg-slate-950">
+                    {heroAnimatedTexts.map((text, idx) => (
+                      <div
+                        key={idx}
+                        className="relative grid grid-cols-[1.25rem_1fr_2.75rem] items-center gap-1 rounded border border-slate-800 bg-slate-950 py-1 pl-1 pr-7"
                       >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => setHeroAnimatedTexts([...heroAnimatedTexts, ''])}
-                    className="px-3 py-2 rounded-md bg-green-500 text-white text-sm hover:bg-green-600"
-                  >
-                    + Add Text
-                  </button>
-                </div>
-
-                {/* Bullet Points Management */}
-                <div className="md:col-span-3 text-sm font-semibold text-gray-700 dark:text-gray-200 mt-4">Bullet Points (3 items below animated text)</div>
-                <div className="md:col-span-3 space-y-2">
-                  {[0, 1, 2].map((idx) => (
-                    <div key={idx} className="flex gap-2 items-center">
-                      <div className="flex flex-col gap-1">
+                        <span className="text-center text-[10px] tabular-nums text-slate-500">{idx + 1}</span>
+                        <input
+                          className={`${heroFieldClass} min-w-0`}
+                          placeholder="Text"
+                          value={text}
+                          onChange={(e) => {
+                            const updated = [...heroAnimatedTexts]
+                            updated[idx] = e.target.value
+                            setHeroAnimatedTexts(updated)
+                          }}
+                        />
+                        <select
+                          className={heroSelectClass}
+                          aria-label={`Order for line ${idx + 1}`}
+                          value={idx + 1}
+                          onChange={(e) => {
+                            const to = Number(e.target.value) - 1
+                            setHeroAnimatedTexts(moveArrayItem(heroAnimatedTexts, idx, to))
+                          }}
+                        >
+                          {heroAnimatedTexts.map((_, i) => (
+                            <option key={i} value={i + 1}>
+                              {i + 1}
+                            </option>
+                          ))}
+                        </select>
                         <button
                           type="button"
-                          onClick={() => {
-                            if (idx > 0) {
-                              const updated = [...heroBulletPoints];
-                              while (updated.length < 3) updated.push('');
-                              [updated[idx - 1], updated[idx]] = [updated[idx], updated[idx - 1]];
-                              setHeroBulletPoints(updated.slice(0, 3));
-                            }
-                          }}
-                          disabled={idx === 0}
-                          className="px-2 py-1 rounded-md bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 text-xs hover:bg-gray-400 dark:hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="Move up"
+                          className={`${heroRemoveBtnClass} absolute right-1 top-1/2 z-[2] -translate-y-1/2`}
+                          aria-label="Remove line"
+                          onClick={() => setHeroAnimatedTexts(heroAnimatedTexts.filter((_, i) => i !== idx))}
                         >
-                          ↑
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (idx < 2) {
-                              const updated = [...heroBulletPoints];
-                              while (updated.length < 3) updated.push('');
-                              [updated[idx], updated[idx + 1]] = [updated[idx + 1], updated[idx]];
-                              setHeroBulletPoints(updated.slice(0, 3));
-                            }
-                          }}
-                          disabled={idx === 2}
-                          className="px-2 py-1 rounded-md bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 text-xs hover:bg-gray-400 dark:hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="Move down"
-                        >
-                          ↓
+                          <span className="relative z-[2]">×</span>
                         </button>
                       </div>
-                      <input 
-                        className="flex-1 px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-sm" 
-                        placeholder={`Bullet Point ${idx + 1} (e.g., 09+ Awesome Demos)`} 
-                        value={heroBulletPoints[idx] || ''} 
-                        onChange={(e) => {
-                          const updated = [...heroBulletPoints];
-                          updated[idx] = e.target.value;
-                          // Ensure array has 3 items
-                          while (updated.length < 3) updated.push('');
-                          setHeroBulletPoints(updated.slice(0, 3));
-                        }} 
-                      />
-                    </div>
-                  ))}
-                </div>
-
-                {/* Navbar Links Management */}
-                <div className="md:col-span-3 text-sm font-semibold text-gray-700 dark:text-gray-200 mt-4">Navbar Links</div>
-                <div className="md:col-span-3 space-y-2">
-                  {navbarLinks.map((link, idx) => (
-                    <div key={idx} className="flex gap-2 items-center">
-                      <div className="flex flex-col gap-1">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (idx > 0) {
-                              const updated = [...navbarLinks];
-                              [updated[idx - 1], updated[idx]] = [updated[idx], updated[idx - 1]];
-                              setNavbarLinks(updated);
-                            }
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setHeroAnimatedTexts([...heroAnimatedTexts, ''])}
+                      className="landing-admin-glass w-full rounded-md border border-cyan-900/40 bg-slate-900/80 py-1 text-[11px] font-medium text-cyan-100 hover:border-cyan-600/50 hover:bg-slate-800/90"
+                    >
+                      + Line
+                    </button>
+                  </div>
+                </AdminCollapsibleSection>
+                <AdminCollapsibleSection title="Bullets" description="Three fixed slots" defaultOpen variant="flat">
+                  <div className="grid grid-cols-1 gap-2 bg-slate-950 sm:grid-cols-3">
+                    {[0, 1, 2].map((idx) => (
+                      <label key={idx} className="flex flex-col gap-0.5">
+                        <span className="text-[10px] text-slate-500">#{idx + 1}</span>
+                        <input
+                          className={heroFieldClass}
+                          placeholder="Text"
+                          value={heroBulletPoints[idx] || ''}
+                          onChange={(e) => {
+                            const updated = [...heroBulletPoints]
+                            updated[idx] = e.target.value
+                            while (updated.length < 3) updated.push('')
+                            setHeroBulletPoints(updated.slice(0, 3))
                           }}
-                          disabled={idx === 0}
-                          className="px-2 py-1 rounded-md bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 text-xs hover:bg-gray-400 dark:hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="Move up"
-                        >
-                          ↑
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (idx < navbarLinks.length - 1) {
-                              const updated = [...navbarLinks];
-                              [updated[idx], updated[idx + 1]] = [updated[idx + 1], updated[idx]];
-                              setNavbarLinks(updated);
-                            }
-                          }}
-                          disabled={idx === navbarLinks.length - 1}
-                          className="px-2 py-1 rounded-md bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 text-xs hover:bg-gray-400 dark:hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="Move down"
-                        >
-                          ↓
-                        </button>
-                      </div>
-                      <input 
-                        className="flex-1 px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-sm" 
-                        placeholder="Link Name (e.g., Home)" 
-                        value={link.name} 
-                        onChange={(e) => {
-                          const updated = [...navbarLinks];
-                          updated[idx] = { ...updated[idx], name: e.target.value };
-                          setNavbarLinks(updated);
-                        }} 
-                      />
-                      <input 
-                        className="flex-1 px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-sm" 
-                        placeholder="Link URL (e.g., #home)" 
-                        value={link.href} 
-                        onChange={(e) => {
-                          const updated = [...navbarLinks];
-                          updated[idx] = { ...updated[idx], href: e.target.value };
-                          setNavbarLinks(updated);
-                        }} 
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const updated = navbarLinks.filter((_, i) => i !== idx);
-                          setNavbarLinks(updated);
-                        }}
-                        className="px-3 py-2 rounded-md bg-red-500 text-white text-sm hover:bg-red-600"
+                        />
+                      </label>
+                    ))}
+                  </div>
+                </AdminCollapsibleSection>
+                <AdminCollapsibleSection title="Navbar" description="Order, label, href" variant="flat">
+                  <div className="space-y-1 bg-slate-950">
+                    {navbarLinks.map((link, idx) => (
+                      <div
+                        key={idx}
+                        className="relative rounded border border-slate-800 bg-slate-950 p-1.5 pr-8 sm:pr-8"
                       >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => setNavbarLinks([...navbarLinks, { name: '', href: '' }])}
-                    className="px-3 py-2 rounded-md bg-green-500 text-white text-sm hover:bg-green-600"
-                  >
-                    + Add Navbar Link
-                  </button>
-                </div>
-              </>
+                        <button
+                          type="button"
+                          className={`${heroRemoveBtnClass} absolute right-1.5 top-1.5 z-[2]`}
+                          aria-label="Remove link"
+                          onClick={() => setNavbarLinks(navbarLinks.filter((_, i) => i !== idx))}
+                        >
+                          <span className="relative z-[2]">×</span>
+                        </button>
+                        <div className="mb-1 flex items-center gap-1 sm:hidden">
+                          <span className="w-4 text-center text-[10px] tabular-nums text-slate-500">{idx + 1}</span>
+                          <select
+                            className={`${heroSelectClass} min-w-0 flex-1`}
+                            aria-label={`Nav order ${idx + 1}`}
+                            value={idx + 1}
+                            onChange={(e) => {
+                              const to = Number(e.target.value) - 1
+                              setNavbarLinks(moveArrayItem(navbarLinks, idx, to))
+                            }}
+                          >
+                            {navbarLinks.map((_, i) => (
+                              <option key={i} value={i + 1}>
+                                {i + 1}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="hidden grid-cols-[1.25rem_2.75rem_1fr_1fr] gap-1 sm:grid sm:items-center">
+                          <span className="text-center text-[10px] text-slate-500">{idx + 1}</span>
+                          <select
+                            className={heroSelectClass}
+                            aria-label={`Nav order ${idx + 1}`}
+                            value={idx + 1}
+                            onChange={(e) => {
+                              const to = Number(e.target.value) - 1
+                              setNavbarLinks(moveArrayItem(navbarLinks, idx, to))
+                            }}
+                          >
+                            {navbarLinks.map((_, i) => (
+                              <option key={i} value={i + 1}>
+                                {i + 1}
+                              </option>
+                            ))}
+                          </select>
+                          <input
+                            className={heroFieldClass}
+                            placeholder="Label"
+                            value={link.name}
+                            onChange={(e) => {
+                              const updated = [...navbarLinks]
+                              updated[idx] = { ...updated[idx], name: e.target.value }
+                              setNavbarLinks(updated)
+                            }}
+                          />
+                          <input
+                            className={heroFieldClass}
+                            placeholder="#anchor"
+                            value={link.href}
+                            onChange={(e) => {
+                              const updated = [...navbarLinks]
+                              updated[idx] = { ...updated[idx], href: e.target.value }
+                              setNavbarLinks(updated)
+                            }}
+                          />
+                        </div>
+                        <div className="grid grid-cols-1 gap-1 sm:hidden">
+                          <input
+                            className={heroFieldClass}
+                            placeholder="Label"
+                            value={link.name}
+                            onChange={(e) => {
+                              const updated = [...navbarLinks]
+                              updated[idx] = { ...updated[idx], name: e.target.value }
+                              setNavbarLinks(updated)
+                            }}
+                          />
+                          <input
+                            className={heroFieldClass}
+                            placeholder="#anchor"
+                            value={link.href}
+                            onChange={(e) => {
+                              const updated = [...navbarLinks]
+                              updated[idx] = { ...updated[idx], href: e.target.value }
+                              setNavbarLinks(updated)
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setNavbarLinks([...navbarLinks, { name: '', href: '' }])}
+                      className="landing-admin-glass w-full rounded-md border border-cyan-900/40 bg-slate-900/80 py-1 text-[11px] font-medium text-cyan-100 hover:border-cyan-600/50 hover:bg-slate-800/90"
+                    >
+                      + Link
+                    </button>
+                  </div>
+                </AdminCollapsibleSection>
+              </div>
             )}
             {isTeamLike && (
               <>
@@ -1219,11 +1468,41 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
                 <textarea className="md:col-span-3 px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-600" rows={3} placeholder="Bio / Description (shown in preview)" value={form.description || ''} onChange={(e) => setForm(s => ({ ...s, description: e.target.value }))} />
               </>
             )}
-            <div className="md:col-span-3 flex gap-2 items-center">
-              <button type="submit" className="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white font-semibold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300">
-                {isHero ? 'Update' : (editingId ? 'Update' : 'Create')}
+            <div className="md:col-span-3 flex flex-wrap gap-2 items-center">
+              <button
+                type="submit"
+                className={
+                  isHero
+                    ? 'landing-admin-glass rounded-md border border-cyan-500/40 bg-cyan-950/90 px-3 py-1.5 text-xs font-semibold text-cyan-50 shadow-none transition hover:border-cyan-400/55 hover:bg-cyan-900'
+                    : 'rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 px-6 py-3 font-semibold text-white shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl active:scale-95'
+                }
+              >
+                {isHero ? 'Save hero' : editingId ? 'Update' : 'Create'}
               </button>
-              {editingId && !isHero && <button type="button" className="px-6 py-3 rounded-xl bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 hover:scale-105 active:scale-95 transition-all duration-300" onClick={() => { setEditingId(null); setForm({ title: '', description: '', role_text: '', image_url: '', is_head: false, profile_image_url: '', banner_image_url: '', portfolio_url: '', github_url: '', primary_tag: '', order_index: undefined, active: true }) }}>Cancel</button>}
+              {isHero ? (
+                <button
+                  type="button"
+                  className="landing-admin-glass rounded-md border border-slate-500/40 bg-slate-800/90 px-3 py-1.5 text-xs font-medium text-slate-100 shadow-none hover:border-slate-400/50 hover:bg-slate-700/90"
+                  onClick={closeHeroSettings}
+                >
+                  Cancel
+                </button>
+              ) : null}
+              {editingId && !isHero && (
+                <button
+                  type="button"
+                  className="px-6 py-3 rounded-xl bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 hover:scale-105 active:scale-95 transition-all duration-300"
+                  onClick={() => {
+                    if (isRecordEditorPage) closeEditor()
+                    else {
+                      setEditingId(null)
+                      setForm({ title: '', description: '', role_text: '', image_url: '', is_head: false, profile_image_url: '', banner_image_url: '', portfolio_url: '', github_url: '', primary_tag: '', order_index: undefined, active: true })
+                    }
+                  }}
+                >
+                  Cancel
+                </button>
+              )}
               {table === 'team_members' && (
                 <label className="ml-4 inline-flex items-center gap-2 text-sm">
                   <input type="checkbox" checked={!!form.is_head} onChange={(e) => setForm(s => ({ ...s, is_head: e.target.checked }))} />
@@ -1238,9 +1517,9 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
               )}
             </div>
           </form>
-          {error && <div className="mt-3 text-sm text-red-500">{error}</div>}
-          {notice && <div className="mt-3 text-sm text-emerald-600">{notice}</div>}
-        </div>
+          {error && <div className="mt-3 text-sm text-red-400">{error}</div>}
+          </div>
+        </LandingAdminFormMount>
       )}
 
       {isSupport ? (
@@ -1342,6 +1621,18 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
         </div>
       ) : (
         <div className={`grid grid-cols-1 ${isProjects ? 'md:grid-cols-2 xl:grid-cols-3' : 'lg:grid-cols-2'} gap-4`}>
+          {isRecordEditorPage && !isReviews && (
+            <div className="col-span-full flex flex-col gap-2 rounded-xl border border-cyan-500/20 bg-slate-900/40 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-white/65">List view — add new items or edit from each card.</p>
+              <button
+                type="button"
+                onClick={openNewRecord}
+                className="inline-flex shrink-0 items-center justify-center rounded-lg bg-gradient-to-r from-cyan-600 to-teal-600 px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:from-cyan-500 hover:to-teal-500"
+              >
+                + Add {recordTypeLabel}
+              </button>
+            </div>
+          )}
           {loading ? (
             <div className="text-sm text-gray-500 dark:text-gray-400">Loading…</div>
           ) : rows.length === 0 ? (
@@ -1349,126 +1640,167 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
           ) : (
             (isContact || isFooter || isHero)
             ? (
-            <div className="rounded-xl p-4 bg-white/80 dark:bg-gray-800/70 backdrop-blur border border-white/20 dark:border-white/10 shadow">
+            <div
+              className={`col-span-full rounded-lg bg-slate-950 p-4 text-sm text-slate-100 ${
+                isHero ? 'border border-cyan-500/20' : 'border border-slate-700'
+              }`}
+            >
               {isContact ? (
                 <>
-                  <div className="font-semibold text-gray-900 dark:text-white">Current Contact Settings</div>
-                  <div className="mt-2 text-sm text-gray-700 dark:text-gray-200 space-y-1">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                    <h3 className="text-base font-semibold text-white">Saved contact</h3>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" className="rounded-md border border-slate-600 bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800" onClick={() => {
+                        const map: any = {}
+                        rows.forEach((it: any) => { map[it.key] = it.value })
+                        setForm((s) => ({ ...s, ...map }))
+                      }}>Load into form</button>
+                      <button type="button" className="rounded-md border border-red-900/60 bg-red-950/80 px-3 py-1.5 text-xs font-medium text-red-200 hover:bg-red-900/50" onClick={async () => {
+                        const keys = ['contact_address','contact_website','contact_phone','contact_map_src','contact_primary_name','contact_primary_tagline','contact_whatsapp','contact_socials_json']
+                        const ok = window.confirm('Delete all contact settings?')
+                        if (!ok) return
+                        await deleteSiteSettingKeys(keys)
+                      }}>Delete all</button>
+                    </div>
+                  </div>
+                  <dl className="mt-3 grid max-h-[min(70vh,28rem)] grid-cols-1 gap-3 overflow-y-auto sm:grid-cols-2">
                     {rows.map((r: any) => (
-                      <div key={r.key}><span className="opacity-70 mr-2">{r.key}:</span><span className="break-all">{r.value}</span></div>
+                      <div key={r.key} className="min-w-0 rounded border border-slate-800/90 bg-slate-900/50 p-2">
+                        <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{String(r.key).replace(/_/g, ' ')}</dt>
+                        <dd className="mt-1 max-h-32 overflow-y-auto break-words text-xs leading-relaxed text-slate-200">{r.value || '—'}</dd>
+                      </div>
                     ))}
-                  </div>
-                  <div className="mt-3 flex gap-2">
-                    <button className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 hover:scale-105 active:scale-95 transition-all duration-300 shadow-md hover:shadow-lg" onClick={() => {
-                      const map: any = {}
-                      rows.forEach((it: any) => { map[it.key] = it.value })
-                      setForm((s) => ({ ...s, ...map }))
-                    }}>Edit</button>
-                    <button className="px-4 py-2 rounded-lg bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-semibold shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-300" onClick={async () => {
-                      const keys = ['contact_address','contact_website','contact_phone','contact_map_src','contact_primary_name','contact_primary_tagline','contact_whatsapp','contact_socials_json']
-                      const ok = window.confirm('Delete all contact settings?')
-                      if (!ok) return
-                      await deleteSiteSettingKeys(keys)
-                    }}>Delete</button>
-                  </div>
+                  </dl>
                 </>
               ) : isFooter ? (
                 <>
-                  <div className="font-semibold text-gray-900 dark:text-white">Current Footer Settings</div>
-                  <div className="mt-2 text-sm text-gray-700 dark:text-gray-200 space-y-1">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                    <h3 className="text-base font-semibold text-white">Saved footer</h3>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" className="rounded-md border border-slate-600 bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800" onClick={() => {
+                        const map: any = {}
+                        rows.forEach((it: any) => { map[it.key] = it.value })
+                        setForm((s) => ({ ...s, ...map }))
+                      }}>Load into form</button>
+                      <button type="button" className="rounded-md border border-red-900/60 bg-red-950/80 px-3 py-1.5 text-xs font-medium text-red-200 hover:bg-red-900/50" onClick={async () => {
+                        const keys = ['footer_about_text','footer_socials_json','footer_version','footer_links_json']
+                        const ok = window.confirm('Delete all footer settings?')
+                        if (!ok) return
+                        await deleteSiteSettingKeys(keys)
+                      }}>Delete all</button>
+                    </div>
+                  </div>
+                  <dl className="mt-3 grid max-h-[min(70vh,28rem)] grid-cols-1 gap-3 overflow-y-auto sm:grid-cols-2">
                     {rows.map((r: any) => (
-                      <div key={r.key}><span className="opacity-70 mr-2">{r.key}:</span><span className="break-all">{r.value}</span></div>
+                      <div key={r.key} className="min-w-0 rounded border border-slate-800/90 bg-slate-900/50 p-2">
+                        <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{String(r.key).replace(/_/g, ' ')}</dt>
+                        <dd className="mt-1 max-h-32 overflow-y-auto break-words text-xs leading-relaxed text-slate-200">{r.value || '—'}</dd>
+                      </div>
                     ))}
-                  </div>
-                  <div className="mt-3 flex gap-2">
-                    <button className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 hover:scale-105 active:scale-95 transition-all duration-300 shadow-md hover:shadow-lg" onClick={() => {
-                      const map: any = {}
-                      rows.forEach((it: any) => { map[it.key] = it.value })
-                      setForm((s) => ({ ...s, ...map }))
-                    }}>Edit</button>
-                    <button className="px-4 py-2 rounded-lg bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-semibold shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-300" onClick={async () => {
-                      const keys = ['footer_about_text','footer_socials_json','footer_version']
-                      const ok = window.confirm('Delete all footer settings?')
-                      if (!ok) return
-                      await deleteSiteSettingKeys(keys)
-                    }}>Delete</button>
-                  </div>
+                  </dl>
                 </>
               ) : (
                 <>
-                  <div className="font-semibold text-gray-900 dark:text-white">Current Hero Section Settings</div>
-                  <div className="mt-2 text-sm text-gray-700 dark:text-gray-200 space-y-2">
-                    {rows.map((r: any) => {
-                      if (r.key === 'hero_animated_texts' || r.key === 'hero_bullet_points' || r.key === 'navbar_links') {
-                        try {
-                          const parsed = JSON.parse(r.value);
-                          return (
-                            <div key={r.key}>
-                              <span className="opacity-70 mr-2">{r.key}:</span>
-                              <div className="ml-4 mt-1">
-                                {Array.isArray(parsed) ? (
-                                  <ul className="list-disc list-inside space-y-1">
-                                    {parsed.map((item: any, idx: number) => (
-                                      <li key={idx}>
-                                        {typeof item === 'string' ? item : `${item.name || ''} → ${item.href || ''}`}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                ) : (
-                                  <span className="break-all">{r.value}</span>
-                                )}
+                  {(() => {
+                    const kv: Record<string, string> = {}
+                    rows.forEach((it: any) => { kv[it.key] = it.value ?? '' })
+                    let headlines: string[] = []
+                    let bullets: string[] = []
+                    let nav: { name?: string; href?: string }[] = []
+                    try {
+                      const h = JSON.parse(kv.hero_animated_texts || '[]')
+                      if (Array.isArray(h)) headlines = h.map((x) => String(x))
+                    } catch { /* ignore */ }
+                    try {
+                      const b = JSON.parse(kv.hero_bullet_points || '[]')
+                      if (Array.isArray(b)) bullets = b.map((x) => String(x))
+                    } catch { /* ignore */ }
+                    try {
+                      const n = JSON.parse(kv.navbar_links || '[]')
+                      if (Array.isArray(n)) nav = n
+                    } catch { /* ignore */ }
+                    return (
+                      <>
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                          <h3 className="text-base font-semibold text-white">Saved hero</h3>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              className="rounded-md border border-slate-600 bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800"
+                              onClick={openHeroSettings}
+                            >
+                              Load into form
+                            </button>
+                            <button type="button" className="rounded-md border border-red-900/60 bg-red-950/80 px-3 py-1.5 text-xs font-medium text-red-200 hover:bg-red-900/50" onClick={async () => {
+                              const keys = ['hero_projects_count','hero_services_count','hero_courses_count','hero_animated_texts','hero_bullet_points','navbar_links']
+                              const ok = window.confirm('Delete all hero section settings?')
+                              if (!ok) return
+                              await deleteSiteSettingKeys(keys)
+                            }}>Delete all</button>
+                          </div>
+                        </div>
+                        <div className="mt-3 grid w-full min-w-0 grid-cols-1 gap-3">
+                          <section className="w-full min-w-0 rounded-md border border-slate-800 bg-slate-900/60 p-3">
+                            <h4 className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Counters</h4>
+                            <div className="mt-2 grid w-full grid-cols-3 gap-2 text-center">
+                              <div className="rounded border border-slate-800 py-2">
+                                <div className="text-[10px] text-slate-500">Projects</div>
+                                <div className="text-sm font-semibold tabular-nums text-white">{kv.hero_projects_count || '—'}</div>
+                              </div>
+                              <div className="rounded border border-slate-800 py-2">
+                                <div className="text-[10px] text-slate-500">Services</div>
+                                <div className="text-sm font-semibold tabular-nums text-white">{kv.hero_services_count || '—'}</div>
+                              </div>
+                              <div className="rounded border border-slate-800 py-2">
+                                <div className="text-[10px] text-slate-500">Courses</div>
+                                <div className="text-sm font-semibold tabular-nums text-white">{kv.hero_courses_count || '—'}</div>
                               </div>
                             </div>
-                          );
-                        } catch {
-                          return (
-                            <div key={r.key}>
-                              <span className="opacity-70 mr-2">{r.key}:</span>
-                              <span className="break-all">{r.value}</span>
-                            </div>
-                          );
-                        }
-                      }
-                      return (
-                        <div key={r.key}>
-                          <span className="opacity-70 mr-2">{r.key}:</span>
-                          <span className="break-all">{r.value}</span>
+                          </section>
+                          <section className="w-full min-w-0 rounded-md border border-slate-800 bg-slate-900/60 p-3">
+                            <h4 className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Headlines (order)</h4>
+                            {headlines.length ? (
+                              <div className="mt-2 grid grid-cols-1 gap-1 text-xs sm:grid-cols-2">
+                                {headlines.map((t, i) => (
+                                  <div key={i} className="flex gap-2 rounded border border-slate-800/60 px-2 py-1">
+                                    <span className="w-4 shrink-0 tabular-nums text-slate-500">{i + 1}.</span>
+                                    <span className="min-w-0 break-words text-slate-200">{t || <span className="text-slate-600">(empty)</span>}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="mt-2 text-xs text-slate-500">None saved</p>
+                            )}
+                          </section>
+                          <section className="w-full min-w-0 rounded-md border border-slate-800 bg-slate-900/60 p-3">
+                            <h4 className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Bullets</h4>
+                            <ul className="mt-2 grid grid-cols-1 gap-1 sm:grid-cols-3">
+                              {[0, 1, 2].map((i) => (
+                                <li key={i} className="rounded border border-slate-800/80 px-2 py-1.5 text-xs text-slate-200">
+                                  <span className="text-slate-500">#{i + 1}</span> {bullets[i] || '—'}
+                                </li>
+                              ))}
+                            </ul>
+                          </section>
+                          <section className="w-full min-w-0 rounded-md border border-slate-800 bg-slate-900/60 p-3">
+                            <h4 className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Navbar</h4>
+                            {nav.length ? (
+                              <div className="mt-2 grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
+                                {nav.map((item, i) => (
+                                  <div key={i} className="flex min-w-0 items-baseline justify-between gap-2 rounded border border-slate-800/80 px-2 py-1 text-xs">
+                                    <span className="truncate font-medium text-white">{item.name || '—'}</span>
+                                    <span className="shrink-0 font-mono text-[10px] text-cyan-500/90">{item.href || ''}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="mt-2 text-xs text-slate-500">None saved</p>
+                            )}
+                          </section>
                         </div>
-                      );
-                    })}
-                  </div>
-                  <div className="mt-3 flex gap-2">
-                    <button className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 hover:scale-105 active:scale-95 transition-all duration-300 shadow-md hover:shadow-lg" onClick={() => {
-                      const map: any = {}
-                      rows.forEach((it: any) => { map[it.key] = it.value })
-                      // Parse JSON values for hero section
-                      if (map['hero_animated_texts']) {
-                        try {
-                          const parsed = JSON.parse(map['hero_animated_texts']);
-                          if (Array.isArray(parsed)) setHeroAnimatedTexts(parsed);
-                        } catch {}
-                      }
-                      if (map['hero_bullet_points']) {
-                        try {
-                          const parsed = JSON.parse(map['hero_bullet_points']);
-                          if (Array.isArray(parsed)) setHeroBulletPoints(parsed);
-                        } catch {}
-                      }
-                      if (map['navbar_links']) {
-                        try {
-                          const parsed = JSON.parse(map['navbar_links']);
-                          if (Array.isArray(parsed)) setNavbarLinks(parsed);
-                        } catch {}
-                      }
-                      setForm((s) => ({ ...s, ...map }))
-                    }}>Edit</button>
-                    <button className="px-4 py-2 rounded-lg bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-semibold shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-300" onClick={async () => {
-                      const keys = ['hero_projects_count','hero_services_count','hero_courses_count','hero_animated_texts','hero_bullet_points','navbar_links']
-                      const ok = window.confirm('Delete all hero section settings?')
-                      if (!ok) return
-                      await deleteSiteSettingKeys(keys)
-                    }}>Delete</button>
-                  </div>
+                      </>
+                    )
+                  })()}
                 </>
               )}
             </div>
@@ -1500,11 +1832,13 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
                         onChange={async (e) => {
                           const selectedValue = e.target.value
                           if (!selectedValue || selectedValue === '') {
+                            toast.error('Please select an order (1-30)')
                             setError('Please select an order (1-30)')
                             return
                           }
                           const value = Number(selectedValue)
                           if (isNaN(value) || value < 1 || value > 30) {
+                            toast.error('Order must be between 1 and 30')
                             setError('Order must be between 1 and 30')
                             return
                           }
@@ -1513,16 +1847,20 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
                           try {
                             const updateResult = await updateTableRecord(table, r.id, { order_index: value })
                             if (updateResult.error) {
-                              setError(updateResult.error || 'Failed to update order')
+                              const msg = updateResult.error || 'Failed to update order'
+                              toast.error(msg)
+                              setError(msg)
                             } else if (updateResult.data) {
-                              setNotice('Order updated successfully')
-                              setTimeout(() => setNotice(null), 2000)
+                              toast.success('Order updated successfully')
                               await load()
                             } else {
+                              toast.error('Update failed: No rows were updated')
                               setError('Update failed: No rows were updated')
                             }
                           } catch (err: any) {
-                            setError(err.message || 'Failed to update order')
+                            const msg = err.message || 'Failed to update order'
+                            toast.error(msg)
+                            setError(msg)
                           }
                         }}
                       >
@@ -1552,16 +1890,20 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
                         try {
                           const updateResult = await updateTableRecord(table, r.id, { status: 'approved' })
                           if (updateResult.error) {
-                            setError(updateResult.error || 'Failed to approve review')
+                            const msg = updateResult.error || 'Failed to approve review'
+                            toast.error(msg)
+                            setError(msg)
                           } else if (updateResult.data) {
-                            setNotice('Review approved successfully')
-                            setTimeout(() => setNotice(null), 2000)
+                            toast.success('Review approved successfully')
                             await load()
                           } else {
+                            toast.error('Update failed: No rows were updated')
                             setError('Update failed: No rows were updated')
                           }
                         } catch (err: any) {
-                          setError(err.message || 'Failed to approve review')
+                          const msg = err.message || 'Failed to approve review'
+                          toast.error(msg)
+                          setError(msg)
                         }
                       }}>Approve</button>
                     ) : (
@@ -1570,16 +1912,20 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
                         try {
                           const updateResult = await updateTableRecord(table, r.id, { status: 'pending' })
                           if (updateResult.error) {
-                            setError(updateResult.error || 'Failed to unapprove review')
+                            const msg = updateResult.error || 'Failed to unapprove review'
+                            toast.error(msg)
+                            setError(msg)
                           } else if (updateResult.data) {
-                            setNotice('Review unapproved successfully')
-                            setTimeout(() => setNotice(null), 2000)
+                            toast.success('Review unapproved successfully')
                             await load()
                           } else {
+                            toast.error('Update failed: No rows were updated')
                             setError('Update failed: No rows were updated')
                           }
                         } catch (err: any) {
-                          setError(err.message || 'Failed to unapprove review')
+                          const msg = err.message || 'Failed to unapprove review'
+                          toast.error(msg)
+                          setError(msg)
                         }
                       }}>Unapprove</button>
                     )}
@@ -1631,11 +1977,13 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
                         onChange={async (e) => {
                           const selectedValue = e.target.value
                           if (!selectedValue || selectedValue === '') {
+                            toast.error('Please select an order (1-30)')
                             setError('Please select an order (1-30)')
                             return
                           }
                           const value = Number(selectedValue)
                           if (isNaN(value) || value < 1 || value > 30) {
+                            toast.error('Order must be between 1 and 30')
                             setError('Order must be between 1 and 30')
                             return
                           }
@@ -1644,16 +1992,20 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
                           try {
                             const updateResult = await updateTableRecord(table, r.id, { order_index: value })
                             if (updateResult.error) {
-                              setError(updateResult.error || 'Failed to update order')
+                              const msg = updateResult.error || 'Failed to update order'
+                              toast.error(msg)
+                              setError(msg)
                             } else if (updateResult.data) {
-                              setNotice('Order updated successfully')
-                              setTimeout(() => setNotice(null), 2000)
+                              toast.success('Order updated successfully')
                               await load()
                             } else {
+                              toast.error('Update failed: No rows were updated')
                               setError('Update failed: No rows were updated')
                             }
                           } catch (err: any) {
-                            setError(err.message || 'Failed to update order')
+                            const msg = err.message || 'Failed to update order'
+                            toast.error(msg)
+                            setError(msg)
                           }
                         }}
                       >
@@ -1810,6 +2162,43 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
         </>
       )}
     </div>
+  )
+}
+
+/** Renders children in document.body when modal open so fixed overlay is not clipped by admin main scroll. */
+function LandingAdminFormMount({
+  usePortal,
+  onBackdropClose,
+  children
+}: {
+  usePortal: boolean
+  onBackdropClose: () => void
+  children: React.ReactNode
+}) {
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+
+  if (!usePortal) {
+    return <>{children}</>
+  }
+  if (!mounted) return null
+  return createPortal(
+    <div className="fixed inset-0 z-[200] overflow-y-auto overflow-x-hidden admin-custom-scrollbar">
+      {/* fixed + inset-0: full viewport; do not put padding on this layer or absolute inset-0 backdrops miss edges */}
+      <button
+        type="button"
+        aria-label="Close"
+        className="btn-no-liquid fixed inset-0 z-0 rounded-none border-0 bg-black/60 backdrop-blur-md"
+        onClick={onBackdropClose}
+      />
+      <div
+        className="relative z-[1] flex min-h-full justify-center px-4 pb-10 pointer-events-none"
+        style={{ paddingTop: 'max(1rem, calc(var(--admin-header-height, 80px) + 0.5rem))' }}
+      >
+        <div className="pointer-events-auto w-full max-w-full flex justify-center">{children}</div>
+      </div>
+    </div>,
+    document.body
   )
 }
 

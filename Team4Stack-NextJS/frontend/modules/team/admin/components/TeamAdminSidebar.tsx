@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { landingApi } from '@/lib/api'
@@ -21,10 +21,6 @@ const TeamAdminSidebar: React.FC = () => {
   const [hoveredLink, setHoveredLink] = useState<string | null>(null)
   const [tooltipPosition, setTooltipPosition] = useState<{ top: number; left: number } | null>(null)
   const [isSidebarHovered, setIsSidebarHovered] = useState(false)
-  const linkRefs = useRef<Record<string, HTMLAnchorElement | null>>({})
-  const dashboardLinkRef = useRef<HTMLAnchorElement | null>(null)
-  const topSectionRef = useRef<HTMLDivElement | null>(null)
-
   useEffect(() => {
     const load = async () => {
       try {
@@ -73,75 +69,79 @@ const TeamAdminSidebar: React.FC = () => {
 
   return (
     <div
-      className="relative h-full flex overflow-visible w-fit min-w-0"
+      className="relative flex h-full w-fit min-w-0 overflow-visible"
       onMouseEnter={() => setIsSidebarHovered(true)}
       onMouseLeave={() => setIsSidebarHovered(false)}
     >
       <aside
-        className={`${isCollapsed ? 'w-20' : 'w-64'} bg-black/40 backdrop-blur-2xl border-r border-cyan-500/20 flex flex-col relative shadow-2xl shadow-cyan-500/10 transition-all duration-300 ease-in-out h-full overflow-hidden`}
+        className={`admin-sidebar-panel ${isCollapsed ? 'w-20' : 'w-64'} relative flex h-full flex-col overflow-visible border-r border-cyan-500/20 bg-black/40 shadow-2xl shadow-cyan-500/10 backdrop-blur-2xl`}
       >
-        {/* Dark Glassmorphism Background */}
-        <div className="absolute inset-0 bg-gradient-to-b from-slate-900/90 via-black/80 to-slate-900/90"></div>
-
-        {/* Subtle Neon Accents */}
-        <div className="pointer-events-none absolute inset-0 opacity-20 [background:radial-gradient(200px_100px_at_20%_10%,rgba(6,182,212,0.4)_0,transparent_60%),radial-gradient(250px_120px_at_80%_30%,rgba(249,115,22,0.3)_0,transparent_60%)]"></div>
-
-        {/* Glowing Border Effect */}
-        <div className="absolute right-0 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-cyan-500/50 to-transparent"></div>
-
-        {/* Fixed top section: Pin button only – no scroll, always visible */}
-        <div ref={topSectionRef} className="flex-shrink-0 h-8 relative z-10" aria-hidden />
+        <div
+          className="pointer-events-none absolute inset-0 bg-gradient-to-b from-slate-900/90 via-black/80 to-slate-900/90"
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none absolute inset-0 opacity-20 [background:radial-gradient(200px_100px_at_20%_10%,rgba(6,182,212,0.4)_0,transparent_60%),radial-gradient(250px_120px_at_80%_30%,rgba(249,115,22,0.3)_0,transparent_60%)]"
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none absolute right-0 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-cyan-500/50 to-transparent"
+          aria-hidden
+        />
 
         <SidebarPinButton
           isCollapsed={isCollapsed}
           setIsCollapsed={setIsCollapsed}
           isSidebarHovered={isSidebarHovered}
-          dashboardLinkRef={dashboardLinkRef}
-          sidebarWidth={isCollapsed ? 80 : 256}
-          topSectionRef={topSectionRef}
         />
 
-        {/* Scrollable area: nav + logout only */}
-        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-visible p-4 relative z-10 admin-custom-scrollbar">
+        <div
+          className={`admin-sidebar-scrollbar relative z-10 flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-visible pb-4 pt-3 ${isCollapsed ? 'px-2' : 'px-4'}`}
+        >
           <nav>
             <ul className="space-y-2">
-              {links.map((link, index) => {
+              {links.map((link) => {
                 const isActive = pathname === link.to || (link.to !== '/adminteamt4s' && pathname?.startsWith(link.to))
-                const isDashboard = link.to === '/adminteamt4s'
                 const IconComponent = link.icon
-                const isHovered = hoveredLink === link.to
                 return (
                   <li key={link.to} className="relative">
                     <Link
-                      ref={(el) => {
-                        linkRefs.current[link.to] = el
-                        if (isDashboard) {
-                          dashboardLinkRef.current = el
-                        }
-                      }}
                       href={link.to}
-                      className={`flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-4'} py-3 rounded-xl text-sm font-medium transition-all duration-300 relative group overflow-visible ${isActive
-                        ? 'bg-gradient-to-r from-cyan-500/20 to-orange-500/20 text-white shadow-lg shadow-cyan-500/30 border border-cyan-400/40'
-                        : 'text-white/70 hover:text-white hover:bg-white/5 border border-transparent'
+                      className={`flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-4'} py-3 rounded-xl text-sm font-medium transition-all duration-[440ms] ease-[cubic-bezier(0.22,1,0.36,1)] relative group overflow-visible ${
+                        isActive
+                          ? isCollapsed
+                            ? 'border border-transparent bg-transparent text-cyan-100 shadow-none hover:bg-white/[0.06]'
+                            : 'border border-cyan-400/40 bg-gradient-to-r from-cyan-500/20 to-orange-500/20 text-white shadow-lg shadow-cyan-500/30'
+                          : 'border border-transparent text-white/70 hover:bg-white/5 hover:text-white'
                         }`}
                       onMouseEnter={(e) => handleLinkMouseEnter(link.to, e)}
                       onMouseLeave={handleLinkMouseLeave}
                     >
-                      {/* Active Glow Effect */}
-                      {isActive && (
+                      {isActive && !isCollapsed && (
                         <>
-                          <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-orange-500/10 opacity-50"></div>
-                          <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-cyan-400 to-orange-400 shadow-[0_0_10px_rgba(6,182,212,0.8)]"></div>
+                          <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-cyan-500/10 to-orange-500/10 opacity-50"></div>
+                          <div className="absolute bottom-0 left-0 top-0 w-1 rounded-l-xl bg-gradient-to-b from-cyan-400 to-orange-400 shadow-[0_0_10px_rgba(6,182,212,0.8)]"></div>
                         </>
                       )}
 
-                      {/* Icon with Glow */}
-                      <IconComponent
-                        className={`${isCollapsed ? 'w-5 h-5' : 'w-5 h-5'} transition-all duration-300 relative z-10 ${isActive
-                          ? 'scale-110 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]'
-                          : 'group-hover:scale-110 group-hover:drop-shadow-[0_0_8px_rgba(249,115,22,0.6)]'
-                          }`}
-                      />
+                      <div className="relative flex min-h-10 min-w-10 shrink-0 items-center justify-center">
+                        {isActive && isCollapsed && (
+                          <span
+                            aria-hidden
+                            className="pointer-events-none absolute left-1/2 top-1/2 z-0 h-10 w-10 -translate-x-1/2 -translate-y-1/2 rounded-xl bg-gradient-to-br from-cyan-500/65 via-cyan-600/45 to-orange-500/50 shadow-[0_0_24px_rgba(34,211,238,0.72),0_0_48px_rgba(6,182,212,0.38),inset_0_1px_0_rgba(255,255,255,0.18)] ring-1 ring-cyan-200/35"
+                          />
+                        )}
+                        <IconComponent
+                          className={`relative z-10 h-5 w-5 transition-all duration-[440ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                            isActive
+                              ? isCollapsed
+                                ? 'admin-sidebar-collapsed-active-icon scale-110'
+                                : 'scale-110 text-white drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]'
+                              : 'group-hover:scale-110 group-hover:drop-shadow-[0_0_8px_rgba(249,115,22,0.6)]'
+                            }`}
+                          strokeWidth={isActive && isCollapsed ? 2.75 : 2}
+                        />
+                      </div>
 
                       {!isCollapsed && (
                         <span className="flex-1 relative z-10">{link.label}</span>
@@ -154,7 +154,7 @@ const TeamAdminSidebar: React.FC = () => {
 
                       {/* Hover Glow */}
                       {!isActive && (
-                        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/0 via-orange-500/0 to-cyan-500/0 group-hover:from-cyan-500/5 group-hover:via-orange-500/5 group-hover:to-cyan-500/5 transition-all duration-300"></div>
+                        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/0 via-orange-500/0 to-cyan-500/0 group-hover:from-cyan-500/5 group-hover:via-orange-500/5 group-hover:to-cyan-500/5 transition-all duration-[440ms] ease-[cubic-bezier(0.22,1,0.36,1)]"></div>
                       )}
                     </Link>
 
@@ -169,7 +169,7 @@ const TeamAdminSidebar: React.FC = () => {
             <div className="relative">
               <button
                 onClick={handleLogout}
-                className={`w-full ${isCollapsed ? 'px-2 justify-center' : 'px-4'} py-3 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 backdrop-blur-md text-white border border-red-500/30 hover:border-red-400/50 hover:shadow-[0_0_20px_rgba(239,68,68,0.4)] transition-all duration-300 relative overflow-hidden group font-medium text-sm flex items-center justify-center gap-2`}
+                className={`w-full ${isCollapsed ? 'px-2 justify-center' : 'px-4'} py-3 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 backdrop-blur-md text-white border border-red-500/30 hover:border-red-400/50 hover:shadow-[0_0_20px_rgba(239,68,68,0.4)] transition-all duration-[440ms] ease-[cubic-bezier(0.22,1,0.36,1)] relative overflow-hidden group font-medium text-sm flex items-center justify-center gap-2`}
                 onMouseEnter={(e) => {
                   if (isCollapsed) {
                     const rect = e.currentTarget.getBoundingClientRect()

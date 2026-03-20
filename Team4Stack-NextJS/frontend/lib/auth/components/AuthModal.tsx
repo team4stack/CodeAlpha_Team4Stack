@@ -1,7 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react'
+import toast from 'react-hot-toast'
 import { supabase } from '@/lib/supabase/client'
 import emailjs from '@emailjs/browser'
 import { RECAPTCHA_SITE_KEY } from '../../utils/constants'
+import { setAuthSessionCookieIfAllowed } from '@/lib/cookies/authSessionCookie'
+import { canUseFunctionalCookies, persistSignInIdentity, readSavedSignInIdentity } from '@/lib/cookies/consent'
 
 // Extend window interface for reCAPTCHA
 declare global {
@@ -11,33 +14,6 @@ declare global {
 }
 
 type Props = { isOpen: boolean; onClose: () => void; initialError?: string | null }
-
-const AUTH_SESSION_COOKIE_NAME = 'auth_session';
-
-const setAuthSessionCookie = (session: { access_token: string; refresh_token: string; expires_at?: number }, maxAgeSeconds?: number) => {
-  try {
-    const expiresAt = typeof session.expires_at === 'number' ? session.expires_at : undefined;
-    const now = Date.now();
-    const computedMaxAge =
-      typeof maxAgeSeconds === 'number'
-        ? maxAgeSeconds
-        : typeof expiresAt === 'number'
-          ? Math.max(0, Math.floor((expiresAt - now) / 1000))
-          : 60 * 60 * 24 * 30; // fallback: 30 days
-
-    // Persist for a long time so user stays signed in (remember me behavior)
-    const payload = {
-      access_token: session.access_token,
-      refresh_token: session.refresh_token,
-      expires_at: expiresAt,
-    };
-
-    const encoded = encodeURIComponent(JSON.stringify(payload));
-    document.cookie = `${AUTH_SESSION_COOKIE_NAME}=${encoded}; path=/; max-age=${computedMaxAge}; samesite=Lax`;
-  } catch {
-    // Silent fail: still rely on localStorage
-  }
-};
 
 const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
   const panelRef = useRef<HTMLDivElement>(null)
@@ -61,6 +37,18 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
   const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false)
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null)
   const recaptchaRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!isOpen) return
+    try {
+      if (canUseFunctionalCookies()) {
+        const saved = readSavedSignInIdentity()
+        if (saved?.email) setEmail(saved.email)
+      }
+    } catch {
+      // ignore
+    }
+  }, [isOpen])
 
   // Handle password reset callback from Supabase
   useEffect(() => {
@@ -421,7 +409,7 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
           
           localStorage.setItem('auth_session', JSON.stringify(sessionToStore))
           // Also persist in cookies so user can stay signed-in after storage is cleared.
-          setAuthSessionCookie(
+          setAuthSessionCookieIfAllowed(
             {
               access_token: sessionToStore.access_token,
               refresh_token: sessionToStore.refresh_token,
@@ -429,6 +417,20 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
             },
             undefined
           )
+          try {
+            if (canUseFunctionalCookies()) {
+              const u = signInData?.user as Record<string, unknown> | undefined
+              const meta = u?.user_metadata as Record<string, unknown> | undefined
+              const name =
+                (typeof u?.name === 'string' && u.name) ||
+                (meta && typeof meta.full_name === 'string' && meta.full_name) ||
+                (meta && typeof meta.name === 'string' && meta.name) ||
+                null
+              persistSignInIdentity({ email: loginEmail.trim(), name })
+            }
+          } catch {
+            // ignore
+          }
           
           // Verify session was stored correctly
           const verifyStored = localStorage.getItem('auth_session')
@@ -443,6 +445,7 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
         
         // Success - session is now saved in localStorage
         setSuccess('Signed in successfully!')
+        toast.success('Signed in successfully!')
         // Reset reCAPTCHA
         if (window.grecaptcha && window.grecaptcha.reset) {
           try {
@@ -796,7 +799,7 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
               }
               
               localStorage.setItem('auth_session', JSON.stringify(sessionToStore))
-              setAuthSessionCookie(
+              setAuthSessionCookieIfAllowed(
                 {
                   access_token: sessionToStore.access_token,
                   refresh_token: sessionToStore.refresh_token,
@@ -804,6 +807,20 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
                 },
                 undefined
               )
+              try {
+                if (canUseFunctionalCookies()) {
+                  const u = signInData?.user as Record<string, unknown> | undefined
+                  const meta = u?.user_metadata as Record<string, unknown> | undefined
+                  const name =
+                    (typeof u?.name === 'string' && u.name) ||
+                    (meta && typeof meta.full_name === 'string' && meta.full_name) ||
+                    (meta && typeof meta.name === 'string' && meta.name) ||
+                    null
+                  persistSignInIdentity({ email: email.trim(), name })
+                }
+              } catch {
+                // ignore
+              }
               
               // Verify storage
               const verifyStored = localStorage.getItem('auth_session')

@@ -1,6 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
 import courseService from '../services/courseService';
 
+function parseNumericId(param: string): number | null {
+  const id = parseInt(param, 10);
+  if (Number.isNaN(id)) return null;
+  return id;
+}
+
 export class CourseController {
   // Get all courses
   getAllCourses = async (req: Request, res: Response, next: NextFunction) => {
@@ -15,8 +21,11 @@ export class CourseController {
   // Get course by ID
   getCourseById = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { id } = req.params;
-      const course = await courseService.getCourseById(parseInt(id));
+      const id = parseNumericId(req.params.id);
+      if (id === null) {
+        return res.status(400).json({ success: false, error: 'Invalid course id' });
+      }
+      const course = await courseService.getCourseById(id);
       if (!course) {
         return res.status(404).json({ success: false, error: 'Course not found' });
       }
@@ -39,8 +48,11 @@ export class CourseController {
   // Update course
   updateCourse = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { id } = req.params;
-      const course = await courseService.updateCourse(parseInt(id), req.body);
+      const id = parseNumericId(req.params.id);
+      if (id === null) {
+        return res.status(400).json({ success: false, error: 'Invalid course id' });
+      }
+      const course = await courseService.updateCourse(id, req.body);
       res.json({ success: true, data: course });
     } catch (error: any) {
       next(error);
@@ -50,8 +62,11 @@ export class CourseController {
   // Delete course
   deleteCourse = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { id } = req.params;
-      await courseService.deleteCourse(parseInt(id));
+      const id = parseNumericId(req.params.id);
+      if (id === null) {
+        return res.status(400).json({ success: false, error: 'Invalid course id' });
+      }
+      await courseService.deleteCourse(id);
       res.json({ success: true, message: 'Course deleted successfully' });
     } catch (error: any) {
       next(error);
@@ -61,8 +76,11 @@ export class CourseController {
   // Get course videos
   getCourseVideos = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { courseId } = req.params;
-      const videos = await courseService.getCourseVideos(parseInt(courseId));
+      const courseId = parseNumericId(req.params.courseId);
+      if (courseId === null) {
+        return res.status(400).json({ success: false, error: 'Invalid course id' });
+      }
+      const videos = await courseService.getCourseVideos(courseId);
       res.json({ success: true, data: videos });
     } catch (error: any) {
       next(error);
@@ -82,8 +100,11 @@ export class CourseController {
   // Update video
   updateVideo = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { id } = req.params;
-      const video = await courseService.updateVideo(parseInt(id), req.body);
+      const id = parseNumericId(req.params.id);
+      if (id === null) {
+        return res.status(400).json({ success: false, error: 'Invalid video id' });
+      }
+      const video = await courseService.updateVideo(id, req.body);
       res.json({ success: true, data: video });
     } catch (error: any) {
       next(error);
@@ -93,8 +114,11 @@ export class CourseController {
   // Delete video
   deleteVideo = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { id } = req.params;
-      await courseService.deleteVideo(parseInt(id));
+      const id = parseNumericId(req.params.id);
+      if (id === null) {
+        return res.status(400).json({ success: false, error: 'Invalid video id' });
+      }
+      await courseService.deleteVideo(id);
       res.json({ success: true, message: 'Video deleted successfully' });
     } catch (error: any) {
       next(error);
@@ -130,8 +154,11 @@ export class CourseController {
   // Update admission form
   updateAdmissionForm = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { id } = req.params;
-      const form = await courseService.updateAdmissionForm(parseInt(id), req.body);
+      const id = parseNumericId(req.params.id);
+      if (id === null) {
+        return res.status(400).json({ success: false, error: 'Invalid admission form id' });
+      }
+      const form = await courseService.updateAdmissionForm(id, req.body);
       res.json({ success: true, data: form });
     } catch (error: any) {
       next(error);
@@ -141,8 +168,11 @@ export class CourseController {
   // Delete admission form
   deleteAdmissionForm = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { id } = req.params;
-      await courseService.deleteAdmissionForm(parseInt(id));
+      const id = parseNumericId(req.params.id);
+      if (id === null) {
+        return res.status(400).json({ success: false, error: 'Invalid admission form id' });
+      }
+      await courseService.deleteAdmissionForm(id);
       res.json({ success: true, message: 'Admission form deleted successfully' });
     } catch (error: any) {
       next(error);

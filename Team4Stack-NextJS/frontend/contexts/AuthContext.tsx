@@ -3,6 +3,12 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { superadminApi, usersApi } from '@/lib/api'
+import { getCookieConsent, persistSignInIdentity, canUseFunctionalCookies } from '@/lib/cookies/consent'
+import {
+  AUTH_SESSION_COOKIE_NAME,
+  clearAuthSessionCookie,
+  setAuthSessionCookieIfAllowed
+} from '@/lib/cookies/authSessionCookie'
 
 export type AppUser = {
   id: string
@@ -28,8 +34,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<AppUser | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const AUTH_SESSION_COOKIE_NAME = 'auth_session'
-
   const getCookie = (name: string): string | null => {
     try {
       if (typeof document === 'undefined') return null
@@ -44,12 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   const clearSessionCookie = () => {
-    try {
-      // Delete cookie immediately
-      document.cookie = `${AUTH_SESSION_COOKIE_NAME}=; Max-Age=0; path=/; samesite=Lax`
-    } catch {
-      // ignore
-    }
+    clearAuthSessionCookie()
   }
 
   const generateUniqueUsername = useCallback(async (baseUsername: string): Promise<string> => {
@@ -129,10 +128,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loadSession = useCallback(async () => {
     setLoading(true)
     try {
-      // Get session from localStorage (primary), fallback to cookie (remember-me)
+      const consent = getCookieConsent()
+      if (consent === 'essential') {
+        clearAuthSessionCookie()
+      }
       const sessionStr =
         localStorage.getItem('auth_session') ||
-        getCookie(AUTH_SESSION_COOKIE_NAME)
+        (consent === 'essential' ? null : getCookie(AUTH_SESSION_COOKIE_NAME))
       
       if (!sessionStr) {
         setUser(null)
@@ -255,6 +257,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Map user data (use sessionUser as fallback if profile is null)
         const mapped = mapProfile(sessionUser, userProfile)
         setUser(mapped)
+        try {
+          if (mapped.email && canUseFunctionalCookies()) {
+            persistSignInIdentity({ email: mapped.email, name: mapped.name })
+          }
+        } catch {
+          // ignore
+        }
       } catch (parseError: any) {
         // Invalid session data, remove it
         localStorage.removeItem('auth_session')
@@ -332,6 +341,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 expires_at: expiresAt,
                 user: sessionUser
               }))
+              setAuthSessionCookieIfAllowed({
+                access_token: accessToken,
+                refresh_token: refreshToken,
+                expires_at: expiresAt
+              })
               
               // Clear hash and query params from URL
               window.history.replaceState(null, '', window.location.pathname)
@@ -351,6 +365,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             expires_at: expiresAt,
             user: null // Will be fetched on next loadSession
           }))
+          setAuthSessionCookieIfAllowed({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+            expires_at: expiresAt
+          })
           
           // Clear hash and query params from URL
           window.history.replaceState(null, '', window.location.pathname)
@@ -402,6 +421,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 expires_at: expiresAt,
                 user: sessionUser
               }))
+              setAuthSessionCookieIfAllowed({
+                access_token: accessToken,
+                refresh_token: refreshToken,
+                expires_at: expiresAt
+              })
               
               // Trigger session reload
               loadSession()
@@ -419,6 +443,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             expires_at: expiresAt,
             user: session.user
           }))
+          setAuthSessionCookieIfAllowed({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+            expires_at: expiresAt
+          })
           loadSession()
         } catch (err) {
           // Silent fail - session might already be stored
@@ -426,6 +455,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else if (event === 'SIGNED_OUT') {
         // User signed out - clear localStorage
         localStorage.removeItem('auth_session')
+        clearAuthSessionCookie()
         setUser(null)
       }
     })
@@ -444,6 +474,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     window.addEventListener('storage', handleStorageChange)
     window.addEventListener('auth_session_updated', handleSessionUpdate)
+
+    const onConsentChanged = () => {
+      if (getCookieConsent() === 'essential') {
+        clearAuthSessionCookie()
+      }
+      loadSession()
+    }
+    window.addEventListener('cookie_consent_changed', onConsentChanged)
     
     // Also check session periodically (every 5 minutes) to verify it's still valid
     const intervalId = setInterval(() => {
@@ -454,6 +492,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       subscription.unsubscribe()
       window.removeEventListener('storage', handleStorageChange)
       window.removeEventListener('auth_session_updated', handleSessionUpdate)
+      window.removeEventListener('cookie_consent_changed', onConsentChanged)
       clearInterval(intervalId)
     }
   }, [loadSession])

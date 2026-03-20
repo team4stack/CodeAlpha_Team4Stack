@@ -1,6 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
 import teamService from '../services/teamService';
 
+function parseNumericId(param: string): number | null {
+  const id = parseInt(param, 10);
+  if (Number.isNaN(id)) return null;
+  return id;
+}
+
 export class TeamController {
   // Team Members
   getTeamMembers = async (req: Request, res: Response, next: NextFunction) => {
@@ -23,8 +29,11 @@ export class TeamController {
 
   updateTeamMember = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { id } = req.params;
-      const member = await teamService.updateTeamMember(parseInt(id), req.body);
+      const id = parseNumericId(req.params.id);
+      if (id === null) {
+        return res.status(400).json({ success: false, error: 'Invalid team member id' });
+      }
+      const member = await teamService.updateTeamMember(id, req.body);
       res.json({ success: true, data: member });
     } catch (error: any) {
       next(error);
@@ -33,8 +42,11 @@ export class TeamController {
 
   deleteTeamMember = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { id } = req.params;
-      await teamService.deleteTeamMember(parseInt(id));
+      const id = parseNumericId(req.params.id);
+      if (id === null) {
+        return res.status(400).json({ success: false, error: 'Invalid team member id' });
+      }
+      await teamService.deleteTeamMember(id);
       res.json({ success: true, message: 'Team member deleted successfully' });
     } catch (error: any) {
       next(error);
@@ -62,8 +74,11 @@ export class TeamController {
 
   updateMentorProfile = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { id } = req.params;
-      const mentor = await teamService.updateMentorProfile(parseInt(id), req.body);
+      const id = parseNumericId(req.params.id);
+      if (id === null) {
+        return res.status(400).json({ success: false, error: 'Invalid mentor id' });
+      }
+      const mentor = await teamService.updateMentorProfile(id, req.body);
       res.json({ success: true, data: mentor });
     } catch (error: any) {
       next(error);
@@ -72,8 +87,11 @@ export class TeamController {
 
   deleteMentorProfile = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { id } = req.params;
-      await teamService.deleteMentorProfile(parseInt(id));
+      const id = parseNumericId(req.params.id);
+      if (id === null) {
+        return res.status(400).json({ success: false, error: 'Invalid mentor id' });
+      }
+      await teamService.deleteMentorProfile(id);
       res.json({ success: true, message: 'Mentor profile deleted successfully' });
     } catch (error: any) {
       next(error);

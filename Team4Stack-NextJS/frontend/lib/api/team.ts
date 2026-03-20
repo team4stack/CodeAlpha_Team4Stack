@@ -1,10 +1,11 @@
 // Team API endpoints
 import apiClient from './client';
+import { cachedPublicGet } from '@/lib/performance/functionalExperienceCache';
 
 export const teamApi = {
   // Team Members
   getTeamMembers: async () => {
-    return apiClient.get('/team/members');
+    return cachedPublicGet('team:members', 2.5 * 60 * 1000, () => apiClient.get('/team/members'));
   },
 
   createTeamMember: async (member: any) => {
@@ -21,7 +22,7 @@ export const teamApi = {
 
   // Mentor Profiles
   getMentorProfiles: async () => {
-    return apiClient.get('/team/mentors');
+    return cachedPublicGet('team:mentors', 2.5 * 60 * 1000, () => apiClient.get('/team/mentors'));
   },
 
   createMentorProfile: async (mentor: any) => {
