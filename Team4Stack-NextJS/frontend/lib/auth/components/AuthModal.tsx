@@ -5,6 +5,7 @@ import emailjs from '@emailjs/browser'
 import { RECAPTCHA_SITE_KEY } from '../../utils/constants'
 import { setAuthSessionCookieIfAllowed } from '@/lib/cookies/authSessionCookie'
 import { canUseFunctionalCookies, persistSignInIdentity, readSavedSignInIdentity } from '@/lib/cookies/consent'
+import { isValidAuthTokenString } from '@/lib/security/clientAuthSession'
 
 // Extend window interface for reCAPTCHA
 declare global {
@@ -406,7 +407,11 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
             expires_at: expiresAt,
             user: signInData?.user || null
           }
-          
+
+          if (!isValidAuthTokenString(sessionToStore.access_token) || !isValidAuthTokenString(sessionToStore.refresh_token)) {
+            throw new Error('Invalid session tokens')
+          }
+
           localStorage.setItem('auth_session', JSON.stringify(sessionToStore))
           // Also persist in cookies so user can stay signed-in after storage is cleared.
           setAuthSessionCookieIfAllowed(
@@ -797,7 +802,11 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
                 expires_at: expiresAt,
                 user: signInData?.user || null
               }
-              
+
+              if (!isValidAuthTokenString(sessionToStore.access_token) || !isValidAuthTokenString(sessionToStore.refresh_token)) {
+                throw new Error('Invalid session tokens')
+              }
+
               localStorage.setItem('auth_session', JSON.stringify(sessionToStore))
               setAuthSessionCookieIfAllowed(
                 {

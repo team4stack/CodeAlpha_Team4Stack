@@ -10,6 +10,7 @@ import {
   syncSignInIdentityFromAuthSessionLocalStorage
 } from '@/lib/cookies/consent';
 import { clearAuthSessionCookie, setAuthSessionCookieIfAllowed } from '@/lib/cookies/authSessionCookie';
+import { parseStoredClientAuthSession } from '@/lib/security/clientAuthSession';
 
 function CookieIcon({ className }: { className?: string }) {
   return (
@@ -62,19 +63,13 @@ export default function CookieConsentBanner() {
     setCookieConsent('functional');
     try {
       const raw = localStorage.getItem('auth_session');
-      if (raw) {
-        const s = JSON.parse(raw) as {
-          access_token?: string;
-          refresh_token?: string;
-          expires_at?: number;
-        };
-        if (s.access_token && s.refresh_token) {
-          setAuthSessionCookieIfAllowed({
-            access_token: s.access_token,
-            refresh_token: s.refresh_token,
-            expires_at: s.expires_at
-          });
-        }
+      const s = parseStoredClientAuthSession(raw);
+      if (s) {
+        setAuthSessionCookieIfAllowed({
+          access_token: s.access_token,
+          refresh_token: s.refresh_token,
+          expires_at: s.expires_at
+        });
       }
     } catch {
       // ignore

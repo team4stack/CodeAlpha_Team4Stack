@@ -9,6 +9,7 @@ import {
   clearAuthSessionCookie,
   setAuthSessionCookieIfAllowed
 } from '@/lib/cookies/authSessionCookie'
+import { isValidAuthTokenString, parseStoredClientAuthSession } from '@/lib/security/clientAuthSession'
 
 export type AppUser = {
   id: string
@@ -143,19 +144,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       try {
-        const session = JSON.parse(sessionStr)
-        
-        if (!session.access_token || !session.refresh_token) {
+        const session = parseStoredClientAuthSession(sessionStr)
+
+        if (!session) {
           localStorage.removeItem('auth_session')
           clearSessionCookie()
           setUser(null)
           setLoading(false)
           return
         }
-        
+
         // Check if session is expired (only check if expires_at exists and is valid)
         if (session.expires_at) {
-          const expiresAt = typeof session.expires_at === 'number' ? session.expires_at : parseInt(session.expires_at)
+          const expiresAt = session.expires_at
           if (!isNaN(expiresAt) && Date.now() > expiresAt) {
             // Session expired, remove it
             localStorage.removeItem('auth_session')
@@ -317,6 +318,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // If it's an OAuth callback (not password reset)
       if (accessToken && refreshToken && type !== 'recovery') {
+        if (!isValidAuthTokenString(accessToken) || !isValidAuthTokenString(refreshToken)) {
+          window.history.replaceState(null, '', window.location.pathname)
+          return
+        }
         try {
           // Calculate expires_at if not provided
           if (!expiresAt) {
@@ -394,7 +399,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Get session tokens
           const accessToken = session.access_token
           const refreshToken = session.refresh_token
-          
+          if (!isValidAuthTokenString(accessToken) || !isValidAuthTokenString(refreshToken)) {
+            return
+          }
+
           // Calculate expires_at properly
           let expiresAt = Date.now() + 3600000 // Default 1 hour
           if (session.expires_at) {

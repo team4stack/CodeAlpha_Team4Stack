@@ -4,6 +4,13 @@
  * - functional: auth cookie + full sign-in identity cache (email + display name) for UX.
  */
 
+import { parseJsonStorage, parseStoredClientAuthSession } from '@/lib/security/clientAuthSession';
+
+const MAX_CONSENT_JSON_CHARS = 4096;
+const MAX_EMAIL_CHARS = 254;
+const MAX_NAME_CHARS = 200;
+const MAX_IDENTITY_JSON_CHARS = 8192;
+
 export const COOKIE_CONSENT_STORAGE_KEY = 't4s_cookie_consent_v1';
 /** Legacy single-email key — kept in sync when saving identity */
 export const REMEMBER_EMAIL_KEY = 't4s_remember_email';
@@ -26,8 +33,9 @@ export function getCookieConsent(): CookieConsentLevel {
   if (typeof window === 'undefined') return 'pending';
   try {
     const raw = localStorage.getItem(COOKIE_CONSENT_STORAGE_KEY);
-    if (!raw) return 'pending';
-    const parsed = JSON.parse(raw) as StoredCookieConsent;
+    if (!raw || raw.length > MAX_CONSENT_JSON_CHARS) return 'pending';
+    const parsed = parseJsonStorage(raw) as StoredCookieConsent | null;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return 'pending';
     if (parsed.level === 'essential' || parsed.level === 'functional') return parsed.level;
     return 'pending';
   } catch {
@@ -57,15 +65,19 @@ export function hasAnsweredConsent(): boolean {
 export function persistSignInIdentity(data: { email?: string | null; name?: string | null }): void {
   if (!canUseFunctionalCookies()) return;
   const email = typeof data.email === 'string' ? data.email.trim() : '';
-  if (!email) return;
+  if (!email || email.length > MAX_EMAIL_CHARS || email.includes('\0')) return;
   try {
     let name: string | undefined;
-    if (typeof data.name === 'string' && data.name.trim()) name = data.name.trim();
+    if (typeof data.name === 'string' && data.name.trim()) {
+      const t = data.name.trim();
+      if (!t.includes('\0')) name = t.slice(0, MAX_NAME_CHARS);
+    }
     const payload = JSON.stringify({
       email,
       ...(name ? { name } : {}),
       savedAt: new Date().toISOString()
     });
+    if (payload.length > MAX_IDENTITY_JSON_CHARS) return;
     localStorage.setItem(SAVED_SIGNIN_IDENTITY_KEY, payload);
     localStorage.setItem(REMEMBER_EMAIL_KEY, email);
   } catch {
@@ -77,14 +89,20 @@ export function readSavedSignInIdentity(): SavedSignInIdentity | null {
   if (typeof window === 'undefined') return null;
   try {
     const raw = localStorage.getItem(SAVED_SIGNIN_IDENTITY_KEY);
-    if (raw) {
-      const j = JSON.parse(raw) as { email?: string; name?: string };
-      if (j?.email && typeof j.email === 'string') {
-        return { email: j.email, name: j.name ?? null };
+    if (raw && raw.length <= MAX_IDENTITY_JSON_CHARS) {
+      const j = parseJsonStorage(raw) as { email?: string; name?: string } | null;
+      if (j && typeof j === 'object' && !Array.isArray(j) && typeof j.email === 'string') {
+        const em = j.email.trim();
+        if (em && em.length <= MAX_EMAIL_CHARS && !em.includes('\0')) {
+          const nm = typeof j.name === 'string' ? j.name.trim().slice(0, MAX_NAME_CHARS) : null;
+          return { email: em, name: nm || null };
+        }
       }
     }
     const legacy = localStorage.getItem(REMEMBER_EMAIL_KEY);
-    if (legacy) return { email: legacy, name: null };
+    if (legacy && legacy.length <= MAX_EMAIL_CHARS && !legacy.includes('\0')) {
+      return { email: legacy.trim(), name: null };
+    }
   } catch {
     // ignore
   }
@@ -96,8 +114,8 @@ export function syncSignInIdentityFromAuthSessionLocalStorage(): void {
   if (!canUseFunctionalCookies()) return;
   try {
     const raw = localStorage.getItem('auth_session');
-    if (!raw) return;
-    const s = JSON.parse(raw) as { user?: Record<string, unknown> };
+    const s = parseStoredClientAuthSession(raw);
+    if (!s) return;
     const u = s.user as Record<string, unknown> | undefined;
     if (!u) return;
     const email =

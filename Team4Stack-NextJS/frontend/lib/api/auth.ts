@@ -1,4 +1,5 @@
 // Auth API endpoints
+import { parseStoredClientAuthSession } from '@/lib/security/clientAuthSession';
 import apiClient from './client';
 
 export const authApi = {
@@ -27,26 +28,19 @@ export const authApi = {
   },
 
   verifySession: async () => {
-    // Get session from localStorage
     const sessionStr = localStorage.getItem('auth_session');
     if (!sessionStr) {
       return { success: false, error: 'No session found' };
     }
-    
-    try {
-      const session = JSON.parse(sessionStr);
-      if (!session.access_token || !session.refresh_token) {
-        return { success: false, error: 'Invalid session' };
-      }
-      
-      // Verify session with backend
-      return apiClient.post('/auth/session', { 
-        accessToken: session.access_token, 
-        refreshToken: session.refresh_token 
-      });
-    } catch (error) {
-      return { success: false, error: 'Failed to parse session' };
+    const session = parseStoredClientAuthSession(sessionStr);
+    if (!session) {
+      return { success: false, error: 'Invalid session' };
     }
+
+    return apiClient.post('/auth/session', {
+      accessToken: session.access_token,
+      refreshToken: session.refresh_token
+    });
   },
 
   initiateOAuth: async (provider: 'google' | 'github', redirectTo: string) => {

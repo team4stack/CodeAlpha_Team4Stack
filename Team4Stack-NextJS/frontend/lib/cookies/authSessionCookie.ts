@@ -1,3 +1,4 @@
+import { buildAuthSessionCookieValue } from '@/lib/security/clientAuthSession';
 import { canUseFunctionalCookies } from './consent';
 
 export const AUTH_SESSION_COOKIE_NAME = 'auth_session';
@@ -16,13 +17,13 @@ export function setAuthSessionCookie(
           ? Math.max(0, Math.floor((expiresAt - now) / 1000))
           : 60 * 60 * 24 * 30;
 
-    const payload = {
+    const encoded = buildAuthSessionCookieValue({
       access_token: session.access_token,
       refresh_token: session.refresh_token,
       expires_at: expiresAt
-    };
+    });
+    if (!encoded) return;
 
-    const encoded = encodeURIComponent(JSON.stringify(payload));
     const secure = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : '';
     document.cookie = `${AUTH_SESSION_COOKIE_NAME}=${encoded}; path=/; max-age=${computedMaxAge}; samesite=Lax${secure}`;
   } catch {
@@ -41,7 +42,8 @@ export function setAuthSessionCookieIfAllowed(
 
 export function clearAuthSessionCookie(): void {
   try {
-    document.cookie = `${AUTH_SESSION_COOKIE_NAME}=; Max-Age=0; path=/; samesite=Lax`;
+    const secure = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie = `${AUTH_SESSION_COOKIE_NAME}=; Max-Age=0; path=/; samesite=Lax${secure}`;
   } catch {
     // ignore
   }
