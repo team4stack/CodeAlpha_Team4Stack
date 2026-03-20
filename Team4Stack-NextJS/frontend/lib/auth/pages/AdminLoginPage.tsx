@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { isEmailAllowedForAdmin, verifyAdminAccess } from '../utils/adminSecurity'
-
 const LoginPage: React.FC = () => {
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
@@ -57,19 +55,6 @@ const LoginPage: React.FC = () => {
         return
       }
 
-      // Step 1: ENVIRONMENT VARIABLE CHECK (FIRST - Most Secure Layer)
-      // Even if Supabase is hacked, this check will prevent unauthorized access
-      // This is the PRIMARY security layer - cannot be bypassed via Supabase
-      if (!isEmailAllowedForAdmin(loginEmail)) {
-        // Email not in environment variable whitelist - deny immediately
-        // This prevents access even if someone adds email to Supabase admin_users table
-        setError('Invalid email or password.')
-        setLoading(false)
-        return
-      }
-
-      // Step 2: API TABLE CHECK (SECOND - Can be compromised, but still checked)
-      // Multi-layer security: Both environment variable AND API check must pass
       const { superadminApi } = await import('@/lib/api')
       const adminCheckResult = await superadminApi.checkAdminByEmail(loginEmail)
 
@@ -84,7 +69,7 @@ const LoginPage: React.FC = () => {
       // CRITICAL: If email is NOT in admin_users table, deny immediately
       // Normal users ka email admin_users mein nahi hoga
       // Only manually added admins will be in admin_users table
-      if (!adminCheckResult.data || !adminCheckResult.data.email) {
+      if (!adminCheckResult.data || !(adminCheckResult.data as any).email) {
         // Email not in admin_users table - this is a normal user
         // Deny access immediately - do not proceed with password verification
         setError('Invalid email or password.')
@@ -92,36 +77,36 @@ const LoginPage: React.FC = () => {
         return
       }
 
-      // Step 2: Verify password via API
-      const { superadminApi } = await import('@/lib/api')
       const verifyResult = await superadminApi.verifyAdminPassword(loginEmail, loginPassword)
 
       if (verifyResult.error) {
-        // Generic error message - no sensitive info revealed
         setError('Invalid email or password.')
         setLoading(false)
         return
       }
 
-      // Check if password is valid
-      const isValid = verifyResult.data && verifyResult.data.valid === true
-
-      if (!isValid) {
-        // Password is incorrect
+      const verifyPayload = verifyResult.data as {
+        valid?: boolean
+        apiToken?: string
+        expiresAt?: number
+        role?: string
+      }
+      if (!verifyPayload?.valid || !verifyPayload.apiToken) {
         setError('Invalid email or password.')
         setLoading(false)
         return
       }
 
-      // Step 3: Create custom admin session (NOT Supabase Auth session)
-      // Admin login is completely separate from normal website login
       const adminSession = {
         email: loginEmail,
-        role: 'admin',
-        expiresAt: Date.now() + (24 * 60 * 60 * 1000) // 24 hours
+        role: verifyPayload.role || (adminCheckResult.data as any).role || 'admin',
+        expiresAt:
+          typeof verifyPayload.expiresAt === 'number'
+            ? verifyPayload.expiresAt
+            : Date.now() + 24 * 60 * 60 * 1000,
+        apiToken: verifyPayload.apiToken
       }
 
-      // Store admin session in sessionStorage
       sessionStorage.setItem('admin_session', JSON.stringify(adminSession))
 
       // Success - navigate to admin dashboard

@@ -1,5 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
 import userService from '../services/userService';
+import { COURSES_ADMIN_ROLES, SUPERADMIN_ONLY_ROLES } from '../../../middleware/authMiddleware';
+
+function canManageUsersViaUsersApi(req: Request): boolean {
+  if (req.auth?.kind !== 'admin') return false;
+  const roles = COURSES_ADMIN_ROLES as readonly string[];
+  const superRoles = SUPERADMIN_ONLY_ROLES as readonly string[];
+  return roles.includes(req.auth.role) || superRoles.includes(req.auth.role);
+}
 
 export class UserController {
   getUserById = async (req: Request, res: Response, next: NextFunction) => {
@@ -44,8 +52,17 @@ export class UserController {
   updateUser = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
-      const user = await userService.updateUser(id, req.body);
-      res.json({ success: true, data: user });
+      if (canManageUsersViaUsersApi(req)) {
+        const user = await userService.updateUser(id, req.body);
+        res.json({ success: true, data: user });
+        return;
+      }
+      if (req.auth?.kind === 'user' && req.auth.sub === id) {
+        const user = await userService.updateUser(id, req.body);
+        res.json({ success: true, data: user });
+        return;
+      }
+      res.status(403).json({ success: false, error: 'Access denied' });
     } catch (error: any) {
       next(error);
     }
@@ -53,7 +70,25 @@ export class UserController {
 
   upsertUser = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const user = await userService.upsertUser(req.body);
+      if (canManageUsersViaUsersApi(req)) {
+        const user = await userService.upsertUser(req.body);
+        res.json({ success: true, data: user });
+        return;
+      }
+      if (req.auth?.kind !== 'user') {
+        res.status(401).json({ success: false, error: 'Authentication required' });
+        return;
+      }
+      const body = req.body || {};
+      if (body.id && body.id !== req.auth.sub) {
+        res.status(403).json({ success: false, error: 'Access denied' });
+        return;
+      }
+      if (body.email && String(body.email).toLowerCase().trim() !== req.auth.email) {
+        res.status(403).json({ success: false, error: 'Access denied' });
+        return;
+      }
+      const user = await userService.upsertUser({ ...body, id: req.auth.sub });
       res.json({ success: true, data: user });
     } catch (error: any) {
       next(error);

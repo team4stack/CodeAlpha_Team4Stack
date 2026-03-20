@@ -10,6 +10,7 @@ import {
   FiVideo,
   FiBarChart,
   FiFileText,
+  FiBell,
   FiSettings,
   FiLogOut
 } from 'react-icons/fi'
@@ -98,6 +99,7 @@ const CoursesAdminSidebar: React.FC = () => {
     { to: '/admincourset4s/videos', label: 'Videos', icon: FiVideo },
     { to: '/admincourset4s/progress', label: 'Student Progress', icon: FiBarChart },
     { to: '/admincourset4s/applications', label: 'Applications', icon: FiFileText },
+    { to: '/admincourset4s/notifications', label: 'Student alerts', icon: FiBell },
     { to: '/admincourset4s/settings', label: 'Settings', icon: FiSettings },
   ]
 

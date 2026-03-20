@@ -1,8 +1,10 @@
 import { Router } from 'express';
 import courseController from '../controllers/courseController';
 import quizController from '../controllers/quizController';
+import { wrapAttachAuth } from '../../../shared/middleware/authMiddleware';
 
 const router = Router();
+router.use(wrapAttachAuth);
 
 // Progress routes (must come before /:id to avoid route conflicts)
 router.get('/progress', courseController.getAllProgress);
@@ -14,6 +16,11 @@ router.get('/admissions', courseController.getAdmissionForms);
 router.post('/admissions', courseController.createAdmissionForm);
 router.put('/admissions/:id', courseController.updateAdmissionForm);
 router.delete('/admissions/:id', courseController.deleteAdmissionForm);
+
+// Student course notifications (admin broadcast + student inbox)
+router.get('/student-notifications', courseController.getStudentNotifications);
+router.patch('/student-notifications/:id/read', courseController.markStudentNotificationRead);
+router.post('/student-notifications', courseController.createStudentNotifications);
 
 // Quiz routes (must come before /:id to avoid route conflicts)
 router.get('/quizzes/video/:videoId', quizController.getQuizByVideoId);

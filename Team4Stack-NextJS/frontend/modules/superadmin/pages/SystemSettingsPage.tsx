@@ -1,7 +1,6 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase/client'
 import { useTheme } from '@/contexts/ThemeContext'
 
 type SiteSetting = {
@@ -29,13 +28,14 @@ const SystemSettingsPage: React.FC = () => {
       setLoading(true)
       setError(null)
 
-      const { data, error: fetchError } = await supabase
-        .from('site_settings')
-        .select('*')
-        .order('key', { ascending: true })
-
-      if (fetchError) throw fetchError
-      setSettings(data || [])
+      const { landingApi } = await import('@/lib/api')
+      const result = await landingApi.getSiteSettings()
+      if (!result.success || result.error) {
+        throw new Error(result.error || 'Failed to load settings')
+      }
+      const data = (result.data || []) as SiteSetting[]
+      data.sort((a, b) => (a.key || '').localeCompare(b.key || ''))
+      setSettings(data)
     } catch (err: any) {
       setError('Failed to load settings: ' + err.message)
     } finally {
@@ -53,12 +53,11 @@ const SystemSettingsPage: React.FC = () => {
       setError(null)
       setSuccess(null)
 
-      const { error: updateError } = await supabase
-        .from('site_settings')
-        .update({ value: editValue })
-        .eq('key', key)
-
-      if (updateError) throw updateError
+      const { landingApi } = await import('@/lib/api')
+      const res = await landingApi.upsertSiteSetting(key, editValue)
+      if (!res.success || res.error) {
+        throw new Error(res.error || 'Update failed')
+      }
 
       setSuccess('Setting updated successfully!')
       setEditingKey(null)
@@ -91,11 +90,11 @@ const SystemSettingsPage: React.FC = () => {
       setError(null)
       setSuccess(null)
 
-      const { error: insertError } = await supabase
-        .from('site_settings')
-        .insert({ key: key.trim(), value: value.trim() })
-
-      if (insertError) throw insertError
+      const { landingApi } = await import('@/lib/api')
+      const res = await landingApi.upsertSiteSetting(key.trim(), value.trim())
+      if (!res.success || res.error) {
+        throw new Error(res.error || 'Insert failed')
+      }
 
       setSuccess('Setting added successfully!')
       form.reset()
@@ -115,12 +114,11 @@ const SystemSettingsPage: React.FC = () => {
       setError(null)
       setSuccess(null)
 
-      const { error: deleteError } = await supabase
-        .from('site_settings')
-        .delete()
-        .eq('key', key)
-
-      if (deleteError) throw deleteError
+      const { landingApi } = await import('@/lib/api')
+      const res = await landingApi.deleteSiteSettings([key])
+      if (!res.success && res.error) {
+        throw new Error(res.error)
+      }
 
       setSuccess('Setting deleted successfully!')
       loadSettings()

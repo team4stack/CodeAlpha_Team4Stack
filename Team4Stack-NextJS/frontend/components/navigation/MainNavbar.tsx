@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '../../auth';
 import AuthModal from '../../auth/components/AuthModal';
-import UserSettingsModal from '../modals/UserSettingsModal';
+import UserSettingsModal from '@/modals/UserSettingsModal';
 import MobileNavigation from '../MobileNavigation';
 import { supabase } from '../../utils/supabaseClient';
 

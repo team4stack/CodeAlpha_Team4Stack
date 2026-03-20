@@ -1,10 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
 import teamService from '../services/teamService';
+import { TEAM_ADMIN_ROLES } from '../../../shared/middleware/authMiddleware';
 
 function parseNumericId(param: string): number | null {
   const id = parseInt(param, 10);
   if (Number.isNaN(id)) return null;
   return id;
+}
+
+function isTeamAdmin(req: Request): boolean {
+  return req.auth?.kind === 'admin' && (TEAM_ADMIN_ROLES as readonly string[]).includes(req.auth.role);
 }
 
 export class TeamController {
@@ -20,6 +25,9 @@ export class TeamController {
 
   createTeamMember = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!isTeamAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Team admin access required' });
+      }
       const member = await teamService.createTeamMember(req.body);
       res.status(201).json({ success: true, data: member });
     } catch (error: any) {
@@ -29,6 +37,9 @@ export class TeamController {
 
   updateTeamMember = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!isTeamAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Team admin access required' });
+      }
       const id = parseNumericId(req.params.id);
       if (id === null) {
         return res.status(400).json({ success: false, error: 'Invalid team member id' });
@@ -42,6 +53,9 @@ export class TeamController {
 
   deleteTeamMember = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!isTeamAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Team admin access required' });
+      }
       const id = parseNumericId(req.params.id);
       if (id === null) {
         return res.status(400).json({ success: false, error: 'Invalid team member id' });
@@ -65,6 +79,9 @@ export class TeamController {
 
   createMentorProfile = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!isTeamAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Team admin access required' });
+      }
       const mentor = await teamService.createMentorProfile(req.body);
       res.status(201).json({ success: true, data: mentor });
     } catch (error: any) {
@@ -74,6 +91,9 @@ export class TeamController {
 
   updateMentorProfile = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!isTeamAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Team admin access required' });
+      }
       const id = parseNumericId(req.params.id);
       if (id === null) {
         return res.status(400).json({ success: false, error: 'Invalid mentor id' });
@@ -87,6 +107,9 @@ export class TeamController {
 
   deleteMentorProfile = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!isTeamAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Team admin access required' });
+      }
       const id = parseNumericId(req.params.id);
       if (id === null) {
         return res.status(400).json({ success: false, error: 'Invalid mentor id' });

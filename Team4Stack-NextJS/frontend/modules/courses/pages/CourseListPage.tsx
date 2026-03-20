@@ -106,8 +106,7 @@ const CourseListPage: React.FC = () => {
           }
         });
 
-        // Fetch all courses via API
-        const { coursesApi } = await import('@/lib/api');
+        // Fetch all courses via API (reuse same client instance)
         const coursesResult = await coursesApi.getAllCourses();
         
         if (coursesResult.error) throw new Error(coursesResult.error);

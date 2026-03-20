@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import landingController from '../controllers/landingController';
+import { wrapAttachAuth } from '../../../shared/middleware/authMiddleware';
 
 const router = Router();
+router.use(wrapAttachAuth);
 
 // Reviews
 router.get('/reviews', landingController.getReviews);

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { supabase } from '../../utils/supabaseClient'
-import { isEmailAllowedForAdmin, verifyAdminAccess } from '../../utils/adminSecurity'
 
 type Props = {
   children: React.ReactNode
@@ -38,10 +37,8 @@ const AuthGuard: React.FC<Props> = ({ children }) => {
           return
         }
 
-        // Step 1: ENVIRONMENT VARIABLE CHECK (FIRST - Most Secure Layer)
-        // Even if Supabase is hacked, this check will prevent unauthorized access
         const userEmail = adminSession.email?.toLowerCase().trim()
-        
+
         if (!userEmail) {
           setAllowed(false)
           setIsAdmin(false)
@@ -49,10 +46,7 @@ const AuthGuard: React.FC<Props> = ({ children }) => {
           return
         }
 
-        // Environment variable check - PRIMARY security layer
-        if (!isEmailAllowedForAdmin(userEmail)) {
-          // Email not in environment variable whitelist - deny immediately
-          // This prevents access even if someone adds email to Supabase admin_users table
+        if (!adminSession.apiToken || typeof adminSession.apiToken !== 'string') {
           sessionStorage.removeItem('admin_session')
           setAllowed(false)
           setIsAdmin(false)
@@ -60,7 +54,7 @@ const AuthGuard: React.FC<Props> = ({ children }) => {
           return
         }
 
-        // Step 2: API TABLE CHECK (SECOND - Can be compromised, but still checked)
+        // API TABLE CHECK
         // Multi-layer security: Both environment variable AND API check must pass
         const { superadminApi } = await import('@/lib/api')
         const adminResult = await superadminApi.checkAdminByEmail(userEmail)
@@ -76,7 +70,8 @@ const AuthGuard: React.FC<Props> = ({ children }) => {
         // CRITICAL: If user email is not in admin_users table, deny access
         // Normal users ka email admin_users mein nahi hoga
         // Only manually added admins will be in admin_users table
-        if (!adminResult.data || !adminResult.data.email) {
+        const row = adminResult.data as { email?: string } | null | undefined
+        if (!row || !row.email) {
           // This is a normal user trying to access admin panel
           // Deny access immediately
           sessionStorage.removeItem('admin_session')

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
-import AuthModal from '@/components/AuthModal';
+import AuthModal from '@/lib/auth/components/AuthModal';
 import UserSettingsModal from '@/modals/UserSettingsModal';
 import MobileNavigation from '@/components/MobileNavigation';
 

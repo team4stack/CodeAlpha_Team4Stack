@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { isEmailAllowedForAdmin, verifyAdminAccess } from '../utils/adminSecurity'
-
 const LoginPage: React.FC = () => {
   const router = useRouter()
   const [email, setEmail] = useState('')
@@ -57,19 +55,6 @@ const LoginPage: React.FC = () => {
         return
       }
 
-      // Step 1: ENVIRONMENT VARIABLE CHECK (FIRST - Most Secure Layer)
-      // Even if Supabase is hacked, this check will prevent unauthorized access
-      // This is the PRIMARY security layer - cannot be bypassed via Supabase
-      if (!isEmailAllowedForAdmin(loginEmail)) {
-        // Email not in environment variable whitelist - deny immediately
-        // This prevents access even if someone adds email to Supabase admin_users table
-        setError('Invalid email or password.')
-        setLoading(false)
-        return
-      }
-
-      // Step 2: API TABLE CHECK (SECOND - Can be compromised, but still checked)
-      // Multi-layer security: Both environment variable AND API check must pass
       const { superadminApi } = await import('@/lib/api')
       const adminCheckResult = await superadminApi.checkAdminByEmail(loginEmail)
 
@@ -103,26 +88,28 @@ const LoginPage: React.FC = () => {
         return
       }
 
-      // Check if password is valid
-      const verifyData = verifyResult.data as any
-      const isValid = verifyData && verifyData.valid === true
-
-      if (!isValid) {
-        // Password is incorrect
+      const verifyData = verifyResult.data as {
+        valid?: boolean
+        apiToken?: string
+        expiresAt?: number
+        role?: string
+      }
+      if (!verifyData?.valid || !verifyData.apiToken) {
         setError('Invalid email or password.')
         setLoading(false)
         return
       }
 
-      // Step 3: Create custom admin session (NOT Supabase Auth session)
-      // Admin login is completely separate from normal website login
       const adminSession = {
         email: loginEmail,
-        role: 'admin',
-        expiresAt: Date.now() + (24 * 60 * 60 * 1000) // 24 hours
+        role: verifyData.role || adminData.role || 'admin',
+        expiresAt:
+          typeof verifyData.expiresAt === 'number'
+            ? verifyData.expiresAt
+            : Date.now() + 24 * 60 * 60 * 1000,
+        apiToken: verifyData.apiToken
       }
 
-      // Store admin session in sessionStorage
       sessionStorage.setItem('admin_session', JSON.stringify(adminSession))
 
       // Success - navigate to admin dashboard

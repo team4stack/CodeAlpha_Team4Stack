@@ -383,11 +383,6 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
         'message': `Your verification code is: ${otpCode}. This code expires in 10 minutes.`
       }
 
-      // Debug: Log in development only
-      if (import.meta.env.DEV) {
-        // No sensitive info in logs
-      }
-
       // Send email via EmailJS
       const response = await emailjs.send(
         serviceId.trim(), 

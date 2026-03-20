@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { supabase } from '@/lib/supabase/client';
+import { persistClientAuthSessionFromSignInData } from '@/lib/auth/persistClientAuthSession';
 import { usersApi, landingApi } from '@/lib/api';
 import emailjs from '@emailjs/browser';
 
@@ -15,7 +15,7 @@ interface UserSettingsModalProps {
 }
 
 const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }) => {
-  const { user, refresh } = useAuth();
+  const { user, refresh, signOut } = useAuth();
   const { isDarkMode, toggleDarkMode } = useTheme();
   const [formData, setFormData] = useState({
     name: '',
@@ -38,13 +38,15 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
     cookieConsent: true,
     analyticsOptIn: true
   });
-  const [stackStoreSettings, setStackStoreSettings] = useState({
-    enabled: true,
-    autoRenewSubscriptions: false,
-    purchaseHistoryVisible: true,
-    downloadPreferences: 'auto' as 'auto' | 'manual',
-    licenseManagement: 'automatic' as 'automatic' | 'manual',
-    preferredPaymentMethod: 'card' as 'card' | 'paypal' | 'crypto'
+  const [courseSettings, setCourseSettings] = useState({
+    emailReminders: true,
+    quizAndCertificateEmails: true,
+    admissionStatusEmails: true,
+    progressOnProfile: false,
+    defaultCoursesView: 'catalog' as 'catalog' | 'my',
+    autoplayNextLesson: false,
+    showCompletedLessons: true,
+    compactCourseList: false
   });
   const [websiteSettings, setWebsiteSettings] = useState({
     language: 'en' as 'en' | 'ur' | 'ar',
@@ -54,7 +56,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
     twoFactorAuth: false,
     sessionTimeout: 30 // minutes
   });
-  const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'preferences' | 'stackstore' | 'website'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'preferences' | 'courses' | 'website'>('profile');
   const [loading, setLoading] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
@@ -93,15 +95,17 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
             });
           }
 
-          // Load stack store settings
-          if (savedSettings.stackStore) {
-            setStackStoreSettings({
-              enabled: savedSettings.stackStore.enabled ?? true,
-              autoRenewSubscriptions: savedSettings.stackStore.autoRenewSubscriptions ?? false,
-              purchaseHistoryVisible: savedSettings.stackStore.purchaseHistoryVisible ?? true,
-              downloadPreferences: savedSettings.stackStore.downloadPreferences || 'auto',
-              licenseManagement: savedSettings.stackStore.licenseManagement || 'automatic',
-              preferredPaymentMethod: savedSettings.stackStore.preferredPaymentMethod || 'card'
+          if (savedSettings.courses) {
+            const c = savedSettings.courses
+            setCourseSettings({
+              emailReminders: c.emailReminders ?? true,
+              quizAndCertificateEmails: c.quizAndCertificateEmails ?? true,
+              admissionStatusEmails: c.admissionStatusEmails ?? true,
+              progressOnProfile: c.progressOnProfile ?? false,
+              defaultCoursesView: c.defaultCoursesView === 'my' ? 'my' : 'catalog',
+              autoplayNextLesson: c.autoplayNextLesson ?? false,
+              showCompletedLessons: c.showCompletedLessons ?? true,
+              compactCourseList: c.compactCourseList ?? false
             });
           }
 
@@ -336,37 +340,71 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
     setMessage(null);
 
     try {
-      // Clear previous errors
       setCurrentPasswordError(null);
-      
-      // First verify the current password by trying to sign in
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: user.email || '',
-        password: passwordData.currentPassword
-      });
 
-      if (signInError) {
+      const { authApi } = await import('@/lib/api');
+      const verify = await authApi.signIn(
+        (user.email || '').toLowerCase().trim(),
+        passwordData.currentPassword
+      );
+
+      if (!verify.success || verify.error) {
         setCurrentPasswordError('Current password is incorrect. Please try again.');
         setPasswordLoading(false);
         return;
       }
 
-      // Current password is correct, now update to new password
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: passwordData.newPassword
-      });
-
-      if (updateError) {
-        setMessage({ type: 'error', text: updateError.message || 'Failed to update password.' });
-      } else {
-        setMessage({ type: 'success', text: 'Password updated successfully!' });
-        setCurrentPasswordError(null);
-        setPasswordData({
-          currentPassword: '',
-          newPassword: '',
-          confirmPassword: ''
-        });
+      const session = (verify.data as any)?.session;
+      if (!session?.access_token || !session?.refresh_token) {
+        setMessage({ type: 'error', text: 'Could not verify session. Please try again.' });
+        setPasswordLoading(false);
+        return;
       }
+
+      const updated = await authApi.updatePassword(
+        passwordData.newPassword,
+        session.access_token,
+        session.refresh_token
+      );
+
+      if (!updated.success || updated.error) {
+        setMessage({
+          type: 'error',
+          text: updated.error || 'Failed to update password.',
+        });
+        setPasswordLoading(false);
+        return;
+      }
+
+      const fresh = await authApi.signIn(
+        (user.email || '').toLowerCase().trim(),
+        passwordData.newPassword
+      );
+      if (!fresh.success || !fresh.data) {
+        setMessage({
+          type: 'success',
+          text: 'Password updated. Please sign in again with your new password.',
+        });
+        setPasswordLoading(false);
+        return;
+      }
+
+      const stored = persistClientAuthSessionFromSignInData(fresh.data as any);
+      if (!stored.ok) {
+        setMessage({ type: 'error', text: stored.error || 'Failed to save new session.' });
+        setPasswordLoading(false);
+        return;
+      }
+
+      window.dispatchEvent(new Event('auth_session_updated'));
+      setMessage({ type: 'success', text: 'Password updated successfully!' });
+      setCurrentPasswordError(null);
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+      await refresh();
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message || 'Failed to update password' });
     } finally {
@@ -375,7 +413,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
   };
 
   // Save user settings to database
-  const saveUserSettings = async (settingsType: 'preferences' | 'stackStore' | 'website') => {
+  const saveUserSettings = async (settingsType: 'preferences' | 'courses' | 'website') => {
     if (!user) return;
 
     setLoading(true);
@@ -404,14 +442,16 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
           cookieConsent: settings.cookieConsent,
           analyticsOptIn: settings.analyticsOptIn
         };
-      } else if (settingsType === 'stackStore') {
-        updatedSettings.stackStore = {
-          enabled: stackStoreSettings.enabled,
-          autoRenewSubscriptions: stackStoreSettings.autoRenewSubscriptions,
-          purchaseHistoryVisible: stackStoreSettings.purchaseHistoryVisible,
-          downloadPreferences: stackStoreSettings.downloadPreferences,
-          licenseManagement: stackStoreSettings.licenseManagement,
-          preferredPaymentMethod: stackStoreSettings.preferredPaymentMethod
+      } else if (settingsType === 'courses') {
+        updatedSettings.courses = {
+          emailReminders: courseSettings.emailReminders,
+          quizAndCertificateEmails: courseSettings.quizAndCertificateEmails,
+          admissionStatusEmails: courseSettings.admissionStatusEmails,
+          progressOnProfile: courseSettings.progressOnProfile,
+          defaultCoursesView: courseSettings.defaultCoursesView,
+          autoplayNextLesson: courseSettings.autoplayNextLesson,
+          showCompletedLessons: courseSettings.showCompletedLessons,
+          compactCourseList: courseSettings.compactCourseList
         };
       } else if (settingsType === 'website') {
         updatedSettings.website = {
@@ -432,7 +472,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
       } else {
         const typeNames = {
           preferences: 'Preferences',
-          stackStore: 'Stack Store settings',
+          courses: 'Courses settings',
           website: 'Website settings'
         };
         setMessage({ type: 'success', text: `${typeNames[settingsType]} saved successfully!` });
@@ -466,12 +506,12 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
       setMessage(null);
 
       try {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: user.email || '',
-          password: deletePassword
-        });
-
-        if (signInError) {
+        const { authApi } = await import('@/lib/api');
+        const pwdCheck = await authApi.signIn(
+          (user.email || '').toLowerCase().trim(),
+          deletePassword
+        );
+        if (!pwdCheck.success || pwdCheck.error) {
           setMessage({ type: 'error', text: 'Incorrect password. Please try again.' });
           setDeleteLoading(false);
           return;
@@ -482,18 +522,18 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
         const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
         // Store OTP
+        const otpKey = `delete_otp_${user.email?.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
         try {
-          await supabase
-            .from('site_settings')
-            .upsert({
-              key: `delete_otp_${user.email?.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
-              value: JSON.stringify({
-                code: otpCode,
-                email: user.email?.toLowerCase(),
-                expiresAt: expiresAt.toISOString(),
-                userId: user.id
-              })
-            }, { onConflict: 'key' });
+          const { landingApi } = await import('@/lib/api');
+          await landingApi.upsertSiteSetting(
+            otpKey,
+            JSON.stringify({
+              code: otpCode,
+              email: user.email?.toLowerCase(),
+              expiresAt: expiresAt.toISOString(),
+              userId: user.id,
+            })
+          );
         } catch (e) {
           localStorage.setItem(`delete_otp_${user.email}`, JSON.stringify({
             code: otpCode,
@@ -545,14 +585,12 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
         const storageKey = `delete_otp_${user.email?.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
 
         try {
-          const { data } = await supabase
-            .from('site_settings')
-            .select('value')
-            .eq('key', storageKey)
-            .single();
-
-          if (data?.value) {
-            otpData = JSON.parse(data.value);
+          const { landingApi } = await import('@/lib/api');
+          const res = await landingApi.getSiteSettings([storageKey]);
+          const rows = (res.data as any[]) || [];
+          const row = rows.find((r: any) => r.key === storageKey);
+          if (row?.value) {
+            otpData = JSON.parse(row.value);
           }
         } catch (e) {
           const stored = localStorage.getItem(`delete_otp_${user.email}`);
@@ -594,9 +632,8 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
         const userResult = await usersApi.getUserById(user.id);
         const userData = userResult.success ? (userResult.data as any) : null;
 
-        // Get auth user data for creation timestamp
-        const { data: authUser } = await supabase.auth.getUser();
-        const createdAt = authUser?.user?.created_at || new Date().toISOString();
+        const createdAt =
+          (userData && (userData as any).created_at) || new Date().toISOString();
         const deletedAt = new Date().toISOString();
 
         // Save deleted account data to deleted_accounts table
@@ -638,8 +675,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
         } catch {}
         localStorage.removeItem(`delete_otp_${user.email}`);
 
-        // Sign out user
-        await supabase.auth.signOut();
+        await signOut();
         
         setMessage({ type: 'success', text: 'Account deleted successfully. Redirecting...' });
         setTimeout(() => {
@@ -751,14 +787,14 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab('stackstore')}
-              className={`px-3 py-2.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap touch-manipulation min-w-[90px] ${
-                activeTab === 'stackstore'
+              onClick={() => setActiveTab('courses')}
+              className={`px-3 py-2.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap touch-manipulation min-w-[72px] ${
+                activeTab === 'courses'
                   ? 'text-purple-600 dark:text-purple-400 border-b-2 border-purple-600 dark:border-purple-400'
                   : 'text-gray-600 dark:text-gray-400 active:text-gray-900 dark:active:text-gray-200'
               }`}
             >
-              Stack Store
+              Courses
             </button>
             <button
               type="button"
@@ -1328,172 +1364,210 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
               </div>
             )}
 
-          {/* Stack Store Tab */}
-          {activeTab === 'stackstore' && (
-            <div className="space-y-6">
-              <div className="p-4 rounded-lg bg-gradient-to-r from-purple-500/10 to-emerald-500/10 border border-purple-500/20 mb-4">
+          {/* Courses Tab */}
+          {activeTab === 'courses' && (
+            <div className="space-y-5">
+              <div className="p-3.5 rounded-lg bg-gradient-to-r from-cyan-500/10 to-indigo-500/10 border border-cyan-500/20">
                 <p className="text-sm text-gray-700 dark:text-gray-300">
-                  <span className="font-semibold">Stack Store</span> is coming soon! Configure your preferences now.
+                  Control how <span className="font-semibold text-cyan-600 dark:text-cyan-400">Courses</span> behave for you — emails, progress visibility, and the learning experience.
                 </p>
-              </div>
-
-              {/* Stack Store Access */}
-              <div className="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-700">
-                <div>
-                  <h3 className="text-sm font-medium text-gray-900 dark:text-white">Enable Stack Store</h3>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Access to Stack Store marketplace
-                  </p>
-                </div>
-              <button
-                  type="button"
-                  onClick={() => setStackStoreSettings({ ...stackStoreSettings, enabled: !stackStoreSettings.enabled })}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
-                    stackStoreSettings.enabled ? 'bg-purple-600' : 'bg-gray-300'
-                  }`}
+                <a
+                  href="/courses"
+                  className="mt-2 inline-block text-xs font-medium text-purple-600 dark:text-purple-400 hover:underline"
                 >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      stackStoreSettings.enabled ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
+                  Go to Courses →
+                </a>
               </div>
 
-              {/* Auto-renew Subscriptions */}
               <div className="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-700">
                 <div>
-                  <h3 className="text-sm font-medium text-gray-900 dark:text-white">Auto-renew Subscriptions</h3>
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-white">Course &amp; deadline emails</h3>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Automatically renew active subscriptions
+                    Reminders for new content, due dates, and announcements
                   </p>
                 </div>
                 <button
                   type="button"
-                  onClick={() => setStackStoreSettings({ ...stackStoreSettings, autoRenewSubscriptions: !stackStoreSettings.autoRenewSubscriptions })}
+                  onClick={() => setCourseSettings({ ...courseSettings, emailReminders: !courseSettings.emailReminders })}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
-                    stackStoreSettings.autoRenewSubscriptions ? 'bg-purple-600' : 'bg-gray-300'
+                    courseSettings.emailReminders ? 'bg-purple-600' : 'bg-gray-300'
                   }`}
                 >
                   <span
                     className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      stackStoreSettings.autoRenewSubscriptions ? 'translate-x-6' : 'translate-x-1'
+                      courseSettings.emailReminders ? 'translate-x-6' : 'translate-x-1'
                     }`}
                   />
                 </button>
               </div>
 
-              {/* Purchase History Visibility */}
               <div className="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-700">
                 <div>
-                  <h3 className="text-sm font-medium text-gray-900 dark:text-white">Public Purchase History</h3>
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-white">Quiz &amp; certificate emails</h3>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Show your purchases on your profile
+                    Results, passes, and completion certificates
                   </p>
                 </div>
                 <button
                   type="button"
-                  onClick={() => setStackStoreSettings({ ...stackStoreSettings, purchaseHistoryVisible: !stackStoreSettings.purchaseHistoryVisible })}
+                  onClick={() =>
+                    setCourseSettings({ ...courseSettings, quizAndCertificateEmails: !courseSettings.quizAndCertificateEmails })
+                  }
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
-                    stackStoreSettings.purchaseHistoryVisible ? 'bg-purple-600' : 'bg-gray-300'
+                    courseSettings.quizAndCertificateEmails ? 'bg-purple-600' : 'bg-gray-300'
                   }`}
                 >
                   <span
                     className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      stackStoreSettings.purchaseHistoryVisible ? 'translate-x-6' : 'translate-x-1'
+                      courseSettings.quizAndCertificateEmails ? 'translate-x-6' : 'translate-x-1'
                     }`}
                   />
                 </button>
               </div>
 
-              {/* Download Preferences */}
-              <div className="py-3 border-b border-gray-200 dark:border-gray-700">
-                <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-2">Download Preferences</h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                  How should downloads be handled?
-                </p>
-                <div className="space-y-2">
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      name="download"
-                      value="auto"
-                      checked={stackStoreSettings.downloadPreferences === 'auto'}
-                      onChange={(e) => setStackStoreSettings({ ...stackStoreSettings, downloadPreferences: e.target.value as 'auto' | 'manual' })}
-                      className="mr-2 text-purple-600 focus:ring-purple-500"
-                    />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">Auto-download after purchase</span>
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      name="download"
-                      value="manual"
-                      checked={stackStoreSettings.downloadPreferences === 'manual'}
-                      onChange={(e) => setStackStoreSettings({ ...stackStoreSettings, downloadPreferences: e.target.value as 'auto' | 'manual' })}
-                      className="mr-2 text-purple-600 focus:ring-purple-500"
-                    />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">Manual download (ask each time)</span>
-                  </label>
+              <div className="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-700">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-white">Admission &amp; enrollment updates</h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Status changes on applications and enrollments
+                  </p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCourseSettings({ ...courseSettings, admissionStatusEmails: !courseSettings.admissionStatusEmails })
+                  }
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
+                    courseSettings.admissionStatusEmails ? 'bg-purple-600' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      courseSettings.admissionStatusEmails ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
               </div>
 
-              {/* License Management */}
-              <div className="py-3 border-b border-gray-200 dark:border-gray-700">
-                <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-2">License Management</h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                  How should licenses be managed?
-                </p>
-                <div className="space-y-2">
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      name="license"
-                      value="automatic"
-                      checked={stackStoreSettings.licenseManagement === 'automatic'}
-                      onChange={(e) => setStackStoreSettings({ ...stackStoreSettings, licenseManagement: e.target.value as 'automatic' | 'manual' })}
-                      className="mr-2 text-purple-600 focus:ring-purple-500"
-                    />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">Automatic activation</span>
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      name="license"
-                      value="manual"
-                      checked={stackStoreSettings.licenseManagement === 'manual'}
-                      onChange={(e) => setStackStoreSettings({ ...stackStoreSettings, licenseManagement: e.target.value as 'automatic' | 'manual' })}
-                      className="mr-2 text-purple-600 focus:ring-purple-500"
-                    />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">Manual activation (use license keys)</span>
-                  </label>
+              <div className="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-700">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-white">Show course progress on profile</h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Let others see enrolled courses and completion (when the site supports it)
+                  </p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setCourseSettings({ ...courseSettings, progressOnProfile: !courseSettings.progressOnProfile })}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
+                    courseSettings.progressOnProfile ? 'bg-purple-600' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      courseSettings.progressOnProfile ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
               </div>
 
-              {/* Preferred Payment Method */}
-              <div className="py-3">
-                <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-2">Preferred Payment Method</h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                  Default payment method for purchases
-                </p>
+              <div className="py-3 border-b border-gray-200 dark:border-gray-700">
+                <label className="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">Default courses view</label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">When you open Courses, start on:</p>
                 <select
-                  value={stackStoreSettings.preferredPaymentMethod}
-                  onChange={(e) => setStackStoreSettings({ ...stackStoreSettings, preferredPaymentMethod: e.target.value as 'card' | 'paypal' | 'crypto' })}
+                  value={courseSettings.defaultCoursesView}
+                  onChange={(e) =>
+                    setCourseSettings({
+                      ...courseSettings,
+                      defaultCoursesView: e.target.value as 'catalog' | 'my'
+                    })
+                  }
                   className="w-full px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
-                  <option value="card">Credit/Debit Card</option>
-                  <option value="paypal">PayPal</option>
-                  <option value="crypto">Cryptocurrency</option>
+                  <option value="catalog">All courses (catalog)</option>
+                  <option value="my">My enrollments</option>
                 </select>
+              </div>
+
+              <div className="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-700">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-white">Autoplay next lesson</h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    After a lesson ends, go to the next one automatically
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCourseSettings({ ...courseSettings, autoplayNextLesson: !courseSettings.autoplayNextLesson })
+                  }
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
+                    courseSettings.autoplayNextLesson ? 'bg-purple-600' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      courseSettings.autoplayNextLesson ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-700">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-white">Show completed lessons</h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Keep finished lessons visible in the outline
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCourseSettings({ ...courseSettings, showCompletedLessons: !courseSettings.showCompletedLessons })
+                  }
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
+                    courseSettings.showCompletedLessons ? 'bg-purple-600' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      courseSettings.showCompletedLessons ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between py-3">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-white">Compact course list</h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Denser rows when browsing many courses
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCourseSettings({ ...courseSettings, compactCourseList: !courseSettings.compactCourseList })
+                  }
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
+                    courseSettings.compactCourseList ? 'bg-purple-600' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      courseSettings.compactCourseList ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
               </div>
 
               <button
                 type="button"
-                onClick={() => saveUserSettings('stackStore')}
+                onClick={() => saveUserSettings('courses')}
                 disabled={loading}
                 className="w-full px-4 py-3 sm:py-2 rounded-md bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 active:from-indigo-800 active:to-purple-800 transition-colors touch-manipulation text-sm sm:text-base font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Saving...' : 'Save Stack Store Settings'}
+                {loading ? 'Saving...' : 'Save courses settings'}
               </button>
             </div>
           )}
@@ -1644,7 +1718,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
                       const userData = {
                         profile: user,
                         settings: settings,
-                        stackStoreSettings: stackStoreSettings,
+                        courseSettings: courseSettings,
                         websiteSettings: websiteSettings,
                         exportDate: new Date().toISOString()
                       };

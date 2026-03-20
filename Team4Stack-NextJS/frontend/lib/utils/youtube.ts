@@ -86,31 +86,8 @@ const pickBestYouTubeThumbnail = (thumbnails: YouTubeVideoSnippet['thumbnails'],
  */
 export const fetchYouTubeVideoData = async (videoId: string, githubUrl: string): Promise<ProjectData> => {
   try {
-    // Get API key from environment variables
-    const apiKey = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY;
-    
-    // Check if API key is available
-    if (!apiKey) {
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('YouTube API key not found in environment variables');
-      }
-      // Return fallback data if API key is missing
-      return {
-        id: videoId,
-        title: 'Project Title',
-        description: 'Project data not available. If you are the site administrator, please configure the YouTube API key in environment variables.',
-        thumbnailUrl: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
-        videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
-        githubUrl
-      };
-    }
-
-    // Check API key format
-    if (process.env.NODE_ENV === 'development' && (typeof apiKey !== 'string' || apiKey.length < 30)) {
-      console.warn('YouTube API key format appears invalid');
-    }
-
-    const apiUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${apiKey}`;
+    const base = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api').replace(/\/$/, '');
+    const apiUrl = `${base}/public/youtube/video?videoId=${encodeURIComponent(videoId)}`;
     const response = await fetch(apiUrl);
     
     if (!response.ok) {
@@ -166,10 +143,25 @@ export const fetchYouTubeVideoData = async (videoId: string, githubUrl: string):
       throw new Error(`YouTube API request failed with status ${response.status}: ${response.statusText}`);
     }
 
-    const data: YouTubeApiResponse = await response.json();
+    const data = (await response.json()) as YouTubeApiResponse | YouTubeApiError;
+    if (data && typeof data === 'object' && 'error' in data && (data as YouTubeApiError).error) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error('YouTube proxy error:', (data as YouTubeApiError).error);
+      }
+      return {
+        id: videoId,
+        title: 'Project Title',
+        description: 'Unable to load project details from YouTube. Ensure the backend has YOUTUBE_API_KEY set.',
+        thumbnailUrl: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
+        videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
+        githubUrl
+      };
+    }
 
-    if (data.items && data.items.length > 0) {
-      const video = data.items[0];
+    const okData = data as YouTubeApiResponse;
+
+    if (okData.items && okData.items.length > 0) {
+      const video = okData.items[0];
       
       return {
         id: videoId,
@@ -181,7 +173,7 @@ export const fetchYouTubeVideoData = async (videoId: string, githubUrl: string):
       };
     } else {
       // Fallback if no data returned
-      if (import.meta.env.DEV) {
+      if (process.env.NODE_ENV === 'development') {
         console.warn('No video data found for ID:', videoId);
       }
       return {
@@ -194,7 +186,7 @@ export const fetchYouTubeVideoData = async (videoId: string, githubUrl: string):
       };
     }
   } catch (error) {
-    if (import.meta.env.DEV) {
+    if (process.env.NODE_ENV === 'development') {
       console.error('Error fetching YouTube video data:', error);
     }
     // Return fallback data in case of error

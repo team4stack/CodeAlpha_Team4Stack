@@ -1,5 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import stackstoreService from '../services/stackstoreService';
+import { STACKSTORE_ADMIN_ROLES } from '../../../shared/middleware/authMiddleware';
+
+function isStackstoreAdmin(req: Request): boolean {
+  return req.auth?.kind === 'admin' && (STACKSTORE_ADMIN_ROLES as readonly string[]).includes(req.auth.role);
+}
 
 export class StackStoreController {
   // Products
@@ -32,6 +37,9 @@ export class StackStoreController {
 
   createProduct = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!isStackstoreAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Stack Store admin access required' });
+      }
       const product = await stackstoreService.createProduct(req.body);
       res.status(201).json({ success: true, data: product });
     } catch (error: any) {
@@ -41,6 +49,9 @@ export class StackStoreController {
 
   updateProduct = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!isStackstoreAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Stack Store admin access required' });
+      }
       const { id } = req.params;
       const product = await stackstoreService.updateProduct(id, req.body);
       res.json({ success: true, data: product });
@@ -51,6 +62,9 @@ export class StackStoreController {
 
   deleteProduct = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!isStackstoreAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Stack Store admin access required' });
+      }
       const { id } = req.params;
       await stackstoreService.deleteProduct(id);
       res.json({ success: true, message: 'Product deleted successfully' });
@@ -71,6 +85,9 @@ export class StackStoreController {
 
   createCategory = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!isStackstoreAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Stack Store admin access required' });
+      }
       const category = await stackstoreService.createCategory(req.body);
       res.status(201).json({ success: true, data: category });
     } catch (error: any) {
@@ -80,6 +97,9 @@ export class StackStoreController {
 
   updateCategory = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!isStackstoreAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Stack Store admin access required' });
+      }
       const { id } = req.params;
       const category = await stackstoreService.updateCategory(id, req.body);
       res.json({ success: true, data: category });
@@ -90,6 +110,9 @@ export class StackStoreController {
 
   deleteCategory = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!isStackstoreAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Stack Store admin access required' });
+      }
       const { id } = req.params;
       await stackstoreService.deleteCategory(id);
       res.json({ success: true, message: 'Category deleted successfully' });
@@ -101,6 +124,9 @@ export class StackStoreController {
   // Orders
   getOrders = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!isStackstoreAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Stack Store admin access required' });
+      }
       const { user_id, status, payment_status } = req.query;
       const filters: any = {};
       if (user_id) filters.user_id = user_id as string;
@@ -125,6 +151,9 @@ export class StackStoreController {
 
   updateOrder = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!isStackstoreAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Stack Store admin access required' });
+      }
       const { id } = req.params;
       const order = await stackstoreService.updateOrder(id, req.body);
       res.json({ success: true, data: order });
@@ -145,6 +174,9 @@ export class StackStoreController {
 
   createSeller = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!isStackstoreAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Stack Store admin access required' });
+      }
       const seller = await stackstoreService.createSeller(req.body);
       res.status(201).json({ success: true, data: seller });
     } catch (error: any) {
@@ -154,6 +186,9 @@ export class StackStoreController {
 
   updateSeller = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!isStackstoreAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Stack Store admin access required' });
+      }
       const { id } = req.params;
       const seller = await stackstoreService.updateSeller(id, req.body);
       res.json({ success: true, data: seller });

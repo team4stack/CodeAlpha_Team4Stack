@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { supabase } from '../../../utils/supabaseClient';
-import { verifyAdminPassword, setAdminToken, clearAdminToken } from '../../../auth/utils/adminAuth';
+import { parseStoredClientAuthSession } from '@/lib/security/clientAuthSession';
+import { verifyAdminPassword, setAdminToken, clearAdminToken } from '@/lib/auth/utils/adminAuth';
 
 interface AdminPasswordModalProps {
   isOpen: boolean;
@@ -22,17 +22,19 @@ const AdminPasswordModal: React.FC<AdminPasswordModalProps> = ({ isOpen, onClose
     setLoading(true);
 
     try {
-      // Get current Supabase session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError || !session || !session.user?.email) {
+      const raw =
+        typeof localStorage !== 'undefined' ? localStorage.getItem('auth_session') : null;
+      const sess = parseStoredClientAuthSession(raw);
+      const u = sess?.user as { email?: string } | undefined;
+      const email = u?.email?.trim();
+
+      if (!email) {
         setError('Please sign in first with your normal account.');
         setLoading(false);
         return;
       }
 
-      // Verify admin password directly with Supabase
-      const result = await verifyAdminPassword(adminPassword, session.user.email);
+      const result = await verifyAdminPassword(adminPassword, email);
 
       if (!result.success) {
         setError(result.error || 'Invalid admin password. Please try again.');

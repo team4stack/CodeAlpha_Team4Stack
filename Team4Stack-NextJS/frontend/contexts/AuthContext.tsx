@@ -1,7 +1,6 @@
 'use client'
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
-import { supabase } from '@/lib/supabase/client'
 import { superadminApi, usersApi } from '@/lib/api'
 import { getCookieConsent, persistSignInIdentity, canUseFunctionalCookies } from '@/lib/cookies/consent'
 import {
@@ -390,83 +389,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Check for OAuth callback on mount
     handleOAuthCallback()
     
-    // Listen for Supabase auth state changes (for OAuth callbacks)
-    // This handles OAuth login when user returns from Google/GitHub
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        // OAuth login successful - store session in localStorage
-        try {
-          // Get session tokens
-          const accessToken = session.access_token
-          const refreshToken = session.refresh_token
-          if (!isValidAuthTokenString(accessToken) || !isValidAuthTokenString(refreshToken)) {
-            return
-          }
-
-          // Calculate expires_at properly
-          let expiresAt = Date.now() + 3600000 // Default 1 hour
-          if (session.expires_at) {
-            // expires_at is in seconds (Unix timestamp)
-            expiresAt = session.expires_at * 1000
-          } else if (session.expires_in) {
-            // expires_in is in seconds
-            expiresAt = Date.now() + (session.expires_in * 1000)
-          }
-          
-          // Verify session with backend and get user profile
-          try {
-            const { authApi } = await import('@/lib/api')
-            const verifyResult = await authApi.getSession(accessToken, refreshToken)
-            
-            if (verifyResult.success && verifyResult.data) {
-              const sessionData = verifyResult.data as any
-              const sessionUser = sessionData.user
-              
-              // Store session in localStorage (same format as email/password login)
-              localStorage.setItem('auth_session', JSON.stringify({
-                access_token: accessToken,
-                refresh_token: refreshToken,
-                expires_at: expiresAt,
-                user: sessionUser
-              }))
-              setAuthSessionCookieIfAllowed({
-                access_token: accessToken,
-                refresh_token: refreshToken,
-                expires_at: expiresAt
-              })
-              
-              // Trigger session reload
-              loadSession()
-              return
-            }
-          } catch (backendErr) {
-            // Backend verification failed - continue with Supabase session
-          }
-          
-          // If backend verification fails, still use Supabase session
-          // Store basic session info
-          localStorage.setItem('auth_session', JSON.stringify({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-            expires_at: expiresAt,
-            user: session.user
-          }))
-          setAuthSessionCookieIfAllowed({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-            expires_at: expiresAt
-          })
-          loadSession()
-        } catch (err) {
-          // Silent fail - session might already be stored
-        }
-      } else if (event === 'SIGNED_OUT') {
-        // User signed out - clear localStorage
-        localStorage.removeItem('auth_session')
-        clearAuthSessionCookie()
-        setUser(null)
-      }
-    })
+    // OAuth + email/password auth: tokens come from backend (/auth/oauth, /auth/signin).
+    // No browser Supabase client subscription — avoids exposing NEXT_PUBLIC_SUPABASE_* on the client.
     
     // Listen for storage changes (when session is updated in another tab)
     const handleStorageChange = (e: StorageEvent) => {
@@ -497,7 +421,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, 5 * 60 * 1000) // 5 minutes
     
     return () => {
-      subscription.unsubscribe()
       window.removeEventListener('storage', handleStorageChange)
       window.removeEventListener('auth_session_updated', handleSessionUpdate)
       window.removeEventListener('cookie_consent_changed', onConsentChanged)

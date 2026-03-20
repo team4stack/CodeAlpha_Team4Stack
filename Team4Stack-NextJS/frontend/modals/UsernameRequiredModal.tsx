@@ -1,8 +1,8 @@
 'use client'
 
 import React, { useState } from 'react';
-import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { usersApi } from '@/lib/api';
 import { useTheme } from '@/contexts/ThemeContext';
 
 interface UsernameRequiredModalProps {
@@ -36,30 +36,25 @@ const UsernameRequiredModal: React.FC<UsernameRequiredModalProps> = ({ isOpen })
     setError(null);
 
     try {
-      // Check if username already exists
-      const { data: existingUser } = await supabase
-        .from('users')
-        .select('id')
-        .eq('username', username.toLowerCase())
-        .neq('id', user.id)
-        .maybeSingle();
-
-      if (existingUser) {
+      const check = await usersApi.checkUsernameAvailability(username.toLowerCase());
+      const available =
+        check.success &&
+        check.data &&
+        typeof (check.data as any).available === 'boolean' &&
+        (check.data as any).available === true;
+      if (!available) {
         setError('Username already taken. Please choose another one.');
         setLoading(false);
         return;
       }
 
-      // Update user profile with username
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({ username: username.toLowerCase() })
-        .eq('id', user.id);
+      const updateResult = await usersApi.updateUser(user.id, {
+        username: username.toLowerCase(),
+      });
 
-      if (updateError) {
-        setError(updateError.message || 'Failed to set username. Please try again.');
+      if (updateResult.error) {
+        setError(updateResult.error || 'Failed to set username. Please try again.');
       } else {
-        // Refresh user data
         await refresh();
       }
     } catch (err: any) {

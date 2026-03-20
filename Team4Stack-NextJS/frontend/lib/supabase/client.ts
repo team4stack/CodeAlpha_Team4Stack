@@ -1,10 +1,13 @@
-// Supabase Client Utility (Client-Side)
-// This file contains a single instance of the Supabase client for client components
-// Note: Supabase is only used for authentication (sign in/sign out). All database operations go through backend API.
-
+/**
+ * Browser Supabase client (optional).
+ *
+ * Main app auth uses the backend (`/api/auth/*`) + tokens in `auth_session` — you do **not**
+ * need NEXT_PUBLIC_SUPABASE_* for login or student portal.
+ *
+ * Keep this only for legacy scripts/tools that still import `supabase` directly.
+ */
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// Supabase configuration from environment variables (optional - only needed for auth)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
 

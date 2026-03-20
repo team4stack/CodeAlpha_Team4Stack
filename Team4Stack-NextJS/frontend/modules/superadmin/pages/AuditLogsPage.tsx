@@ -1,16 +1,15 @@
 'use client'
 
 import React, { useEffect, useState, useCallback } from 'react'
-import { supabase } from '@/lib/supabase/client'
 import { useTheme } from '@/contexts/ThemeContext'
 
 type AuditLog = {
-  id: string
+  id: string | number
   admin_email: string
   action: string
   resource_type: string
   resource_id?: string
-  details?: string
+  details?: unknown
   ip_address?: string
   user_agent?: string
   created_at: string
@@ -19,6 +18,7 @@ type AuditLog = {
 const AuditLogsPage: React.FC = () => {
   const { isDarkMode } = useTheme()
   const [logs, setLogs] = useState<AuditLog[]>([])
+  const [allLogs, setAllLogs] = useState<AuditLog[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -37,65 +37,79 @@ const AuditLogsPage: React.FC = () => {
       setLoading(true)
       setError(null)
 
-      // Build query
-      let query = supabase
-        .from('audit_logs')
-        .select('*', { count: 'exact' })
-
-      // Apply search filter
-      if (searchQuery.trim()) {
-        query = query.or(`admin_email.ilike.%${searchQuery}%,action.ilike.%${searchQuery}%,resource_type.ilike.%${searchQuery}%,details.ilike.%${searchQuery}%`)
+      const { superadminApi } = await import('@/lib/api')
+      const result = await superadminApi.getAuditLogs()
+      if (!result.success || result.error) {
+        throw new Error(result.error || 'Failed to load audit logs')
       }
 
-      // Apply action filter
-      if (filterAction !== 'all') {
-        query = query.eq('action', filterAction)
-      }
+      const rows = (result.data || []) as Array<{
+        id: number
+        user_id?: string
+        action: string
+        table_name?: string
+        record_id?: string
+        details?: unknown
+        created_at?: string
+      }>
 
-      // Apply resource type filter
-      if (filterResource !== 'all') {
-        query = query.eq('resource_type', filterResource)
-      }
+      const mapped: AuditLog[] = rows.map((row) => ({
+        id: row.id,
+        admin_email: row.user_id || '—',
+        action: row.action,
+        resource_type: row.table_name || '—',
+        resource_id: row.record_id,
+        details: row.details,
+        created_at: row.created_at || '',
+      }))
 
-      // Get total count
-      const { count } = await query
-      setTotalLogs(count || 0)
+      mapped.sort((a, b) => {
+        const ta = new Date(a.created_at).getTime()
+        const tb = new Date(b.created_at).getTime()
+        return tb - ta
+      })
 
-      // Apply pagination and ordering
-      const { data, error: fetchError } = await query
-        .order('created_at', { ascending: false })
-        .range((currentPage - 1) * logsPerPage, currentPage * logsPerPage - 1)
-
-      if (fetchError) {
-        // If table doesn't exist, show empty state
-        if (fetchError.code === 'PGRST116' || fetchError.message.includes('does not exist')) {
-          setLogs([])
-          setTotalLogs(0)
-          return
-        }
-        throw fetchError
-      }
-
-      setLogs(data || [])
-
-      // Extract unique actions and resource types
-      if (data && data.length > 0) {
-        const actions = [...new Set(data.map((log: AuditLog) => log.action))]
-        const resources = [...new Set(data.map((log: AuditLog) => log.resource_type))]
-        setAvailableActions(actions)
-        setAvailableResources(resources)
-      }
+      setAllLogs(mapped)
+      setAvailableActions([...new Set(mapped.map((l) => l.action))].filter(Boolean))
+      setAvailableResources([...new Set(mapped.map((l) => l.resource_type))].filter(Boolean))
     } catch (err: any) {
-      setError('Failed to load audit logs: ' + err.message)
+      setError('Failed to load audit logs: ' + (err.message || 'Unknown error'))
+      setAllLogs([])
     } finally {
       setLoading(false)
     }
-  }, [searchQuery, filterAction, filterResource, currentPage])
+  }, [])
 
   useEffect(() => {
     loadLogs()
-    // Note: Real-time subscriptions removed - using backend API
   }, [loadLogs])
+
+  useEffect(() => {
+    let rows = [...allLogs]
+    const q = searchQuery.trim().toLowerCase()
+    if (q) {
+      rows = rows.filter((log) => {
+        const blob = [
+          log.admin_email,
+          log.action,
+          log.resource_type,
+          typeof log.details === 'string' ? log.details : JSON.stringify(log.details ?? ''),
+        ]
+          .join(' ')
+          .toLowerCase()
+        return blob.includes(q)
+      })
+    }
+    if (filterAction !== 'all') {
+      rows = rows.filter((l) => l.action === filterAction)
+    }
+    if (filterResource !== 'all') {
+      rows = rows.filter((l) => l.resource_type === filterResource)
+    }
+    setTotalLogs(rows.length)
+    const start = (currentPage - 1) * logsPerPage
+    setLogs(rows.slice(start, start + logsPerPage))
+  }, [allLogs, searchQuery, filterAction, filterResource, currentPage])
 
   const getActionColor = (action: string) => {
     const actionLower = action.toLowerCase()
@@ -222,7 +236,7 @@ const AuditLogsPage: React.FC = () => {
               {logs.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
-                    {loading ? 'Loading...' : 'No audit logs found. Create the audit_logs table in Supabase to start tracking actions.'}
+                    {loading ? 'Loading...' : 'No audit logs found.'}
                   </td>
                 </tr>
               ) : (
@@ -238,8 +252,10 @@ const AuditLogsPage: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900 dark:text-white">{log.resource_type}</div>
-                      {log.resource_id && (
-                        <div className="text-xs text-gray-500 dark:text-gray-400">ID: {log.resource_id.slice(0, 8)}...</div>
+                      {log.resource_id != null && String(log.resource_id).length > 0 && (
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          ID: {String(log.resource_id).slice(0, 8)}…
+                        </div>
                       )}
                     </td>
                     <td className="px-6 py-4">

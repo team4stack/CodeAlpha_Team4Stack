@@ -5,9 +5,6 @@ import { useRouter } from 'next/navigation'
 import SuperAdminSidebar from './SuperAdminSidebar'
 import AdminHeader from '../../../components/admin/shared/AdminHeader'
 import AdminFooter from '../../../components/admin/shared/AdminFooter'
-import { supabase } from '@/lib/supabase/client'
-import { isEmailAllowedForAdmin } from '@/lib/utils/adminSecurity'
-
 interface SuperAdminLayoutProps {
   children: React.ReactNode
 }
@@ -47,15 +44,13 @@ const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
           return
         }
 
-        // Environment variable check (MUST for super admin)
-        // Super admin MUST be in .env file for security
-        if (!isEmailAllowedForAdmin(userEmail)) {
+        if (!adminSession.apiToken || typeof adminSession.apiToken !== 'string') {
           sessionStorage.removeItem('admin_session')
           router.replace('/supadmin/login')
           setLoading(false)
           return
         }
-        
+
         // Check if user is super admin in admin_users table via API
         const { superadminApi } = await import('@/lib/api')
         const adminResult = await superadminApi.checkAdminByEmail(userEmail)

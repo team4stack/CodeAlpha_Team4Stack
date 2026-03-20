@@ -1,10 +1,29 @@
 import { Request, Response, NextFunction } from 'express';
 import superadminService from '../services/superadminService';
+import { issueAdminApiToken } from '../../../shared/middleware/authMiddleware';
 
 function parseNumericId(param: string): number | null {
   const id = parseInt(param, 10);
   if (Number.isNaN(id)) return null;
   return id;
+}
+
+/** Server-only gate for `super_admin` logins (replaces NEXT_PUBLIC_ALLOWED_ADMIN_EMAILS). */
+function isSuperAdminLoginAllowed(email: string): boolean {
+  const em = email.toLowerCase().trim();
+  const primary = process.env.SUPERADMIN_PRIMARY_EMAIL?.trim().toLowerCase();
+  if (primary) {
+    return em === primary;
+  }
+  const raw = process.env.ALLOWED_ADMIN_EMAILS?.trim();
+  if (!raw) {
+    return true;
+  }
+  const list = raw
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  return list.includes(em);
 }
 
 export class SuperAdminController {
@@ -70,7 +89,44 @@ export class SuperAdminController {
         return res.status(400).json({ success: false, error: 'Email and password are required' });
       }
       const result = await superadminService.verifyAdminPassword(email, password);
-      res.json({ success: true, data: result });
+      if (!result.valid) {
+        res.json({ success: true, data: result });
+        return;
+      }
+
+      const adminRow = await superadminService.checkAdminByEmail(email);
+      const role = adminRow?.role ? String(adminRow.role) : 'admin';
+      if (role === 'super_admin' && !isSuperAdminLoginAllowed(email)) {
+        res.json({
+          success: true,
+          data: { valid: false, error: 'Invalid email or password' }
+        });
+        return;
+      }
+
+      let apiToken: string;
+      let expiresAt: number;
+      try {
+        apiToken = issueAdminApiToken(email, role);
+        expiresAt = Date.now() + 24 * 60 * 60 * 1000;
+      } catch (e: any) {
+        console.error('[superadmin] Failed to issue admin API token:', e?.message || e);
+        res.status(500).json({
+          success: false,
+          error: 'Server configuration error: cannot issue admin session'
+        });
+        return;
+      }
+
+      res.json({
+        success: true,
+        data: {
+          valid: true,
+          apiToken,
+          expiresAt,
+          role
+        }
+      });
     } catch (error: any) {
       next(error);
     }

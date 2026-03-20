@@ -14,7 +14,7 @@ const Projects: React.FC = () => {
   const [page, setPage] = useState(1);
   const perPage = 6;
   // Add state for debugging info
-  const [debugInfo, setDebugInfo] = useState<{apiKeyStatus: string, error?: string} | null>(null);
+  const [debugInfo, setDebugInfo] = useState<{ apiBaseStatus: string; error?: string } | null>(null);
 
   // Extract a YouTube video ID from either a plain ID or a full URL
   const extractYouTubeId = (input: string): string => {
@@ -42,10 +42,9 @@ const Projects: React.FC = () => {
     const useSupabase = true;
     setUsingSupabase(true);
 
-    // Debug environment variables
-    const apiKey = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY;
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
     setDebugInfo({
-      apiKeyStatus: apiKey ? `SET (length: ${apiKey.length})` : 'NOT SET'
+      apiBaseStatus: apiBase ? 'SET (YouTube via backend proxy)' : 'NOT SET'
     });
     
     // Debug info only in development mode

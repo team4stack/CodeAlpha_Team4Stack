@@ -1,10 +1,10 @@
 'use client'
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { coursesApi } from '@/lib/api';
+import { coursesApi, usersApi } from '@/lib/api';
 import CoursesNavbar from '@/navigation/CoursesNavbar';
 
 const CoursesPage: React.FC = () => {
@@ -20,6 +20,7 @@ const CoursesPage: React.FC = () => {
   const [showRejectionModal, setShowRejectionModal] = useState(false);
   const [selectedRejectionMessage, setSelectedRejectionMessage] = useState<string>('');
   const [showAllCourses, setShowAllCourses] = useState(false);
+  const defaultViewRedirected = useRef(false);
 
   const courses = useMemo(() => ([
     {
@@ -195,6 +196,24 @@ const CoursesPage: React.FC = () => {
 
     checkStudentStatus();
   }, [user, authLoading]);
+
+  // Settings → Courses → "Default courses view: My enrollments"
+  useEffect(() => {
+    if (!user?.id || authLoading || defaultViewRedirected.current) return;
+    void (async () => {
+      try {
+        const r = await usersApi.getUserById(user.id);
+        if (r.error || !r.data) return;
+        const c = (r.data as { user_settings?: { courses?: { defaultCoursesView?: string } } }).user_settings?.courses;
+        if (c?.defaultCoursesView === 'my') {
+          defaultViewRedirected.current = true;
+          router.replace('/student/courses');
+        }
+      } catch {
+        // ignore
+      }
+    })();
+  }, [user?.id, authLoading, router]);
 
   const openBooking = (courseTitle: string) => {
     setPendingCourse(courseTitle);

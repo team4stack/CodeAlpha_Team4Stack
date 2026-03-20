@@ -1,10 +1,16 @@
 import { Request, Response, NextFunction } from 'express';
 import landingService from '../services/landingService';
+import { LANDING_ADMIN_ROLES } from '../../../shared/middleware/authMiddleware';
+import { areAllPublicOtpSettingKeys, isPublicOtpSettingKey } from '../../../shared/utils/landingSettingsPolicy';
 
 function parseNumericId(param: string): number | null {
   const id = parseInt(param, 10);
   if (Number.isNaN(id)) return null;
   return id;
+}
+
+function isLandingAdmin(req: Request): boolean {
+  return req.auth?.kind === 'admin' && (LANDING_ADMIN_ROLES as readonly string[]).includes(req.auth.role);
 }
 
 export class LandingController {
@@ -21,6 +27,9 @@ export class LandingController {
 
   createReview = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!isLandingAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Landing admin access required' });
+      }
       const review = await landingService.createReview(req.body);
       res.status(201).json({ success: true, data: review });
     } catch (error: any) {
@@ -30,6 +39,9 @@ export class LandingController {
 
   updateReview = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!isLandingAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Landing admin access required' });
+      }
       const id = parseNumericId(req.params.id);
       if (id === null) {
         return res.status(400).json({ success: false, error: 'Invalid review id' });
@@ -43,6 +55,9 @@ export class LandingController {
 
   deleteReview = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!isLandingAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Landing admin access required' });
+      }
       const id = parseNumericId(req.params.id);
       if (id === null) {
         return res.status(400).json({ success: false, error: 'Invalid review id' });
@@ -82,6 +97,9 @@ export class LandingController {
 
   createProject = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!isLandingAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Landing admin access required' });
+      }
       const project = await landingService.createProject(req.body);
       res.status(201).json({ success: true, data: project });
     } catch (error: any) {
@@ -91,6 +109,9 @@ export class LandingController {
 
   updateProject = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!isLandingAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Landing admin access required' });
+      }
       const id = parseInt(req.params.id, 10);
       if (Number.isNaN(id)) {
         return res.status(400).json({ success: false, error: 'Invalid project id' });
@@ -107,6 +128,9 @@ export class LandingController {
 
   deleteProject = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!isLandingAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Landing admin access required' });
+      }
       const id = parseInt(req.params.id, 10);
       if (Number.isNaN(id)) {
         return res.status(400).json({ success: false, error: 'Invalid project id' });
@@ -130,6 +154,9 @@ export class LandingController {
 
   createService = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!isLandingAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Landing admin access required' });
+      }
       const service = await landingService.createService(req.body);
       res.status(201).json({ success: true, data: service });
     } catch (error: any) {
@@ -139,6 +166,9 @@ export class LandingController {
 
   updateService = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!isLandingAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Landing admin access required' });
+      }
       const id = parseNumericId(req.params.id);
       if (id === null) {
         return res.status(400).json({ success: false, error: 'Invalid service id' });
@@ -152,6 +182,9 @@ export class LandingController {
 
   deleteService = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!isLandingAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Landing admin access required' });
+      }
       const id = parseNumericId(req.params.id);
       if (id === null) {
         return res.status(400).json({ success: false, error: 'Invalid service id' });
@@ -178,6 +211,10 @@ export class LandingController {
   upsertSiteSetting = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { key, value } = req.body;
+      const keyStr = typeof key === 'string' ? key : '';
+      if (!isPublicOtpSettingKey(keyStr) && !isLandingAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Landing admin access required' });
+      }
       const setting = await landingService.upsertSiteSetting(key, value);
       res.json({ success: true, data: setting });
     } catch (error: any) {
@@ -187,6 +224,9 @@ export class LandingController {
 
   upsertSiteSettings = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!isLandingAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Landing admin access required' });
+      }
       const { entries } = req.body;
       if (!Array.isArray(entries)) {
         return res.status(400).json({ success: false, error: 'Entries must be an array' });
@@ -204,7 +244,13 @@ export class LandingController {
       if (!keys) {
         return res.status(400).json({ success: false, error: 'Keys parameter is required' });
       }
-      const keyArray = (keys as string).split(',');
+      const keyArray = (keys as string)
+        .split(',')
+        .map((k) => k.trim())
+        .filter(Boolean);
+      if (!areAllPublicOtpSettingKeys(keyArray) && !isLandingAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Landing admin access required' });
+      }
       await landingService.deleteSiteSettings(keyArray);
       res.json({ success: true, message: 'Site settings deleted successfully' });
     } catch (error: any) {
@@ -215,6 +261,9 @@ export class LandingController {
   // Support Requests
   getSupportRequests = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!isLandingAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Landing admin access required' });
+      }
       const { user_id, status, viewed } = req.query;
       const filters: any = {};
       if (user_id) filters.user_id = user_id as string;
@@ -239,6 +288,9 @@ export class LandingController {
 
   updateSupportRequest = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!isLandingAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Landing admin access required' });
+      }
       const id = parseNumericId(req.params.id);
       if (id === null) {
         return res.status(400).json({ success: false, error: 'Invalid support request id' });

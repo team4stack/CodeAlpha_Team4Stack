@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import stackstoreController from '../controllers/stackstoreController';
+import { wrapAttachAuth } from '../../../shared/middleware/authMiddleware';
 
 const router = Router();
+router.use(wrapAttachAuth);
 
 // Products
 router.get('/products', stackstoreController.getProducts);

@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
-import { supabase } from '@/lib/supabase/client'
 import AuthModal from '@/lib/auth/components/AuthModal'
 
 interface StudentRouteGuardProps {
@@ -59,7 +58,7 @@ const StudentRouteGuard: React.FC<StudentRouteGuardProps> = ({ children }) => {
           return
         }
 
-        const applications = result.data || [];
+        const applications = (Array.isArray(result.data) ? result.data : []) as Record<string, unknown>[];
         const applicationData = applications.length > 0 ? applications[0] : null;
 
         // Check if at least one course is approved (portal access if any course is approved)

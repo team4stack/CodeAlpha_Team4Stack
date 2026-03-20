@@ -5,9 +5,6 @@ import { useRouter } from 'next/navigation'
 import TeamAdminSidebar from './TeamAdminSidebar'
 import AdminHeader from '../../../../components/admin/shared/AdminHeader'
 import AdminFooter from '../../../../components/admin/shared/AdminFooter'
-import { supabase } from '@/lib/supabase/client'
-import { isEmailAllowedForAdmin } from '@/lib/utils/adminSecurity'
-
 interface TeamAdminLayoutProps {
   children: React.ReactNode
 }
@@ -49,14 +46,13 @@ const TeamAdminLayout: React.FC<TeamAdminLayoutProps> = ({ children }) => {
 
         // Environment variable check (only for super admin)
         // Other admins can access via Supabase check only
-        const isSuperAdmin = userEmail === 'superadmin@gmail.com'
-        if (isSuperAdmin && !isEmailAllowedForAdmin(userEmail)) {
+        if (!adminSession.apiToken || typeof adminSession.apiToken !== 'string') {
           sessionStorage.removeItem('admin_session')
           router.replace('/adminteamt4s/login')
           setLoading(false)
           return
         }
-        
+
         // Check if user is admin in admin_users table via API
         const { superadminApi } = await import('@/lib/api')
         const adminResult = await superadminApi.checkAdminByEmail(userEmail)

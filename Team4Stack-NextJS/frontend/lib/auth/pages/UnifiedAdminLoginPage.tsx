@@ -2,8 +2,6 @@
 
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { isEmailAllowedForAdmin } from '@/lib/auth/utils/adminSecurity'
-
 const UnifiedAdminLoginPage: React.FC = () => {
   const router = useRouter()
   const [email, setEmail] = useState('')
@@ -85,18 +83,7 @@ const UnifiedAdminLoginPage: React.FC = () => {
         return
       }
 
-      // Step 1: ENVIRONMENT VARIABLE CHECK (Only for Super Admin)
-      // Super admin MUST be in environment variable for extra security
-      // Other admins can login via Supabase check only
-      const isSuperAdmin = loginEmail === 'superadmin@gmail.com'
-      if (isSuperAdmin && !isEmailAllowedForAdmin(loginEmail)) {
-        // Super admin not in environment variable - deny immediately
-        setError('Invalid email or password.')
-        setLoading(false)
-        return
-      }
-
-      // Step 2: API TABLE CHECK (SECOND - Can be compromised, but still checked)
+      // Step 1: API TABLE CHECK
       // Multi-layer security: Both environment variable AND API check must pass
       const { superadminApi } = await import('@/lib/api')
       const adminCheckResult = await superadminApi.checkAdminByEmail(loginEmail)
@@ -124,7 +111,7 @@ const UnifiedAdminLoginPage: React.FC = () => {
         return
       }
 
-      // Step 3: Verify password via API
+      // Step 2: Verify password via API
       const verifyResult = await superadminApi.verifyAdminPassword(loginEmail, loginPassword)
 
       if (verifyResult.error) {
@@ -144,20 +131,34 @@ const UnifiedAdminLoginPage: React.FC = () => {
         return
       }
 
-      // Step 4: Create custom admin session (NOT Supabase Auth session)
-      // Admin login is completely separate from normal website login
-      // Store the role from database in session (use 'admin' as default if role column doesn't exist)
-      const userRole = (adminCheckResult.data as any)?.role || 'admin'
+      // Step 3: Create custom admin session (NOT Supabase Auth session)
+      const verifyPayload = verifyResult.data as {
+        valid?: boolean
+        apiToken?: string
+        expiresAt?: number
+        role?: string
+      }
+      const userRole = verifyPayload?.role || (adminCheckResult.data as any)?.role || 'admin'
+      const expiresAt =
+        typeof verifyPayload?.expiresAt === 'number'
+          ? verifyPayload.expiresAt
+          : Date.now() + 24 * 60 * 60 * 1000
       const adminSession = {
         email: loginEmail,
         role: userRole,
-        expiresAt: Date.now() + (24 * 60 * 60 * 1000) // 24 hours
+        expiresAt,
+        apiToken: verifyPayload?.apiToken || ''
       }
 
-      // Store admin session in sessionStorage
+      if (!adminSession.apiToken) {
+        setError('Invalid email or password.')
+        setLoading(false)
+        return
+      }
+
       sessionStorage.setItem('admin_session', JSON.stringify(adminSession))
 
-      // Step 5: Redirect based on role
+      // Step 4: Redirect based on role
       redirectBasedOnRole(userRole)
     } catch (error: any) {
       // Generic error message - no sensitive info

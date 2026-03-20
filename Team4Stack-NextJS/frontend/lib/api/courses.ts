@@ -156,4 +156,24 @@ export const coursesApi = {
   hasUserPassedQuiz: async (videoId: number, userId: string) => {
     return apiClient.get(`/courses/quizzes/check/${videoId}/${userId}`);
   },
+
+  getStudentNotifications: async (email: string) => {
+    const q = encodeURIComponent(email.trim());
+    return apiClient.get(`/courses/student-notifications?email=${q}`);
+  },
+
+  markStudentNotificationRead: async (id: number, email: string) => {
+    return apiClient.patch(`/courses/student-notifications/${id}/read`, { email: email.trim() });
+  },
+
+  /** Courses admin: broadcast to approved students or explicit email list. */
+  sendStudentNotifications: async (payload: {
+    adminEmail: string;
+    title: string;
+    body?: string;
+    audience: 'all_approved' | 'emails';
+    emails?: string[];
+  }) => {
+    return apiClient.post('/courses/student-notifications', payload);
+  },
 };

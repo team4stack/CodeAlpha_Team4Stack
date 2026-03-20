@@ -5,9 +5,6 @@ import { useRouter } from 'next/navigation'
 import AdminSidebar from './LandingAdminSidebar'
 import AdminHeader from '../../../../components/admin/shared/AdminHeader'
 import AdminFooter from '../../../../components/admin/shared/AdminFooter'
-import { supabase } from '@/lib/supabase/client'
-import { isEmailAllowedForAdmin } from '@/lib/auth/utils/adminSecurity'
-
 interface LandingAdminLayoutProps {
   children: React.ReactNode
 }
@@ -40,10 +37,8 @@ const LandingAdminLayout: React.FC<LandingAdminLayoutProps> = ({ children }) => 
           return
         }
 
-        // Step 1: ENVIRONMENT VARIABLE CHECK (FIRST - Most Secure Layer)
-        // Even if Supabase is hacked, this check will prevent unauthorized access
         const userEmail = adminSession.email?.toLowerCase().trim()
-        
+
         if (!userEmail) {
           sessionStorage.removeItem('admin_session')
           router.replace('/adminlandingt4s/login')
@@ -51,17 +46,14 @@ const LandingAdminLayout: React.FC<LandingAdminLayoutProps> = ({ children }) => 
           return
         }
 
-        // Environment variable check (only for super admin)
-        // Other admins can access via Supabase check only
-        const isSuperAdmin = userEmail === 'superadmin@gmail.com'
-        if (isSuperAdmin && !isEmailAllowedForAdmin(userEmail)) {
+        if (!adminSession.apiToken || typeof adminSession.apiToken !== 'string') {
           sessionStorage.removeItem('admin_session')
           router.replace('/adminlandingt4s/login')
           setLoading(false)
           return
         }
-        
-        // Step 2: API TABLE CHECK (SECOND - Can be compromised, but still checked)
+
+        // API TABLE CHECK
         // Multi-layer security: Both environment variable AND API check must pass
         const { superadminApi } = await import('@/lib/api')
         const adminResult = await superadminApi.checkAdminByEmail(userEmail)

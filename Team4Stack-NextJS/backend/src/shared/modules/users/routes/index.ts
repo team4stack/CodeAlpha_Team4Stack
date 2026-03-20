@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import userController from '../controllers/userController';
+import { wrapAttachAuth } from '../../../middleware/authMiddleware';
 
 const router = Router();
+router.use(wrapAttachAuth);
 
 router.get('/check-username', userController.checkUsernameAvailability);
 router.get('/username', userController.getUserByUsername);

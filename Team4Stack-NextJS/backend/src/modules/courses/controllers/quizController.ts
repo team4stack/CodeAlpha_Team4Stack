@@ -1,6 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
 import { badRequestError } from '../../../shared/utils/supabaseAdminWrite';
 import quizService from '../services/quizService';
+import courseService from '../services/courseService';
+import { COURSES_ADMIN_ROLES } from '../../../shared/middleware/authMiddleware';
+
+function isCoursesAdmin(req: Request): boolean {
+  const roles = COURSES_ADMIN_ROLES as readonly string[];
+  return req.auth?.kind === 'admin' && roles.includes(req.auth.role);
+}
 
 export class QuizController {
   // Get quiz by video ID
@@ -17,6 +24,9 @@ export class QuizController {
   // Create quiz
   createQuiz = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!isCoursesAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Courses admin access required' });
+      }
       console.log('[QuizController] Creating quiz with data:', JSON.stringify(req.body, null, 2));
       const quiz = await quizService.createQuiz(req.body);
       res.status(201).json({ success: true, data: quiz });
@@ -49,6 +59,9 @@ export class QuizController {
   // Update quiz
   updateQuiz = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!isCoursesAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Courses admin access required' });
+      }
       const { id } = req.params;
       const quizId = this.parseId(id);
       const quiz = await quizService.updateQuiz(quizId, req.body);
@@ -61,6 +74,9 @@ export class QuizController {
   // Delete quiz
   deleteQuiz = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!isCoursesAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Courses admin access required' });
+      }
       const { id } = req.params;
       const quizId = this.parseId(id);
       await quizService.deleteQuiz(quizId);
@@ -73,6 +89,9 @@ export class QuizController {
   // Create question
   createQuestion = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!isCoursesAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Courses admin access required' });
+      }
       const question = await quizService.createQuestion(req.body);
       res.status(201).json({ success: true, data: question });
     } catch (error: any) {
@@ -83,6 +102,9 @@ export class QuizController {
   // Update question
   updateQuestion = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!isCoursesAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Courses admin access required' });
+      }
       const { id } = req.params;
       const questionId = this.parseId(id);
       const question = await quizService.updateQuestion(questionId, req.body);
@@ -95,6 +117,9 @@ export class QuizController {
   // Delete question
   deleteQuestion = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!isCoursesAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Courses admin access required' });
+      }
       const { id } = req.params;
       const questionId = this.parseId(id);
       await quizService.deleteQuestion(questionId);
@@ -107,6 +132,9 @@ export class QuizController {
   // Create option
   createOption = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!isCoursesAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Courses admin access required' });
+      }
       const option = await quizService.createOption(req.body);
       res.status(201).json({ success: true, data: option });
     } catch (error: any) {
@@ -117,6 +145,9 @@ export class QuizController {
   // Update option
   updateOption = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!isCoursesAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Courses admin access required' });
+      }
       const { id } = req.params;
       const optionId = this.parseId(id);
       const option = await quizService.updateOption(optionId, req.body);
@@ -129,6 +160,9 @@ export class QuizController {
   // Delete option
   deleteOption = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!isCoursesAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Courses admin access required' });
+      }
       const { id } = req.params;
       const optionId = this.parseId(id);
       await quizService.deleteOption(optionId);
@@ -141,14 +175,22 @@ export class QuizController {
   // Start quiz attempt
   startQuizAttempt = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (req.auth?.kind !== 'user') {
+        return res.status(401).json({ success: false, error: 'Login required to start a quiz attempt' });
+      }
       const { quiz_id, user_id, video_id } = req.body;
-      
+
+      if (String(user_id) !== req.auth.sub) {
+        return res.status(403).json({ success: false, error: 'Access denied' });
+      }
+      await courseService.assertEmailHasApprovedAdmission(req.auth.email);
+
       console.log('[QuizController] Starting quiz attempt with:', { quiz_id, user_id, video_id });
-      
+
       if (!quiz_id || !user_id || !video_id) {
-        return res.status(400).json({ 
-          success: false, 
-          error: 'Missing required fields: quiz_id, user_id, video_id' 
+        return res.status(400).json({
+          success: false,
+          error: 'Missing required fields: quiz_id, user_id, video_id'
         });
       }
       
@@ -202,6 +244,17 @@ export class QuizController {
       const { attemptId } = req.params;
       const { answers } = req.body;
       const parsedAttemptId = this.parseId(attemptId);
+      const ownerId = await quizService.getAttemptOwnerUserId(parsedAttemptId);
+      if (!ownerId) {
+        return res.status(404).json({ success: false, error: 'Attempt not found' });
+      }
+      if (isCoursesAdmin(req)) {
+        // ok
+      } else if (req.auth?.kind === 'user' && ownerId === req.auth.sub) {
+        await courseService.assertEmailHasApprovedAdmission(req.auth.email);
+      } else {
+        return res.status(403).json({ success: false, error: 'Access denied' });
+      }
       const attempt = await quizService.submitQuizAttempt(parsedAttemptId, answers);
       res.json({ success: true, data: attempt });
     } catch (error: any) {
@@ -213,6 +266,12 @@ export class QuizController {
   getUserQuizAttempts = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { videoId, userId } = req.params;
+      if (!isCoursesAdmin(req)) {
+        if (req.auth?.kind !== 'user' || req.auth.sub !== userId) {
+          return res.status(403).json({ success: false, error: 'Access denied' });
+        }
+        await courseService.assertEmailHasApprovedAdmission(req.auth.email);
+      }
       const attempts = await quizService.getUserQuizAttempts(parseInt(videoId), userId);
       res.json({ success: true, data: attempts });
     } catch (error: any) {
@@ -224,6 +283,12 @@ export class QuizController {
   hasUserPassedQuiz = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { videoId, userId } = req.params;
+      if (!isCoursesAdmin(req)) {
+        if (req.auth?.kind !== 'user' || req.auth.sub !== userId) {
+          return res.status(403).json({ success: false, error: 'Access denied' });
+        }
+        await courseService.assertEmailHasApprovedAdmission(req.auth.email);
+      }
       const passed = await quizService.hasUserPassedQuiz(parseInt(videoId), userId);
       res.json({ success: true, data: { passed } });
     } catch (error: any) {

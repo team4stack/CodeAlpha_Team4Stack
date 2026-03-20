@@ -16,6 +16,7 @@ import teamRoutes from './modules/team/routes';
 import superadminRoutes from './modules/superadmin/routes';
 import usersRoutes from './shared/modules/users/routes';
 import authRoutes from './shared/modules/auth/routes';
+import publicRoutes from './modules/public/routes';
 
 const app: Express = express();
 const PORT = process.env.PORT || 5000;
@@ -81,6 +82,7 @@ app.get('/health', (req: Request, res: Response) => {
 });
 
 // API routes
+app.use('/api/public', publicRoutes);
 app.use('/api/courses', coursesRoutes);
 app.use('/api/landing', landingRoutes);
 app.use('/api/stackstore', stackstoreRoutes);

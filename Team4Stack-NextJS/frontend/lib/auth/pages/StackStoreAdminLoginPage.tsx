@@ -1,7 +1,5 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { isEmailAllowedForAdmin } from '../utils/adminSecurity'
-
 const StackStoreAdminLoginPage: React.FC = () => {
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
@@ -24,25 +22,15 @@ const StackStoreAdminLoginPage: React.FC = () => {
         return
       }
 
-      // Step 1: Environment variable check
-      if (!isEmailAllowedForAdmin(loginEmail)) {
-        setError('Invalid email or password.')
-        setLoading(false)
-        return
-      }
-
-      // Step 2: Check if email exists in admin_users table via API
       const { superadminApi } = await import('@/lib/api')
       const adminCheckResult = await superadminApi.checkAdminByEmail(loginEmail)
 
-      if (adminCheckResult.error || !adminCheckResult.data || !adminCheckResult.data.email) {
+      if (adminCheckResult.error || !adminCheckResult.data || !(adminCheckResult.data as any).email) {
         setError('Invalid email or password.')
         setLoading(false)
         return
       }
 
-      // Step 3: Verify password via API
-      const { superadminApi } = await import('@/lib/api')
       const verifyResult = await superadminApi.verifyAdminPassword(loginEmail, loginPassword)
 
       if (verifyResult.error) {
@@ -51,19 +39,26 @@ const StackStoreAdminLoginPage: React.FC = () => {
         return
       }
 
-      const isValid = verifyResult.data && verifyResult.data.valid === true
-
-      if (!isValid) {
+      const verifyPayload = verifyResult.data as {
+        valid?: boolean
+        apiToken?: string
+        expiresAt?: number
+        role?: string
+      }
+      if (!verifyPayload?.valid || !verifyPayload.apiToken) {
         setError('Invalid email or password.')
         setLoading(false)
         return
       }
 
-      // Step 4: Create admin session
       const adminSession = {
         email: loginEmail,
-        role: adminCheck.role || 'admin',
-        expiresAt: Date.now() + (24 * 60 * 60 * 1000) // 24 hours
+        role: verifyPayload.role || (adminCheckResult.data as any).role || 'admin',
+        expiresAt:
+          typeof verifyPayload.expiresAt === 'number'
+            ? verifyPayload.expiresAt
+            : Date.now() + 24 * 60 * 60 * 1000,
+        apiToken: verifyPayload.apiToken
       }
 
       sessionStorage.setItem('admin_session', JSON.stringify(adminSession))

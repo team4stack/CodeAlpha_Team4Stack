@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import StatCard from '../../../../components/admin/shared/StatCard'
-import { supabase } from '@/lib/supabase/client'
 
 const TeamAdminDashboard: React.FC = () => {
   const router = useRouter()
@@ -20,29 +19,22 @@ const TeamAdminDashboard: React.FC = () => {
   useEffect(() => {
     const loadStats = async () => {
       try {
-        // Fetch team members count
-        const { count: membersCount } = await supabase
-          .from('team_members')
-          .select('*', { count: 'exact', head: true })
-
-        // Fetch mentor profile count
-        const { count: mentorCount } = await supabase
-          .from('mentor_profile')
-          .select('*', { count: 'exact', head: true })
-
-        // Fetch active members
-        const { count: activeCount } = await supabase
-          .from('team_members')
-          .select('*', { count: 'exact', head: true })
-          .eq('active', true)
+        const { teamApi } = await import('@/lib/api')
+        const [membersRes, mentorsRes] = await Promise.all([
+          teamApi.getTeamMembers(),
+          teamApi.getMentorProfiles(),
+        ])
+        const members = (membersRes.data as any[]) || []
+        const mentors = (mentorsRes.data as any[]) || []
+        const activeCount = members.filter((m: any) => m.active === true).length
 
         setStats({
-          totalMembers: membersCount || 0,
-          activeMembers: activeCount || 0,
-          mentorProfiles: mentorCount || 0,
+          totalMembers: members.length,
+          activeMembers: activeCount,
+          mentorProfiles: mentors.length,
           totalRoles: 0, // TODO: Add roles table
           featuredMembers: 0, // TODO: Add featured flag
-          inactiveMembers: (membersCount || 0) - (activeCount || 0),
+          inactiveMembers: Math.max(0, members.length - activeCount),
         })
       } catch (error) {
         console.error('Error loading Team stats:', error)

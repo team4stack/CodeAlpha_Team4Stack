@@ -3,8 +3,6 @@ import { Outlet, useNavigate } from 'react-router-dom'
 import AdminSidebar from './AdminSidebar'
 import AdminHeader from './AdminHeader'
 import { supabase } from '../../utils/supabaseClient'
-import { isEmailAllowedForAdmin } from '../../utils/adminSecurity'
-
 const AdminLayout: React.FC = () => {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
@@ -33,10 +31,8 @@ const AdminLayout: React.FC = () => {
           return
         }
 
-        // Step 1: ENVIRONMENT VARIABLE CHECK (FIRST - Most Secure Layer)
-        // Even if Supabase is hacked, this check will prevent unauthorized access
         const userEmail = adminSession.email?.toLowerCase().trim()
-        
+
         if (!userEmail) {
           sessionStorage.removeItem('admin_session')
           navigate('/adminsami/login', { replace: true })
@@ -44,17 +40,14 @@ const AdminLayout: React.FC = () => {
           return
         }
 
-        // Environment variable check - PRIMARY security layer
-        if (!isEmailAllowedForAdmin(userEmail)) {
-          // Email not in environment variable whitelist - deny immediately
-          // This prevents access even if someone adds email to Supabase admin_users table
+        if (!adminSession.apiToken || typeof adminSession.apiToken !== 'string') {
           sessionStorage.removeItem('admin_session')
           navigate('/adminsami/login', { replace: true })
           setLoading(false)
           return
         }
-        
-        // Step 2: API TABLE CHECK (SECOND - Can be compromised, but still checked)
+
+        // API TABLE CHECK
         // Multi-layer security: Both environment variable AND API check must pass
         const { superadminApi } = await import('@/lib/api')
         const adminResult = await superadminApi.checkAdminByEmail(userEmail)
@@ -70,7 +63,8 @@ const AdminLayout: React.FC = () => {
         // CRITICAL: If user email is NOT in admin_users table, deny access
         // Normal users ka email admin_users mein nahi hoga
         // Only manually added admins will be in admin_users table
-        if (!adminResult.data || !adminResult.data.email) {
+        const row = adminResult.data as { email?: string } | null | undefined
+        if (!row || !row.email) {
           // This is a normal user trying to access admin panel
           // Remove session and redirect to login
           sessionStorage.removeItem('admin_session')

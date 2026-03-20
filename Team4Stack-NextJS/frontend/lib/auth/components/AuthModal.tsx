@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
-import { supabase } from '@/lib/supabase/client'
 import emailjs from '@emailjs/browser'
 import { RECAPTCHA_SITE_KEY } from '../../utils/constants'
 import { setAuthSessionCookieIfAllowed } from '@/lib/cookies/authSessionCookie'

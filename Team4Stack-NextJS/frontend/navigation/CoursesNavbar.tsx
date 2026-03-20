@@ -6,11 +6,14 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import AuthModal from '@/lib/auth/components/AuthModal';
 import UserSettingsModal from '@/modals/UserSettingsModal';
+import { useApprovedCourseStudent } from '@/lib/courses/useApprovedCourseStudent';
+import StudentCourseNotificationsBell from '@/components/courses/StudentCourseNotificationsBell';
 
 const CoursesNavbar: React.FC = () => {
   const { isDarkMode } = useTheme();
   const router = useRouter();
   const { user, loading, signOut } = useAuth();
+  const { isApprovedStudent, checking: checkingStudent } = useApprovedCourseStudent(user, loading);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -123,6 +126,14 @@ const CoursesNavbar: React.FC = () => {
                 Apply
                 <span className="pointer-events-none absolute left-1/2 -bottom-0.5 w-0 h-px bg-gradient-to-r from-orange-400 to-red-500 rounded-full transition-all duration-300 group-hover:left-0 group-hover:w-full"></span>
               </button>
+              {!loading && user && isApprovedStudent && !checkingStudent && user.email && (
+                <StudentCourseNotificationsBell
+                  email={user.email}
+                  isScrolled={isScrolled}
+                  isDarkMode={isDarkMode}
+                />
+              )}
+
               {!loading && (
                 user ? (
                   <div className="relative">

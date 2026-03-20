@@ -65,6 +65,16 @@ export interface ProgressRecord {
   updated_at?: string;
 }
 
+export interface StudentCourseNotification {
+  id: number;
+  student_email: string;
+  title: string;
+  body: string | null;
+  read_at: string | null;
+  created_at: string;
+  created_by_email: string | null;
+}
+
 export interface Quiz {
   id: number | string;
   video_id: number;

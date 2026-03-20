@@ -406,6 +406,17 @@ export class QuizService {
     const attempts = await this.getUserQuizAttempts(videoId, userId);
     return attempts.some(attempt => attempt.passed === true);
   }
+
+  async getAttemptOwnerUserId(attemptId: number | string): Promise<string | null> {
+    const { data, error } = await supabaseAdmin
+      .from('quiz_attempts')
+      .select('user_id')
+      .eq('id', attemptId)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data || (data as { user_id?: unknown }).user_id == null) return null;
+    return String((data as { user_id: unknown }).user_id);
+  }
 }
 
 export default new QuizService();

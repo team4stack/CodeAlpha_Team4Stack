@@ -1,7 +1,6 @@
 'use client'
 
 import React, { useEffect, useState, useCallback } from 'react'
-import { supabase } from '@/lib/supabase/client'
 import { useTheme } from '@/contexts/ThemeContext'
 
 type User = {
@@ -31,36 +30,40 @@ const UsersManagementPage: React.FC = () => {
       setLoading(true)
       setError(null)
 
-      // Build query
-      let query = supabase
-        .from('users')
-        .select('*', { count: 'exact' })
+      const { superadminApi } = await import('@/lib/api')
+      const filters =
+        filterStatus === 'blocked'
+          ? { is_blocked: true }
+          : filterStatus === 'active'
+            ? { is_blocked: false }
+            : undefined
 
-      // Apply search filter
-      if (searchQuery.trim()) {
-        query = query.or(`email.ilike.%${searchQuery}%,name.ilike.%${searchQuery}%`)
+      const result = await superadminApi.getUsers(filters)
+      if (!result.success || result.error) {
+        throw new Error(result.error || 'Failed to load users')
       }
 
-      // Apply status filter
-      if (filterStatus === 'blocked') {
-        query = query.eq('is_blocked', true)
-      } else if (filterStatus === 'active') {
-        query = query.eq('is_blocked', false)
+      let list = (result.data || []) as User[]
+      const q = searchQuery.trim().toLowerCase()
+      if (q) {
+        list = list.filter((u) => {
+          const em = (u.email || '').toLowerCase()
+          const nm = (u.name || '').toLowerCase()
+          return em.includes(q) || nm.includes(q)
+        })
       }
 
-      // Get total count first
-      const { count } = await query
-      setTotalUsers(count || 0)
+      list.sort((a, b) => {
+        const ta = new Date(a.created_at || 0).getTime()
+        const tb = new Date(b.created_at || 0).getTime()
+        return tb - ta
+      })
 
-      // Apply pagination and ordering
-      const { data, error: fetchError } = await query
-        .order('created_at', { ascending: false })
-        .range((currentPage - 1) * usersPerPage, currentPage * usersPerPage - 1)
-
-      if (fetchError) throw fetchError
-      setUsers(data || [])
+      setTotalUsers(list.length)
+      const start = (currentPage - 1) * usersPerPage
+      setUsers(list.slice(start, start + usersPerPage))
     } catch (err: any) {
-      setError('Failed to load users: ' + err.message)
+      setError('Failed to load users: ' + (err.message || 'Unknown error'))
     } finally {
       setLoading(false)
     }
@@ -76,12 +79,14 @@ const UsersManagementPage: React.FC = () => {
       setError(null)
       setSuccess(null)
 
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({ is_blocked: !currentStatus })
-        .eq('id', userId)
+      const { superadminApi } = await import('@/lib/api')
+      const res = currentStatus
+        ? await superadminApi.unblockUser(userId)
+        : await superadminApi.blockUser(userId)
 
-      if (updateError) throw updateError
+      if (!res.success || res.error) {
+        throw new Error(res.error || 'Update failed')
+      }
 
       setSuccess(`User ${!currentStatus ? 'blocked' : 'unblocked'} successfully!`)
       loadUsers()
@@ -100,12 +105,11 @@ const UsersManagementPage: React.FC = () => {
       setError(null)
       setSuccess(null)
 
-      const { error: deleteError } = await supabase
-        .from('users')
-        .delete()
-        .eq('id', userId)
-
-      if (deleteError) throw deleteError
+      const { superadminApi } = await import('@/lib/api')
+      const del = await superadminApi.deleteUser(userId)
+      if (!del.success || del.error) {
+        throw new Error(del.error || 'Delete failed')
+      }
 
       setSuccess('User deleted successfully!')
       loadUsers()

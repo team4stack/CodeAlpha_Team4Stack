@@ -10,6 +10,38 @@ class ApiClient {
     this.baseUrl = baseUrl;
   }
 
+  /** Admin panel token (sessionStorage) or Supabase access token (localStorage). */
+  private getAuthHeaders(): Record<string, string> {
+    if (typeof window === 'undefined') return {};
+    try {
+      const adminRaw = sessionStorage.getItem('admin_session');
+      if (adminRaw) {
+        const a = JSON.parse(adminRaw) as {
+          apiToken?: string;
+          expiresAt?: number;
+        };
+        const exp = typeof a.expiresAt === 'number' ? a.expiresAt : 0;
+        if (a.apiToken && typeof a.apiToken === 'string' && (!exp || Date.now() < exp)) {
+          return { Authorization: `Bearer ${a.apiToken}` };
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+    try {
+      const userRaw = localStorage.getItem('auth_session');
+      if (userRaw) {
+        const u = JSON.parse(userRaw) as { access_token?: string };
+        if (u.access_token && typeof u.access_token === 'string') {
+          return { Authorization: `Bearer ${u.access_token}` };
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+    return {};
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {},
@@ -17,13 +49,20 @@ class ApiClient {
     retryDelay = 1000
   ): Promise<{ success: boolean; data?: T; error?: string }> {
     const url = `${this.baseUrl}${endpoint}`;
-    
+    const REQUEST_TIMEOUT_MS = 45000;
+
     for (let attempt = 0; attempt <= retries; attempt++) {
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
       try {
+        const controller = new AbortController();
+        timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
         const response = await fetch(url, {
           ...options,
+          signal: controller.signal,
           headers: {
             'Content-Type': 'application/json',
+            ...this.getAuthHeaders(),
             ...options.headers,
           },
         });
@@ -72,6 +111,18 @@ class ApiClient {
         const data = await response.json();
         return data;
       } catch (error: any) {
+        if (error?.name === 'AbortError') {
+          if (attempt === retries) {
+            return {
+              success: false,
+              error:
+                'Request timed out. Make sure the backend is running (API) and try again.',
+            };
+          }
+          const delay = retryDelay * Math.pow(2, attempt);
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          continue;
+        }
         // If this is the last attempt, return error
         if (attempt === retries) {
           // Sanitize error messages to prevent exposing internal information
@@ -103,6 +154,8 @@ class ApiClient {
         // Retry on network errors with exponential backoff
         const delay = retryDelay * Math.pow(2, attempt);
         await new Promise(resolve => setTimeout(resolve, delay));
+      } finally {
+        if (timeoutId) clearTimeout(timeoutId);
       }
     }
     

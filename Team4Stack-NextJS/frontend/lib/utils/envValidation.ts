@@ -6,7 +6,7 @@
 interface EnvConfig {
   NEXT_PUBLIC_SUPABASE_URL?: string;
   NEXT_PUBLIC_SUPABASE_ANON_KEY?: string;
-  NEXT_PUBLIC_YOUTUBE_API_KEY?: string;
+  NEXT_PUBLIC_API_URL?: string;
   NEXT_PUBLIC_RECAPTCHA_SITE_KEY?: string;
 }
 
@@ -20,7 +20,7 @@ export const validateEnvVars = (): {
   warnings: string[];
 } => {
   const required: (keyof EnvConfig)[] = ['NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_ANON_KEY'];
-  const optional: (keyof EnvConfig)[] = ['NEXT_PUBLIC_YOUTUBE_API_KEY', 'NEXT_PUBLIC_RECAPTCHA_SITE_KEY'];
+  const optional: (keyof EnvConfig)[] = ['NEXT_PUBLIC_API_URL', 'NEXT_PUBLIC_RECAPTCHA_SITE_KEY'];
   
   const missing: string[] = [];
   const warnings: string[] = [];

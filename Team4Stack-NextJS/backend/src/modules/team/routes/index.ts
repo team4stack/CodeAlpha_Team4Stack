@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import teamController from '../controllers/teamController';
+import { wrapAttachAuth } from '../../../shared/middleware/authMiddleware';
 
 const router = Router();
+router.use(wrapAttachAuth);
 
 // Team Members
 router.get('/members', teamController.getTeamMembers);

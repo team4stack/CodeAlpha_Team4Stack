@@ -1,7 +1,6 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase/client'
 import { useTheme } from '@/contexts/ThemeContext'
 
 type CourseSetting = {
@@ -40,32 +39,25 @@ const CoursesSettingsPage: React.FC = () => {
       setLoading(true)
       setError(null)
 
-      // Try to load from site_settings table with course-specific prefix
-      const { data, error: fetchError } = await supabase
-        .from('site_settings')
-        .select('*')
-        .like('key', 'course_%')
+      const keys = defaultSettings.map((s) => `course_${s.key}`)
+      const { landingApi } = await import('@/lib/api')
+      const result = await landingApi.getSiteSettings(keys)
 
-      if (fetchError && fetchError.code !== 'PGRST116') {
-        // If table doesn't exist or other error, use defaults
-        setSettings(defaultSettings)
-        return
-      }
-
-      // Merge defaults with fetched settings
       const settingsMap = new Map<string, CourseSetting>()
-      defaultSettings.forEach(setting => {
+      defaultSettings.forEach((setting) => {
         settingsMap.set(setting.key, { ...setting })
       })
 
-      data?.forEach((item: any) => {
-        if (item.key.startsWith('course_')) {
-          const key = item.key.replace('course_', '')
-          if (settingsMap.has(key)) {
-            settingsMap.set(key, { ...settingsMap.get(key)!, value: item.value })
+      if (result.success && !result.error && Array.isArray(result.data)) {
+        ;(result.data as any[]).forEach((item: any) => {
+          if (item.key?.startsWith('course_')) {
+            const shortKey = item.key.replace('course_', '')
+            if (settingsMap.has(shortKey)) {
+              settingsMap.set(shortKey, { ...settingsMap.get(shortKey)!, value: item.value })
+            }
           }
-        }
-      })
+        })
+      }
 
       setSettings(Array.from(settingsMap.values()))
     } catch (err: any) {
@@ -89,28 +81,10 @@ const CoursesSettingsPage: React.FC = () => {
       // Save to site_settings table with course_ prefix
       const settingKey = `course_${key}`
 
-      // Check if setting exists
-      const { data: existing } = await supabase
-        .from('site_settings')
-        .select('key')
-        .eq('key', settingKey)
-        .maybeSingle()
-
-      if (existing) {
-        // Update existing
-        const { error: updateError } = await supabase
-          .from('site_settings')
-          .update({ value: editValue })
-          .eq('key', settingKey)
-
-        if (updateError) throw updateError
-      } else {
-        // Insert new
-        const { error: insertError } = await supabase
-          .from('site_settings')
-          .insert({ key: settingKey, value: editValue })
-
-        if (insertError) throw insertError
+      const { landingApi } = await import('@/lib/api')
+      const res = await landingApi.upsertSiteSetting(settingKey, editValue)
+      if (!res.success || res.error) {
+        throw new Error(res.error || 'Save failed')
       }
 
       setSuccess('Setting updated successfully!')
@@ -137,13 +111,12 @@ const CoursesSettingsPage: React.FC = () => {
       setError(null)
       setSuccess(null)
 
-      // Delete all course settings
-      const { error: deleteError } = await supabase
-        .from('site_settings')
-        .delete()
-        .like('key', 'course_%')
-
-      if (deleteError) throw deleteError
+      const keys = defaultSettings.map((s) => `course_${s.key}`)
+      const { landingApi } = await import('@/lib/api')
+      const res = await landingApi.deleteSiteSettings(keys)
+      if (!res.success && res.error) {
+        throw new Error(res.error)
+      }
 
       setSuccess('Settings reset to defaults!')
       loadSettings()

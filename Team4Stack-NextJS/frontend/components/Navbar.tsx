@@ -4,7 +4,7 @@ import MobileNavigation from './MobileNavigation';
 // import StackStoreModal from './stackstore/StackStoreModal';
 import { useAuth } from '../context/AuthContext';
 import AuthModal from './AuthModal';
-import UserSettingsModal from './UserSettingsModal';
+import UserSettingsModal from '@/modals/UserSettingsModal';
 import { supabase } from '../utils/supabaseClient';
 
 type NavbarLink = {

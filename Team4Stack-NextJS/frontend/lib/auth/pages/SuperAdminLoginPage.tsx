@@ -2,8 +2,6 @@
 
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { isEmailAllowedForAdmin } from '../utils/adminSecurity'
-
 const SuperAdminLoginPage: React.FC = () => {
   const router = useRouter()
   const [email, setEmail] = useState('')
@@ -26,32 +24,21 @@ const SuperAdminLoginPage: React.FC = () => {
         return
       }
 
-      // Step 1: Environment variable check
-      if (!isEmailAllowedForAdmin(loginEmail)) {
-        setError('Invalid email or password.')
-        setLoading(false)
-        return
-      }
-
-      // Step 2: Check if email exists in admin_users table via API
       const { superadminApi } = await import('@/lib/api')
       const adminCheckResult = await superadminApi.checkAdminByEmail(loginEmail)
 
-      if (adminCheckResult.error || !adminCheckResult.data || !adminCheckResult.data.email) {
+      if (adminCheckResult.error || !adminCheckResult.data || !(adminCheckResult.data as any).email) {
         setError('Invalid email or password.')
         setLoading(false)
         return
       }
 
-      // Step 3: Check if user is super admin
-      if (adminCheck.role !== 'super_admin') {
+      if ((adminCheckResult.data as any).role !== 'super_admin') {
         setError('Access denied. Super admin privileges required.')
         setLoading(false)
         return
       }
 
-      // Step 4: Verify password via API
-      const { superadminApi } = await import('@/lib/api')
       const verifyResult = await superadminApi.verifyAdminPassword(loginEmail, loginPassword)
 
       if (verifyResult.error) {
@@ -60,19 +47,28 @@ const SuperAdminLoginPage: React.FC = () => {
         return
       }
 
-      const isValid = verifyResult.data && verifyResult.data.valid === true
+      const verifyPayload = verifyResult.data as {
+        valid?: boolean
+        apiToken?: string
+        expiresAt?: number
+        role?: string
+      }
+      const isValid = verifyPayload && verifyPayload.valid === true
 
-      if (!isValid) {
+      if (!isValid || !verifyPayload.apiToken) {
         setError('Invalid email or password.')
         setLoading(false)
         return
       }
 
-      // Step 5: Create super admin session
       const adminSession = {
         email: loginEmail,
-        role: 'super_admin',
-        expiresAt: Date.now() + (24 * 60 * 60 * 1000) // 24 hours
+        role: verifyPayload.role || 'super_admin',
+        expiresAt:
+          typeof verifyPayload.expiresAt === 'number'
+            ? verifyPayload.expiresAt
+            : Date.now() + 24 * 60 * 60 * 1000,
+        apiToken: verifyPayload.apiToken
       }
 
       sessionStorage.setItem('admin_session', JSON.stringify(adminSession))
