@@ -1,7 +1,7 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
-
+kkk
 ### Environment Variables
 
 Create a `.env.local` file in the `frontend` directory with the following variables:
