@@ -52,7 +52,10 @@ const Courses: React.FC = () => {
           setDbCourses(result.data as any);
         }
       } catch (err) {
-        console.error('Error loading courses:', err);
+        // Avoid noisy/sensitive console output on production; keep logs dev-only.
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Error loading courses:', err);
+        }
       }
     })();
   }, []);
@@ -145,21 +148,21 @@ const Courses: React.FC = () => {
               {/* Course Card with Gradient Background - Improved Design */}
               <div className={`card text-white hover:scale-[1.02] transition-all duration-300 hover:shadow-2xl bg-gradient-to-br ${(course.gradient && course.gradient.trim().length > 0) ? course.gradient : 'from-purple-600/20 to-cyan-600/20'} border border-white/20 backdrop-blur-sm overflow-hidden`}>
                 {/* Course Header - Improved Layout */}
-                <div className="flex items-center justify-between mb-4 sm:mb-5 pb-3 sm:pb-4 border-b border-white/10">
-                  <div className="flex items-center space-x-2 sm:space-x-3">
+                <div className="flex flex-col gap-2 sm:gap-3 sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-5 pb-3 sm:pb-4 border-b border-white/10">
+                  <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
                     <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 rounded-lg sm:rounded-xl flex items-center justify-center backdrop-blur-sm flex-shrink-0">
                       <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                       </svg>
                     </div>
-                    <div>
-                      <span className="text-xs sm:text-sm font-semibold opacity-95 block">{course.level}</span>
-                      <div className="text-xs opacity-80">{course.duration}</div>
+                    <div className="min-w-0">
+                      <span className="text-xs sm:text-sm font-semibold opacity-95 block leading-tight break-words">{course.level}</span>
+                      <div className="text-xs opacity-80 leading-tight break-words">{course.duration}</div>
                     </div>
                   </div>
-                  <div className="text-right flex-shrink-0 ml-2">
-                    <div className="text-lg sm:text-xl md:text-2xl font-bold mb-0.5 sm:mb-1">{course.price}</div>
-                    <div className="text-xs opacity-85 leading-tight">{course.note}</div>
+                  <div className="text-left sm:text-right flex-shrink-0 sm:ml-2">
+                    <div className="text-base sm:text-xl md:text-2xl font-bold mb-0.5 sm:mb-1 leading-tight break-words">{course.price}</div>
+                    <div className="text-[11px] sm:text-xs opacity-85 leading-tight break-words">{course.note}</div>
                   </div>
                 </div>
                 

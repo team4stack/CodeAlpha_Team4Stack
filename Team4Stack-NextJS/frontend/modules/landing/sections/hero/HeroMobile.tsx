@@ -49,7 +49,7 @@ const HeroMobile: React.FC<HeroMobileProps> = ({
   };
 
   return (
-    <section id="home" className="relative overflow-hidden flex items-start justify-center min-h-[65vh] pb-3 pt-16">
+    <section id="home" className="relative overflow-hidden flex items-start justify-center min-h-[72vh] pb-6 pt-16">
       {/* Structured Data */}
       <script type="application/ld+json">
         {JSON.stringify(heroStructuredData)}
@@ -194,9 +194,9 @@ const HeroMobile: React.FC<HeroMobileProps> = ({
           </div>
 
           {/* Right: Animated Card - Mobile Optimized Design */}
-          <div className="mt-0">
+          <div className="mt-0 pb-2">
               <div
-                className="mx-auto w-[92vw] max-w-[380px] min-h-[320px] relative"
+                className="mx-auto w-[92vw] max-w-[380px] relative aspect-[16/13] min-h-[340px]"
               onMouseMove={onMouseMove}
               onMouseLeave={onMouseLeave}
             >
@@ -267,8 +267,8 @@ const HeroMobile: React.FC<HeroMobileProps> = ({
                     <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
                   </div>
 
-                  {/* Content: Mobile Optimized Layout */}
-                  <div className="absolute inset-0 p-2.5 flex flex-col gap-1.5 overflow-y-auto">
+                  {/* Content: Mobile Optimized Layout (no internal scroll) */}
+                  <div className="absolute inset-0 p-2.5 flex h-full flex-col gap-2">
                     {/* Stack Chips */}
                     <div className="flex flex-wrap gap-1.5">
                       {['MongoDB','Express','React','Node.js'].map((t, i) => (
@@ -282,16 +282,21 @@ const HeroMobile: React.FC<HeroMobileProps> = ({
                     </div>
                     
                     {/* Code Block - Compact */}
-                    <div className="relative rounded-md border border-white/10 bg-black/40 p-2.5 font-mono text-[0.7rem] text-white/90 shadow-[0_6px_20px_rgba(0,0,0,0.35)]">
-                      <div className="text-white/70 leading-tight text-[0.65rem]"><span className="text-purple-300">const</span> stack <span className="text-purple-300">=</span> <span className="text-emerald-300">['MongoDB','Express','React','Node']</span></div>
-                      <div className="text-white/70 leading-tight text-[0.65rem] mt-0.5"><span className="text-cyan-300">launch</span>() <span className="text-purple-300">{`{`}</span> <span className="text-emerald-300">return</span> <span className="text-emerald-300">'production-ready'</span> <span className="text-purple-300">{`}`}</span></div>
+                    <div className="relative rounded-md border border-white/10 bg-black/40 p-2.5 font-mono text-[0.65rem] text-white/90 shadow-[0_6px_20px_rgba(0,0,0,0.35)]">
+                      <div className="text-white/70 leading-tight"><span className="text-purple-300">const</span> stack <span className="text-purple-300">=</span> <span className="text-emerald-300">['MongoDB','Express','React','Node']</span></div>
+                      <div className="text-white/70 leading-tight mt-0.5"><span className="text-cyan-300">launch</span>() <span className="text-purple-300">{`{`}</span> <span className="text-emerald-300">return</span> <span className="text-emerald-300">'production-ready'</span> <span className="text-purple-300">{`}`}</span></div>
                       <span className="absolute right-2 bottom-2 w-1.5 h-3 bg-cyan-400/90 motion-safe:animate-pulse"></span>
                     </div>
 
-                    {/* For Sale Projects (StackStore coming soon removed) */}
-                    <div className="rounded-md border border-white/10 bg-white/[0.06] p-2">
-                      <div className="px-2 py-1 rounded-full border border-white/25 bg-white/10 text-white/90 text-[9px] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]">
-                        For Sale Projects: <span className="font-semibold">{projectsCount}</span>
+                    {/* Compact highlights */}
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <div className="rounded-md border border-white/10 bg-white/[0.06] p-2">
+                        <div className="text-[9px] text-white/70">For Sale Projects</div>
+                        <div className="text-[13px] font-semibold text-white">{projectsCount}</div>
+                      </div>
+                      <div className="rounded-md border border-white/10 bg-white/[0.06] p-2">
+                        <div className="text-[9px] text-white/70">Mentored Support</div>
+                        <div className="text-[13px] font-semibold text-white">24/7</div>
                       </div>
                     </div>
 
@@ -315,7 +320,7 @@ const HeroMobile: React.FC<HeroMobileProps> = ({
                     </div>
                     
                     {/* Stats - Bottom Row */}
-                    <div className="mt-auto grid grid-cols-3 gap-1.5 pt-1">
+                    <div className="mt-auto grid grid-cols-3 gap-1.5">
                       <div className="rounded bg-white/[0.06] border border-white/10 p-2 text-center">
                         <div className="text-sm font-bold text-white">{projectsCount}{projectsCount > 0 ? '+' : ''}</div>
                         <div className="text-[8px] text-white/70 mt-0.5">Projects</div>

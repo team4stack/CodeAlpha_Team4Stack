@@ -30,6 +30,16 @@ const Services: React.FC = () => {
   const [dbServices, setDbServices] = useState<Array<{ id: string; title: string; description?: string; image_url?: string; emoji?: string; gradient_color?: string; contact?: string }>>([]);
   const [selectedService, setSelectedService] = useState<{ id: string; title: string; description?: string; emoji?: string; gradient_color?: string; contact?: string } | null>(null);
 
+  // Fallback UI when API fails or returns unexpected data.
+  // This prevents production from showing "No services available..." due to transient backend issues.
+  const fallbackDbServices = [
+    { id: 's1', title: 'MERN Stack Websites', description: 'Custom full-stack websites (React, Node.js, Express, MongoDB) with modern UI and secure auth.' },
+    { id: 's2', title: 'Physical MERN Courses', description: 'Hands-on classes at WE Connect with real projects, code reviews, and mentorship.' },
+    { id: 's3', title: 'Online MERN Courses', description: 'Live online classes with recordings, assignments, and support community.' },
+    { id: 's4', title: 'Portfolio Building', description: 'Personal portfolio websites and GitHub/readme setup to showcase your MERN skills.' },
+    { id: 's5', title: 'Shop/Business Software', description: 'Custom software for shops (e.g., mobile shops) and businesses: POS, inventory, billing, users, and reports.' },
+  ] as Array<{ id: string; title: string; description?: string }>;
+
   useEffect(() => {
     // Load services via API
     const loadServices = async () => {
@@ -46,12 +56,17 @@ const Services: React.FC = () => {
               }
               return (b.id || 0) - (a.id || 0)
             })
-          setDbServices(activeServices as any)
+          // If backend returns empty/unexpected set, keep UI stable with fallbacks.
+          setDbServices(activeServices.length > 0 ? (activeServices as any) : fallbackDbServices)
+        } else {
+          setDbServices(fallbackDbServices)
         }
       } catch (err) {
+        // Avoid noisy/sensitive console output on production; keep logs dev-only.
         if (process.env.NODE_ENV === 'development') {
-        console.error('Error loading services:', err);
+          console.error('Error loading services:', err);
         }
+        setDbServices(fallbackDbServices)
       }
     };
 

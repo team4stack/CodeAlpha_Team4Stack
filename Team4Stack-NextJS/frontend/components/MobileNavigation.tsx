@@ -27,7 +27,7 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({ isOpen, onClose, on
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [navbarLinks, setNavbarLinks] = useState<NavbarLink[]>([
     { name: 'Home', href: '#home' },
-    { name: 'Team', href: '#about' },
+    { name: 'Team', href: '/team' },
     { name: 'Services', href: '#services' },
     { name: 'Projects', href: '#projects' },
     { name: 'Courses', href: '#courses' },
@@ -120,7 +120,19 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({ isOpen, onClose, on
           try {
             const parsed = JSON.parse(data.value);
             if (Array.isArray(parsed) && parsed.length > 0) {
-              setNavbarLinks(parsed);
+              // Normalize "Team" link even if DB config contains wrong href.
+              const normalized = parsed.map((l: any) => {
+                const name = String(l?.name ?? '').trim();
+                const href = String(l?.href ?? '').trim();
+                const lower = name.toLowerCase();
+                const looksLikeTeam = lower === 'team' || lower.includes('team');
+                const safeHref = looksLikeTeam ? '/team' : href;
+                return {
+                  name: name || 'Team',
+                  href: safeHref || '/team',
+                };
+              });
+              setNavbarLinks(normalized);
             }
           } catch {}
         }
@@ -134,6 +146,12 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({ isOpen, onClose, on
   // Handle navigation item click
   const handleNavItemClick = (href: string) => {
     onClose();
+    if (href.startsWith('/')) {
+      setTimeout(() => {
+        router.push(href);
+      }, 200);
+      return;
+    }
     // For internal section links, scroll to the section
     // Add a delay to ensure the menu is closed and components are loaded
     setTimeout(() => {

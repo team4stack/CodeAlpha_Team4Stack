@@ -306,7 +306,7 @@ const HeroDesktop: React.FC<HeroDesktopProps> = ({
                   </div>
 
                   {/* Content: stack chips + mini code */}
-                  <div className="absolute inset-0 p-5 md:p-6 flex flex-col gap-4">
+                  <div className="absolute inset-0 p-4 md:p-5 flex flex-col gap-3">
                     <div className="flex flex-wrap gap-2">
                       {['MongoDB','Express','React','Node.js'].map((t, i) => (
                         <span
@@ -323,12 +323,27 @@ const HeroDesktop: React.FC<HeroDesktopProps> = ({
                       <span className="absolute right-2 bottom-2 w-2 h-4 bg-cyan-400/90 motion-safe:animate-pulse"></span>
                     </div>
 
-                    {/* For Sale Projects (StackStore coming soon removed) */}
-                    <div className="rounded-lg border border-white/10 bg-white/[0.06] p-3">
-                      <div className="flex items-center sm:justify-end">
-                        <div className="px-3 py-1.5 rounded-full border border-white/25 bg-white/10 text-white/90 text-xs shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]">
-                          For Sale Projects: <span className="font-semibold">{projectsCount}</span>
-                        </div>
+                    {/* Mid highlights to avoid empty gaps */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="rounded-lg border border-white/10 bg-white/[0.06] p-3">
+                        <div className="text-[11px] text-white/70">For Sale Projects</div>
+                        <div className="text-xl font-bold text-white mt-0.5">{projectsCount}</div>
+                      </div>
+                      <div className="rounded-lg border border-white/10 bg-white/[0.06] p-3">
+                        <div className="text-[11px] text-white/70">Team Support</div>
+                        <div className="text-xl font-bold text-white mt-0.5">24/7</div>
+                      </div>
+                    </div>
+
+                    {/* Service strengths */}
+                    <div className="rounded-lg border border-white/10 bg-white/[0.05] p-3">
+                      <div className="text-[11px] text-white/70 mb-2">Delivery Focus</div>
+                      <div className="flex flex-wrap gap-2">
+                        {['Fast Delivery', 'Clean UI', 'Secure Backend', 'Scalable APIs'].map((item) => (
+                          <span key={item} className="text-[11px] px-2 py-0.5 rounded-full border border-white/25 bg-white/10 text-white/85">
+                            {item}
+                          </span>
+                        ))}
                       </div>
                     </div>
 

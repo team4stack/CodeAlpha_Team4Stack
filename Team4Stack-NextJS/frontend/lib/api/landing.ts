@@ -1,24 +1,39 @@
 // Landing API endpoints
 import apiClient from './client';
-import { cachedPublicGet } from '@/lib/performance/functionalExperienceCache';
+import {
+  cachedPublicGet,
+  clearCachedPublicGet,
+} from '@/lib/performance/functionalExperienceCache';
 
 export const landingApi = {
   // Reviews
   getReviews: async (status?: string) => {
     const query = status ? `?status=${status}` : '';
-    return apiClient.get(`/landing/reviews${query}`);
+    // Cache approved reviews to prevent repeated network work on navigation/remount.
+    const cacheKey = `landing:reviews:${status ?? 'all'}`;
+    return cachedPublicGet(cacheKey, 60 * 1000, () => apiClient.get(`/landing/reviews${query}`));
   },
 
   createReview: async (review: any) => {
-    return apiClient.post('/landing/reviews', review);
+    const res = await apiClient.post('/landing/reviews', review);
+    // New reviews may change the approved list after moderation; keep UI responsive by invalidating.
+    clearCachedPublicGet('landing:reviews:approved');
+    clearCachedPublicGet('landing:reviews:all');
+    return res;
   },
 
   updateReview: async (id: number, review: any) => {
-    return apiClient.put(`/landing/reviews/${id}`, review);
+    const res = await apiClient.put(`/landing/reviews/${id}`, review);
+    clearCachedPublicGet('landing:reviews:approved');
+    clearCachedPublicGet('landing:reviews:all');
+    return res;
   },
 
   deleteReview: async (id: number) => {
-    return apiClient.delete(`/landing/reviews/${id}`);
+    const res = await apiClient.delete(`/landing/reviews/${id}`);
+    clearCachedPublicGet('landing:reviews:approved');
+    clearCachedPublicGet('landing:reviews:all');
+    return res;
   },
 
   // Projects

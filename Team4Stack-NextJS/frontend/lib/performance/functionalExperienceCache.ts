@@ -1,4 +1,4 @@
-import { canUseFunctionalCookies } from '@/lib/cookies/consent';
+import { getCookieConsent } from '@/lib/cookies/consent';
 
 const SS_PREFIX = 't4s_perf_v1_';
 const MAX_SESSION_STORAGE_ENTRY = 120_000;
@@ -9,6 +9,14 @@ const memory = new Map<string, CachedEnvelope<unknown>>();
 
 function storageKey(cacheKey: string): string {
   return `${SS_PREFIX}${cacheKey}`;
+}
+
+function canUsePublicPerfCache(): boolean {
+  // Cache landing/public GET responses after user has made a cookie choice.
+  // This avoids repeated network work on navigation/remounts for both:
+  // - essential ("Necessary only")
+  // - functional ("Accept all")
+  return getCookieConsent() === 'essential' || getCookieConsent() === 'functional';
 }
 
 /** Drop all functional perf cache (memory + our sessionStorage keys). Call when user chooses necessary/reject. */
@@ -36,7 +44,7 @@ export async function cachedPublicGet<T extends { success?: boolean }>(
   ttlMs: number,
   fetcher: () => Promise<T>
 ): Promise<T> {
-  if (!canUseFunctionalCookies()) {
+  if (!canUsePublicPerfCache()) {
     return fetcher();
   }
 
@@ -79,4 +87,18 @@ export async function cachedPublicGet<T extends { success?: boolean }>(
   }
 
   return fresh;
+}
+
+/**
+ * Invalidate a single cached GET entry (memory + sessionStorage).
+ * Useful when a write operation happens and public lists should refresh.
+ */
+export function clearCachedPublicGet(cacheKey: string): void {
+  memory.delete(cacheKey);
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.removeItem(storageKey(cacheKey));
+  } catch {
+    // ignore
+  }
 }

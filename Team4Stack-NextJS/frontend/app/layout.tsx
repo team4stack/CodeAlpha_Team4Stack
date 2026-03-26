@@ -94,7 +94,7 @@ export default function RootLayout({
       "Team Four Stack",
       "T4S",
       "Team4Stack Official",
-      "Team4Stack Collaborators",
+      "Team4Stack Developers",
     ],
     url: "https://www.team4stack.com",
     logo: "https://www.team4stack.com/Team4StackLogo.svg",

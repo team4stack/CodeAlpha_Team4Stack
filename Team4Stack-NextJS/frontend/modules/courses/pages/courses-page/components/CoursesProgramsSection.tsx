@@ -66,7 +66,7 @@ const CoursesProgramsSection: React.FC<CoursesProgramsSectionProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 lg:gap-8 max-w-6xl mx-auto">
           {displayedCourses.map((course) => (
             <div key={course.key} className="relative group">
-              <div className={`relative h-full text-white hover:scale-[1.02] transition-all duration-500 hover:shadow-2xl rounded-2xl overflow-hidden ${
+              <div className={`relative h-auto text-white hover:scale-[1.02] transition-all duration-500 hover:shadow-2xl rounded-2xl overflow-hidden ${
                 (course.gradient && course.gradient.trim().length > 0)
                   ? `bg-gradient-to-br ${course.gradient}`
                   : 'bg-gradient-to-br from-slate-600 via-blue-800 to-slate-800'
@@ -74,17 +74,17 @@ const CoursesProgramsSection: React.FC<CoursesProgramsSectionProps> = ({
                 <div className="absolute top-0 right-0 w-32 h-32 sm:w-48 sm:h-48 md:w-64 md:h-64 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
                 <div className="absolute bottom-0 left-0 w-24 h-24 sm:w-36 sm:h-36 md:w-48 md:h-48 bg-white/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
 
-                <div className="relative z-10 p-4 sm:p-6 md:p-8 flex flex-col h-full">
-                  <div className="flex items-start justify-between mb-4 sm:mb-5 md:mb-6 pb-4 sm:pb-5 md:pb-6 border-b border-white/20">
-                    <div className="flex items-center space-x-2 sm:space-x-3 md:space-x-4">
+                <div className="relative z-10 p-4 sm:p-6 md:p-8 flex flex-col">
+                  <div className="flex flex-col gap-2 sm:gap-3 sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-5 md:mb-6 pb-4 sm:pb-5 md:pb-6 border-b border-white/20">
+                    <div className="flex items-center space-x-2 sm:space-x-3 md:space-x-4 min-w-0">
                       <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 bg-white/20 rounded-lg sm:rounded-xl flex items-center justify-center backdrop-blur-sm shadow-lg flex-shrink-0">
                         <svg className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                         </svg>
                       </div>
-                      <div>
-                        <span className="text-xs sm:text-sm font-bold opacity-95 block mb-0.5 sm:mb-1">{course.level}</span>
-                        <div className="text-xs opacity-80 flex items-center gap-1">
+                      <div className="min-w-0">
+                        <span className="text-xs sm:text-sm font-bold opacity-95 block mb-0.5 sm:mb-1 leading-tight break-words">{course.level}</span>
+                        <div className="text-xs opacity-80 flex items-center gap-1 leading-tight break-words">
                           <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
@@ -92,16 +92,18 @@ const CoursesProgramsSection: React.FC<CoursesProgramsSectionProps> = ({
                         </div>
                       </div>
                     </div>
-                    <div className="text-right flex-shrink-0 ml-2">
-                      <div className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold mb-0.5 sm:mb-1 bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent">
+                    <div className="text-left sm:text-right flex-shrink-0 sm:ml-2 min-w-0">
+                      <div className="text-base sm:text-xl md:text-2xl lg:text-3xl font-bold mb-0.5 sm:mb-1 bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent leading-tight break-words">
                         {course.price}
                       </div>
-                      <div className="text-xs opacity-85 font-medium leading-tight">{course.note}</div>
+                      <div className="text-[11px] sm:text-xs opacity-85 font-medium leading-tight break-words">
+                        {course.note}
+                      </div>
                     </div>
                   </div>
 
-                  <h3 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4 leading-tight">{course.title}</h3>
-                  <p className="text-white/90 mb-6 sm:mb-8 leading-relaxed text-sm sm:text-base">
+                  <h3 className="text-lg sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4 leading-tight break-words">{course.title}</h3>
+                  <p className="text-white/90 mb-6 sm:mb-8 leading-relaxed text-sm sm:text-base break-words">
                     {course.description}
                   </p>
 
