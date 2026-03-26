@@ -1,0 +1,198 @@
+@layer components {
+  /* Modern Layout Utilities */
+  .section-padding {
+    padding: 4rem 0;
+  }
+
+  /* Horizontal scroll (drag + auto) for projects - Desktop */
+  .project-marquee {
+    overflow-x: hidden;
+    overflow-y: visible;
+    cursor: grab;
+    user-select: none;
+    scroll-behavior: smooth;
+    position: relative;
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y pinch-zoom;
+    /* Prevent text selection during drag */
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+  }
+
+  /* Mobile: Enable native horizontal scrolling */
+  @media (max-width: 767px) {
+    .project-marquee {
+      overflow-x: auto !important;
+      overflow-y: hidden !important;
+      touch-action: pan-x;
+      -webkit-overflow-scrolling: touch;
+      scroll-snap-type: x mandatory;
+      -webkit-scroll-snap-type: x mandatory;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      overscroll-behavior-x: contain;
+      overscroll-behavior-y: auto;
+      /* GPU acceleration */
+      transform: translateZ(0);
+      -webkit-transform: translateZ(0);
+      will-change: scroll-position;
+      /* Smooth momentum scrolling */
+      -webkit-overflow-scrolling: touch;
+      /* Hide scrollbar */
+      scrollbar-width: none;
+    }
+    .project-marquee::-webkit-scrollbar {
+      display: none;
+    }
+    .project-marquee.dragging {
+      cursor: grabbing;
+    }
+  }
+  .project-marquee.dragging { cursor: grabbing; }
+  .project-marquee .project-track {
+    display: flex;
+    gap: 2rem;
+    width: max-content;
+    will-change: transform;
+    transform: translateZ(0); /* GPU acceleration */
+    touch-action: pan-x;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Mobile-specific improvements for project marquee */
+  @media (max-width: 767px) {
+    .project-marquee {
+      touch-action: pan-x;
+      -webkit-overflow-scrolling: touch;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scroll-snap-type: x mandatory;
+      -webkit-scroll-snap-type: x mandatory;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      cursor: grab;
+      -webkit-tap-highlight-color: transparent;
+      /* Better scrolling performance */
+      overscroll-behavior-x: contain;
+      overscroll-behavior-y: auto;
+      /* GPU acceleration */
+      transform: translateZ(0);
+      -webkit-transform: translateZ(0);
+      will-change: scroll-position;
+      /* Smooth momentum scrolling */
+      -webkit-overflow-scrolling: touch;
+    }
+    .project-marquee::-webkit-scrollbar {
+      display: none;
+    }
+    .project-marquee.dragging {
+      cursor: grabbing;
+      touch-action: pan-x;
+    }
+    .project-marquee .project-track {
+      touch-action: pan-x;
+      -webkit-overflow-scrolling: touch;
+      display: flex;
+      gap: 1.5rem;
+      /* Mobile: NO transform or will-change to prevent animation */
+      transform: none !important;
+      -webkit-transform: none !important;
+      will-change: auto !important;
+      /* Prevent layout shifts */
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+    }
+    .project-card {
+      scroll-snap-align: start;
+      -webkit-scroll-snap-align: start;
+      width: 280px;
+      min-width: 280px;
+      flex-shrink: 0;
+      /* Prevent card from interfering with scroll */
+      touch-action: pan-x;
+      /* GPU acceleration */
+      transform: translateZ(0);
+      -webkit-transform: translateZ(0);
+    }
+    /* Add visual indicator for swipe on mobile */
+    .project-marquee::after {
+      content: '← Swipe →';
+      position: absolute;
+      bottom: 0.5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.75rem;
+      color: rgba(0, 0, 0, 0.6);
+      background: rgba(255, 255, 255, 0.9);
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.375rem;
+      pointer-events: none;
+      opacity: 0.8;
+      animation: pulse 2s ease-in-out infinite;
+      z-index: 10;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    /* Dark mode indicator */
+    .dark .project-marquee::after {
+      color: rgba(255, 255, 255, 0.9);
+      background: rgba(0, 0, 0, 0.7);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.7; }
+      50% { opacity: 0.3; }
+    }
+  }
+
+  /* Visual indicator for interactivity */
+  .project-marquee::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.5), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 1;
+  }
+  .project-marquee:hover::before { opacity: 1; }
+
+  .project-card { width: 350px; flex: 0 0 auto; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease; }
+  .project-card:hover { transform: scale(1.05) translateY(-5px); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3); }
+  .project-card.dragging { pointer-events: none; /* Prevent hover effects while dragging */ transform: scale(1) translateY(0) !important; box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2) !important; }
+
+  @media (min-width: 768px) {
+    .section-padding {
+      padding: 5rem 0;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .section-padding {
+      padding: 6rem 0;
+    }
+  }
+
+  .container-custom {
+    max-width: 80rem;
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
+
+  @media (min-width: 640px) {
+    .container-custom {
+      padding: 0 1.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .container-custom {
+      padding: 0 2rem;
+    }
+  }
+}

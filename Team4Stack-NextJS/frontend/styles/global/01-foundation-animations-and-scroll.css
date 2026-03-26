@@ -1,0 +1,312 @@
+/* Notification Popup Animation */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Fade In Animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Admin Custom Scrollbar Design */
+.admin-custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(6, 182, 212, 0.6) rgba(0, 0, 0, 0.2);
+}
+
+.admin-custom-scrollbar::-webkit-scrollbar {
+  width: 10px;
+}
+
+.admin-custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+  margin: 8px 0;
+}
+
+.admin-custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(6, 182, 212, 0.8) 0%, rgba(249, 115, 22, 0.8) 100%);
+  border-radius: 10px;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.4);
+  transition: all 0.3s ease;
+}
+
+.admin-custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(6, 182, 212, 1) 0%, rgba(249, 115, 22, 1) 100%);
+  box-shadow: 0 0 15px rgba(6, 182, 212, 0.6);
+}
+
+.admin-custom-scrollbar::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(180deg, rgba(6, 182, 212, 0.9) 0%, rgba(249, 115, 22, 0.9) 100%);
+}
+
+/* Global scrollbar theme: match admin style everywhere */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(6, 182, 212, 0.6) rgba(0, 0, 0, 0.2);
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+  margin: 8px 0;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(6, 182, 212, 0.8) 0%, rgba(249, 115, 22, 0.8) 100%);
+  border-radius: 10px;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.4);
+  transition: all 0.3s ease;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(6, 182, 212, 1) 0%, rgba(249, 115, 22, 1) 100%);
+  box-shadow: 0 0 15px rgba(6, 182, 212, 0.6);
+}
+
+*::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(180deg, rgba(6, 182, 212, 0.9) 0%, rgba(249, 115, 22, 0.9) 100%);
+}
+
+/* Landing admin (<main>): matte scrollbar + no neon thumb (readable, non-“glass”) */
+.landing-admin-scroll {
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(71 85 105) rgb(15 23 42);
+}
+
+.landing-admin-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.landing-admin-scroll::-webkit-scrollbar-track {
+  background: rgb(15 23 42);
+  border-radius: 4px;
+}
+
+.landing-admin-scroll::-webkit-scrollbar-thumb {
+  background: rgb(51 65 85);
+  border-radius: 4px;
+  border: 2px solid rgb(15 23 42);
+}
+
+.landing-admin-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgb(71 85 105);
+}
+
+/*
+ * Landing admin: strip liquid-glass only inside dense hero editor (not whole <main>).
+ * Apply class `landing-admin-plain-ui` on the hero settings panel wrapper.
+ * Optional: add `landing-admin-glass` to a button inside plain-ui to bring glass back on that control.
+ */
+.landing-admin-plain-ui button:not(.landing-admin-glass) {
+  border-radius: inherit;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  overflow: visible;
+  isolation: auto;
+  will-change: auto;
+  box-shadow: none;
+}
+
+.landing-admin-plain-ui button:not(.landing-admin-glass)::after {
+  content: none !important;
+  filter: none !important;
+  opacity: 0 !important;
+  display: none !important;
+}
+
+.landing-admin-plain-ui button:not(.landing-admin-glass):hover::after {
+  content: none !important;
+  filter: none !important;
+}
+
+.landing-admin-plain-ui button.landing-admin-glass {
+  /* not full pill — hero row actions use rounded-md from markup */
+  border-radius: 0.375rem !important;
+  backdrop-filter: blur(8px) saturate(120%) !important;
+  -webkit-backdrop-filter: blur(8px) saturate(120%) !important;
+  overflow: hidden !important;
+  isolation: isolate !important;
+  will-change: transform, filter, box-shadow;
+}
+
+.landing-admin-plain-ui button.landing-admin-glass:not(.absolute):not(.fixed):not(.sticky) {
+  position: relative;
+}
+
+.landing-admin-plain-ui button.landing-admin-glass::after {
+  content: "" !important;
+  display: block !important;
+  position: absolute !important;
+  inset: 0 !important;
+  border-radius: inherit !important;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.55) 0%,
+    rgba(255, 255, 255, 0.18) 50%,
+    rgba(255, 255, 255, 0.08) 100%
+  ) !important;
+  mix-blend-mode: screen !important;
+  pointer-events: none !important;
+  filter: url(#turbulence-displacement) !important;
+  opacity: 0.8 !important;
+  transition: opacity 0.3s ease !important;
+  z-index: 1 !important;
+}
+
+.landing-admin-plain-ui button.landing-admin-glass:hover::after {
+  filter: url(#turbulence-displacement) !important;
+}
+
+/* Icon-sized × controls (hero rows): keep circle under same glass ::after */
+.landing-admin-plain-ui button.landing-admin-glass.landing-admin-glass-icon {
+  border-radius: 9999px !important;
+}
+
+/*
+ * Admin sidebars: no gutter when idle (avoids empty strip next to border); scrollbar appears on hover only.
+ * WebKit: width 0 → 6px on container hover (slight reflow only while scrolling/hovering).
+ */
+.admin-sidebar-scrollbar {
+  scrollbar-width: none;
+}
+
+.admin-sidebar-scrollbar:hover {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(6, 182, 212, 0.7) transparent;
+}
+
+.admin-sidebar-scrollbar::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.admin-sidebar-scrollbar:hover::-webkit-scrollbar {
+  width: 6px;
+  height: 0;
+}
+
+.admin-sidebar-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  /* Clear pin button (~top-4 + 24px control); keep thumb/track below that */
+  margin: 48px 0 10px;
+  border-radius: 9999px;
+}
+
+.admin-sidebar-scrollbar::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.admin-sidebar-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(6, 182, 212, 0.88) 0%, rgba(249, 115, 22, 0.78) 100%);
+  border: 2px solid rgba(0, 0, 0, 0.35);
+  box-shadow:
+    0 0 0 1px rgba(6, 182, 212, 0.35),
+    0 0 12px rgba(6, 182, 212, 0.4);
+}
+
+.admin-sidebar-scrollbar:hover::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(6, 182, 212, 1) 0%, rgba(249, 115, 22, 0.95) 100%);
+  box-shadow:
+    0 0 0 1px rgba(6, 182, 212, 0.5),
+    0 0 16px rgba(6, 182, 212, 0.55);
+}
+
+/* Smooth width expand/collapse — avoids abrupt “snap” vs default ease-in-out */
+.admin-sidebar-panel {
+  transition-property: width;
+  transition-duration: 440ms;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-sidebar-panel {
+    transition-duration: 0.01ms;
+  }
+}
+
+/* Collapsed sidebar — active nav: icon “filled” + readable on glowing plate behind */
+.admin-sidebar-collapsed-active-icon {
+  color: rgb(240 253 250);
+}
+.admin-sidebar-collapsed-active-icon svg {
+  filter: drop-shadow(0 0 3px rgba(34, 211, 238, 0.95));
+}
+.admin-sidebar-collapsed-active-icon svg path,
+.admin-sidebar-collapsed-active-icon svg circle,
+.admin-sidebar-collapsed-active-icon svg rect,
+.admin-sidebar-collapsed-active-icon svg polyline,
+.admin-sidebar-collapsed-active-icon svg line {
+  stroke: currentColor;
+  fill: rgba(207, 250, 254, 0.42);
+}
+
+/* Courses AI Chatbot - chatbox scrollbar (stylish) */
+.chat-panel-scroll {
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+  scrollbar-color: #a78bfa #e2e8f0;
+}
+.dark .chat-panel-scroll {
+  scrollbar-color: #7c3aed #334155;
+}
+.chat-panel-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+.chat-panel-scroll::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 10px;
+  margin: 8px 0;
+}
+.dark .chat-panel-scroll::-webkit-scrollbar-track {
+  background: #334155;
+}
+.chat-panel-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #8b5cf6 0%, #7c3aed 50%, #6d28d9 100%);
+  border-radius: 10px;
+  border: 2px solid #f1f5f9;
+  min-height: 40px;
+}
+.chat-panel-scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #a78bfa 0%, #8b5cf6 50%, #7c3aed 100%);
+  border-color: #e2e8f0;
+}
+.chat-panel-scroll::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(180deg, #7c3aed 0%, #6d28d9 100%);
+}
+.dark .chat-panel-scroll::-webkit-scrollbar-thumb {
+  border-color: #334155;
+}
+.dark .chat-panel-scroll::-webkit-scrollbar-thumb:hover {
+  border-color: #475569;
+}

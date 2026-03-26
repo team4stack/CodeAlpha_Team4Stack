@@ -22,39 +22,62 @@ const TermsConditionsPage: React.FC = () => {
           <h1>Terms & Conditions</h1>
           <div className="section-content">
             <p>Last updated: {lastUpdated || 'Loading...'}</p>
-            
+
+            <p>
+              These Terms govern your use of Team4Stack services, including course-related features and support channels.
+            </p>
+
             <h2>Acceptance of Terms</h2>
-            <p>By accessing and using Team4Stack services, you agree to be bound by these Terms and Conditions. If you do not agree to these terms, you may not access or use our services.</p>
-            
-            <h2>Services</h2>
-            <p>Team4Stack provides web development and software solutions. We reserve the right to modify, suspend, or discontinue any aspect of our services at any time.</p>
-            
-            <h2>User Responsibilities</h2>
-            <p>When using our services, you agree to:</p>
+            <p>
+              By using this platform, you agree to these Terms and applicable policies. If you do not agree, please do not use the service.
+            </p>
+
+            <h2>Account and Access</h2>
             <ul>
-              <li>Provide accurate and complete information</li>
-              <li>Maintain the security of your account credentials</li>
-              <li>Use our services only for lawful purposes</li>
-              <li>Not attempt to interfere with the proper functioning of our services</li>
+              <li>Provide accurate information during signup and applications</li>
+              <li>Keep your credentials secure and do not share account access</li>
+              <li>You are responsible for activity performed through your account</li>
             </ul>
-            
+
+            <h2>Allowed Use</h2>
+            <ul>
+              <li>Use the platform lawfully and respectfully</li>
+              <li>Do not attempt unauthorized access, scraping, or service disruption</li>
+              <li>Do not upload harmful, misleading, or abusive content</li>
+            </ul>
+
+            <h2>Course and Application Rules</h2>
+            <p>
+              Course access, approvals, and account status are managed according to platform and admin rules.
+              Misuse or false submissions may lead to restricted access.
+            </p>
+
             <h2>Intellectual Property</h2>
-            <p>All content, trademarks, and intellectual property on Team4Stack websites are owned by or licensed to Team4Stack. You may not use our intellectual property without express written permission.</p>
-            
+            <p>
+              Platform content, branding, and learning materials are owned by Team4Stack or licensed partners
+              and may not be copied or redistributed without permission.
+            </p>
+
+            <h2>Service Availability</h2>
+            <p>
+              We continuously improve the platform and may update features, content, or workflows.
+              We try to minimize downtime but cannot guarantee uninterrupted availability at all times.
+            </p>
+
             <h2>Limitation of Liability</h2>
-            <p>Team4Stack shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising out of your use of our services.</p>
-            
-            <h2>Termination</h2>
-            <p>We reserve the right to terminate or suspend your access to our services at any time, without notice, for conduct that we believe violates these terms or is harmful to other users.</p>
-            
+            <p>
+              Team4Stack is not liable for indirect or consequential losses resulting from platform misuse,
+              third-party outages, or circumstances outside reasonable control.
+            </p>
+
             <h2>Changes to Terms</h2>
-            <p>We may update these Terms and Conditions from time to time. We will notify you of any changes by posting the new terms on this page and updating the "Last updated" date.</p>
-            
-            <h2>Governing Law</h2>
-            <p>These terms shall be governed by and construed in accordance with applicable laws.</p>
-            
-            <h2>Contact Us</h2>
-            <p>If you have any questions about these Terms and Conditions, please <Link href="/contact">contact us</Link>.</p>
+            <p>
+              Terms may be updated when legal or product requirements change. Updates are effective when posted on this page.
+            </p>
+
+            <p className="legal-note">
+              For questions about these Terms, please <Link href="/contact">contact support</Link>.
+            </p>
           </div>
         </div>
     </div>

@@ -1,0 +1,20 @@
+@layer components {
+  /* Prevent horizontal scrolling (safe for fixed elements) */
+  body {
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    /* NOTE: do NOT apply transform/perspective/contain here,
+       they can break position: fixed for navbar and other elements */
+  }
+
+  /* Ensure proper scrolling behavior */
+  html {
+    scroll-padding-top: 4rem;
+    scroll-behavior: smooth;
+    background-color: var(--bg-primary);
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    overscroll-behavior-x: none;
+  }
+}

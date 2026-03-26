@@ -13,6 +13,16 @@ export const coursesApi = {
     return cachedPublicGet(`courses:byId:${id}`, 90 * 1000, () => apiClient.get(`/courses/${id}`));
   },
 
+  // Public: upload image to Cloudinary via backend proxy
+  uploadImageToCloudinary: async (fileDataUrl: string, folder?: string) => {
+    return apiClient.post('/public/uploads/cloudinary', { fileDataUrl, folder });
+  },
+
+  // Public: upload assignment file (pdf/doc/docx) to Cloudinary via backend proxy
+  uploadAssignmentFileToCloudinary: async (fileDataUrl: string, fileName: string, folder?: string) => {
+    return apiClient.post('/public/uploads/cloudinary-file', { fileDataUrl, fileName, folder });
+  },
+
   // Create course
   createCourse: async (course: any) => {
     return apiClient.post('/courses', course);
@@ -48,15 +58,61 @@ export const coursesApi = {
     return apiClient.delete(`/courses/videos/${id}`);
   },
 
+  // Assignments
+  getAssignmentsByCourse: async (courseId: number) => {
+    return apiClient.get(`/courses/assignments/course/${courseId}`);
+  },
+
+  getAssignmentsByVideo: async (videoId: number) => {
+    return apiClient.get(`/courses/assignments/video/${videoId}`);
+  },
+
+  createAssignment: async (payload: any) => {
+    return apiClient.post('/courses/assignments', payload);
+  },
+
+  updateAssignment: async (id: number, payload: any) => {
+    return apiClient.put(`/courses/assignments/${id}`, payload);
+  },
+
+  deleteAssignment: async (id: number) => {
+    return apiClient.delete(`/courses/assignments/${id}`);
+  },
+
+  submitAssignment: async (assignmentId: number, payload: any) => {
+    return apiClient.post(`/courses/assignments/${assignmentId}/submit`, payload);
+  },
+
+  getAssignmentSubmissionsByVideo: async (videoId: number) => {
+    return apiClient.get(`/courses/assignments/video/${videoId}/submissions`);
+  },
+
+  getAssignmentSubmissions: async (filters?: { userId?: string; courseId?: number; videoId?: number }) => {
+    const params = new URLSearchParams();
+    if (filters?.userId) params.append('userId', filters.userId);
+    if (typeof filters?.courseId === 'number') params.append('courseId', String(filters.courseId));
+    if (typeof filters?.videoId === 'number') params.append('videoId', String(filters.videoId));
+    const query = params.toString();
+    return apiClient.get(`/courses/assignments/submissions${query ? `?${query}` : ''}`);
+  },
+
+  updateAssignmentSubmission: async (id: number, patch: any) => {
+    return apiClient.patch(`/courses/assignments/submissions/${id}`, patch);
+  },
+
   // Get admission forms
   getAdmissionForms: async (filters?: { email?: string; approved?: boolean; course_name?: string }) => {
     const params = new URLSearchParams();
     if (filters?.email) params.append('email', filters.email);
     if (filters?.approved !== undefined) params.append('approved', String(filters.approved));
     if (filters?.course_name) params.append('course_name', filters.course_name);
-    
+
     const query = params.toString();
-    return apiClient.get(`/courses/admissions${query ? `?${query}` : ''}`);
+    // Student self-lookup by email must use Supabase JWT, not admin_session (otherwise 403 for non–courses-admin admins).
+    const studentSelfQuery = Boolean(filters?.email && String(filters.email).trim());
+    return apiClient.get(`/courses/admissions${query ? `?${query}` : ''}`, {
+      ...(studentSelfQuery ? { authMode: 'user-only' as const } : {}),
+    });
   },
 
   // Create admission form
@@ -89,6 +145,42 @@ export const coursesApi = {
   getUserProgress: async (userId: string, courseId?: number) => {
     const query = courseId ? `?courseId=${courseId}` : '';
     return apiClient.get(`/courses/progress/${userId}${query}`);
+  },
+
+  // Get single-course report for one student
+  getStudentCourseReport: async (courseId: number | string, userId: string) => {
+    return apiClient.get(`/courses/reports/${courseId}/${userId}`);
+  },
+
+  applyForCertificate: async (payload: {
+    course_id: number | string;
+    full_name: string;
+    cnic: string;
+    email: string;
+    phone_number: string;
+    roll_number: string;
+  }) => {
+    return apiClient.post('/courses/certificates/apply', payload);
+  },
+
+  getCertificateApplications: async (filters?: {
+    userId?: string;
+    courseId?: number | string;
+    status?: string;
+  }) => {
+    const params = new URLSearchParams();
+    if (filters?.userId) params.append('userId', filters.userId);
+    if (filters?.courseId !== undefined) params.append('courseId', String(filters.courseId));
+    if (filters?.status) params.append('status', filters.status);
+    const query = params.toString();
+    return apiClient.get(`/courses/certificates${query ? `?${query}` : ''}`);
+  },
+
+  updateCertificateApplication: async (
+    id: number | string,
+    patch: { status?: string; admin_notes?: string | null; certificate_url?: string | null }
+  ) => {
+    return apiClient.patch(`/courses/certificates/${id}`, patch);
   },
 
   // Update progress
@@ -137,7 +229,7 @@ export const coursesApi = {
     return apiClient.delete(`/courses/quizzes/options/${id}`);
   },
 
-  startQuizAttempt: async (quizId: number, userId: string, videoId: number) => {
+  startQuizAttempt: async (quizId: number | string, userId: string, videoId: number) => {
     return apiClient.post('/courses/quizzes/attempts/start', {
       quiz_id: quizId,
       user_id: userId,
@@ -145,7 +237,10 @@ export const coursesApi = {
     });
   },
 
-  submitQuizAttempt: async (attemptId: number, answers: Array<{ question_id: number; selected_option_id: number }>) => {
+  submitQuizAttempt: async (
+    attemptId: number | string,
+    answers: Array<{ question_id: number | string; selected_option_id: number | string }>
+  ) => {
     return apiClient.post(`/courses/quizzes/attempts/${attemptId}/submit`, { answers });
   },
 

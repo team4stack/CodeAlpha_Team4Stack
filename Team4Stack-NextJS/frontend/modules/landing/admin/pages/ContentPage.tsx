@@ -1,14 +1,17 @@
 'use client'
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { useParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import AdminCollapsibleSection from '@/modules/landing/admin/components/AdminCollapsibleSection'
-import { landingApi, coursesApi, teamApi } from '@/lib/api'
-import { retryWithBackoff } from '@/lib/utils/retry'
-
-type Row = { id?: number; title?: string; description?: string; role_text?: string; image_url?: string; is_head?: boolean; profile_image_url?: string; banner_image_url?: string; portfolio_url?: string; github_url?: string; primary_tag?: string; order_index?: number; active?: boolean; level?: string; duration?: string; price?: string; note?: string; features?: string; gradient?: string; emoji?: string; gradient_color?: string; contact?: string }
+import LandingAdminFormMount from '@/modules/landing/admin/components/LandingAdminFormMount'
+import { createContentTableRecord, deleteContentTableRecord, updateContentTableRecord } from '@/modules/landing/admin/content-editor/contentTableCrud'
+import { buildAvailableOrders, fetchLandingContentRows, parseSiteSettingsArray } from '@/modules/landing/admin/content-editor/contentDataLoaders'
+import { buildContentRecordPayload } from '@/modules/landing/admin/content-editor/recordPayloadBuilder'
+import { deleteSiteSettingsWithFallback } from '@/modules/landing/admin/content-editor/siteSettingsCrud'
+import { CONTACT_SITE_SETTING_KEYS, FOOTER_SITE_SETTING_KEYS, HERO_SITE_SETTING_KEYS } from '@/modules/landing/admin/content-editor/siteSettingsKeys'
+import { createEmptyContentEditorRow, type ContentEditorRow } from '@/modules/landing/admin/content-editor/types'
+import { landingApi } from '@/lib/api'
 
 interface ContentPageProps {
   contentType?: string
@@ -18,12 +21,12 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
   const params = useParams()
   const contentType = propContentType || (params?.contentType as string) || ''
   const table = useMemo(() => (contentType || '').toLowerCase(), [contentType])
-  const [rows, setRows] = useState<Row[]>([])
+  const [rows, setRows] = useState<ContentEditorRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [form, setForm] = useState<Row>({ title: '', description: '', role_text: '', image_url: '', is_head: false, profile_image_url: '', banner_image_url: '', portfolio_url: '', github_url: '', primary_tag: '', order_index: undefined, active: true, emoji: '', gradient_color: '', contact: '' })
+  const [form, setForm] = useState<ContentEditorRow>(createEmptyContentEditorRow())
   const [editingId, setEditingId] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [selectedService, setSelectedService] = useState<Row | null>(null)
+  const [selectedService, setSelectedService] = useState<ContentEditorRow | null>(null)
   const [availableOrders, setAvailableOrders] = useState<number[]>([])
 
   // Component lifecycle tracking (dev only)
@@ -62,7 +65,7 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
     'w-full min-w-0 rounded border border-slate-700 bg-slate-950 py-0.5 px-1 text-[11px] text-white shadow-none focus:border-slate-500 focus:outline-none focus:ring-0'
   /** Remove row: flat slate icon, top-right aligned */
   const heroRemoveBtnClass =
-    'landing-admin-glass landing-admin-glass-icon z-[2] flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-slate-600 bg-slate-900/85 text-[13px] font-medium leading-none text-slate-400 hover:border-rose-500/55 hover:bg-rose-950/90 hover:text-rose-200'
+    'landing-admin-glass landing-admin-glass-icon z-2 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-slate-600 bg-slate-900/85 text-[13px] font-medium leading-none text-slate-400 hover:border-rose-500/55 hover:bg-rose-950/90 hover:text-rose-200'
   const moveArrayItem = <T,>(list: T[], from: number, to: number): T[] => {
     if (from === to || from < 0 || to < 0 || from >= list.length || to >= list.length) return [...list]
     const next = [...list]
@@ -81,54 +84,12 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
   const closeEditor = useCallback(() => {
     setEditorOpen(false)
     setEditingId(null)
-    setForm({
-      title: '',
-      description: '',
-      role_text: '',
-      image_url: '',
-      is_head: false,
-      profile_image_url: '',
-      banner_image_url: '',
-      portfolio_url: '',
-      github_url: '',
-      primary_tag: '',
-      order_index: undefined,
-      active: true,
-      level: '',
-      duration: '',
-      price: '',
-      note: '',
-      features: '',
-      emoji: '',
-      gradient_color: '',
-      contact: ''
-    })
+    setForm(createEmptyContentEditorRow())
   }, [])
 
   const openNewRecord = useCallback(() => {
     setEditingId(null)
-    setForm({
-      title: '',
-      description: '',
-      role_text: '',
-      image_url: '',
-      is_head: false,
-      profile_image_url: '',
-      banner_image_url: '',
-      portfolio_url: '',
-      github_url: '',
-      primary_tag: '',
-      order_index: undefined,
-      active: true,
-      level: '',
-      duration: '',
-      price: '',
-      note: '',
-      features: '',
-      emoji: '',
-      gradient_color: '',
-      contact: ''
-    })
+    setForm(createEmptyContentEditorRow())
     setEditorOpen(true)
   }, [])
 
@@ -328,314 +289,91 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
 
   // Helper: delete site_settings keys; fallback to clearing values if delete blocked by RLS
   const deleteSiteSettingKeys = async (keys: string[]) => {
-    if (!keys.length) return
-    const delRes = await landingApi.deleteSiteSettings(keys)
-    if (delRes.error) {
-      // Fallback: upsert empty values so UI clears
-      const entries = keys.map((k) => ({ key: k, value: '' }))
-      const upRes = await landingApi.upsertSiteSettings(entries)
-      if (upRes.error) {
-        toast.error(upRes.error)
-        setError(upRes.error)
-      }
-    }
-  }
-
-  // Helper: Get API function based on table name
-  const getApiForTable = (tableName: string) => {
-    if (tableName === 'reviews' || tableName === 'projects' || tableName === 'services') {
-      return landingApi
-    } else if (tableName === 'team_members' || tableName === 'mentor_profile') {
-      return teamApi
-    } else if (tableName === 'courses') {
-      return coursesApi
-    }
-    return null
-  }
-
-  // Helper: Update record in table
-  const updateTableRecord = async (tableName: string, id: number, payload: any) => {
-    const api = getApiForTable(tableName)
-    if (!api) {
-      setError(`Unknown table: ${tableName}`)
-      return { error: `Unknown table: ${tableName}` }
-    }
-
-    if (tableName === 'reviews') {
-      return await api.updateReview(id, payload)
-    } else if (tableName === 'projects') {
-      return await api.updateProject(id, payload)
-    } else if (tableName === 'services') {
-      return await api.updateService(id, payload)
-    } else if (tableName === 'team_members') {
-      return await api.updateTeamMember(id, payload)
-    } else if (tableName === 'mentor_profile') {
-      return await api.updateMentorProfile(id, payload)
-    } else if (tableName === 'courses') {
-      return await api.updateCourse(id, payload)
-    }
-    return { error: `Update not implemented for table: ${tableName}` }
-  }
-
-  // Helper: Create record in table
-  const createTableRecord = async (tableName: string, payload: any) => {
-    const api = getApiForTable(tableName)
-    if (!api) {
-      setError(`Unknown table: ${tableName}`)
-      return { error: `Unknown table: ${tableName}` }
-    }
-
-    if (tableName === 'reviews') {
-      return await api.createReview(payload)
-    } else if (tableName === 'projects') {
-      return await api.createProject(payload)
-    } else if (tableName === 'services') {
-      return await api.createService(payload)
-    } else if (tableName === 'team_members') {
-      return await api.createTeamMember(payload)
-    } else if (tableName === 'mentor_profile') {
-      return await api.createMentorProfile(payload)
-    } else if (tableName === 'courses') {
-      return await api.createCourse(payload)
-    }
-    return { error: `Create not implemented for table: ${tableName}` }
-  }
-
-  // Helper: Delete record from table
-  const deleteTableRecord = async (tableName: string, id: number) => {
-    const api = getApiForTable(tableName)
-    if (!api) {
-      setError(`Unknown table: ${tableName}`)
-      return { error: `Unknown table: ${tableName}` }
-    }
-
-    if (tableName === 'reviews') {
-      return await api.deleteReview(id)
-    } else if (tableName === 'projects') {
-      return await api.deleteProject(id)
-    } else if (tableName === 'services') {
-      return await api.deleteService(id)
-    } else if (tableName === 'team_members') {
-      return await api.deleteTeamMember(id)
-    } else if (tableName === 'mentor_profile') {
-      return await api.deleteMentorProfile(id)
-    } else if (tableName === 'courses') {
-      return await api.deleteCourse(id)
-    }
-    return { error: `Delete not implemented for table: ${tableName}` }
-  }
-
-  // Convert features input into JSON array safely (accepts JSON or comma/newline separated)
-  const toFeaturesJson = (raw?: string | null) => {
-    if (!raw) return null
-    const value = String(raw).trim()
-    if (!value) return null
-    try {
-      const parsed = JSON.parse(value)
-      if (Array.isArray(parsed)) return parsed
-      return [String(parsed)]
-    } catch {
-      const parts = value
-        .split(/[\n,;•|]+/)
-        .map((s) => s.trim())
-        .filter(Boolean)
-      return parts.length ? parts : null
+    const result = await deleteSiteSettingsWithFallback(keys)
+    if (result.error) {
+      toast.error(result.error)
+      setError(result.error)
     }
   }
 
   const load = useCallback(async () => {
       setLoading(true)
       setError(null)
-      
-      let data: any = null
-      let error: any = null
-      
-      try {
-        if (isReviews) {
-          const result = await retryWithBackoff(async () => await landingApi.getReviews())
-          data = result.data || []
-          // Sort by order_index and created_at
-          data.sort((a: any, b: any) => {
-            if (a.order_index !== b.order_index) {
-              return (a.order_index || 999) - (b.order_index || 999)
-            }
-            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-          })
-        } else if (isTeamLike) {
-          const result = table === 'team_members' 
-            ? await retryWithBackoff(async () => await teamApi.getTeamMembers())
-            : await retryWithBackoff(async () => await teamApi.getMentorProfiles())
-          data = result.data || []
-          // Sort by is_head, order_index, id
-          data.sort((a: any, b: any) => {
-            if (a.is_head !== b.is_head) return b.is_head ? 1 : -1
-            if (a.order_index !== b.order_index) return (a.order_index || 999) - (b.order_index || 999)
-            return (b.id || 0) - (a.id || 0)
-          })
-        } else if (isCourses) {
-          const result = await retryWithBackoff(async () => await coursesApi.getAllCourses())
-          data = result.data || []
-          data.sort((a: any, b: any) => {
-            if (a.order_index !== b.order_index) return (a.order_index || 999) - (b.order_index || 999)
-            return (b.id || 0) - (a.id || 0)
-          })
-        } else if (isServices) {
-          const result = await retryWithBackoff(async () => await landingApi.getServices())
-          data = result.data || []
-          data.sort((a: any, b: any) => {
-            if (a.order_index !== b.order_index) return (a.order_index || 999) - (b.order_index || 999)
-            return (b.id || 0) - (a.id || 0)
-          })
-        } else if (isContact || isFooter || isHero) {
-          const keys = [
-            ...(isContact ? ['contact_address','contact_website','contact_phone','contact_map_src','contact_primary_name','contact_primary_tagline','contact_whatsapp','contact_socials_json'] : []),
-            ...(isFooter ? ['footer_about_text','footer_socials_json','footer_version','footer_links_json'] : []),
-            ...(isHero ? ['hero_projects_count','hero_services_count','hero_courses_count','hero_animated_texts','hero_bullet_points','navbar_links'] : [])
-          ]
-          const result = await retryWithBackoff(async () => await landingApi.getSiteSettings(keys))
-          data = result.data || []
-        } else if (isSupport) {
-          const result = await retryWithBackoff(async () => await landingApi.getSupportRequests())
-          data = result.data || []
-          data.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-        } else if (isProjects) {
-          const result = await retryWithBackoff(async () => await landingApi.getProjects())
-          data = result.data || []
-          data.sort((a: any, b: any) => {
-            if (a.order_index !== b.order_index) return (a.order_index || 999) - (b.order_index || 999)
-            return (b.id || 0) - (a.id || 0)
-          })
-        } else {
-          // Fallback for other tables - try to use appropriate API
-          error = new Error('Unknown content type')
-        }
-      } catch (err: any) {
-        error = err
-      }
-      if (error) {
+
+      const { data, error: loadError } = await fetchLandingContentRows({
+        table,
+        isReviews,
+        isTeamLike,
+        isCourses,
+        isServices,
+        isContact,
+        isFooter,
+        isHero,
+        isSupport,
+        isProjects
+      })
+
+      if (loadError) {
         if (process.env.NODE_ENV === 'development') {
-        console.error('Error loading data:', error)
+          console.error('Error loading data:', loadError)
         }
-        const msg = error.message || 'Failed to load content'
+        const msg = loadError.message || 'Failed to load content'
         toast.error(msg)
         setError(msg)
         setLoading(false)
         return
       }
-      setRows((data as Row[]) || [])
-      
-      // Calculate available orders for services, reviews, and projects
-      if (isServices && data) {
-        // For services: show only available orders (not in use)
-        const usedOrders = new Set(
-          (data as any[])
-            .map((r: any) => r.order_index)
-            .filter((o: any) => o !== null && o !== undefined)
+
+      setRows((data as ContentEditorRow[]) || [])
+      setAvailableOrders(buildAvailableOrders({ data, isServices, isReviews, isProjects, editingId }))
+
+      if (isContact) {
+        setContactSocials(
+          parseSiteSettingsArray({
+            rows: data,
+            key: 'contact_socials_json',
+            fallback: defaultSocialSlots,
+            maxItems: 15
+          })
         )
-        const maxOrder = Math.max(...Array.from(usedOrders), 0)
-        const available: number[] = []
-        for (let i = 1; i <= maxOrder + 10; i++) {
-          if (!usedOrders.has(i)) {
-            available.push(i)
-          }
-        }
-        if (editingId !== null) {
-          const currentItem = (data as any[]).find((r: any) => r.id === editingId)
-          if (currentItem && currentItem.order_index !== null && currentItem.order_index !== undefined) {
-            if (!available.includes(currentItem.order_index)) {
-              available.push(currentItem.order_index)
-              available.sort((a, b) => a - b)
-            }
-          }
-        }
-        setAvailableOrders(available)
-      } else if ((isReviews || isProjects) && data) {
-        // For reviews and projects: show only available orders (not in use by others)
-        const usedOrders = new Set(
-          (data as any[])
-            .map((r: any) => r.order_index)
-            .filter((o: any) => o !== null && o !== undefined)
+      }
+
+      if (isFooter) {
+        setFooterSocials(
+          parseSiteSettingsArray({
+            rows: data,
+            key: 'footer_socials_json',
+            fallback: defaultSocialSlots,
+            maxItems: 15
+          })
         )
-        const available: number[] = []
-        // Generate available orders (1 to 30, excluding used ones)
-        for (let i = 1; i <= 30; i++) {
-          if (!usedOrders.has(i)) {
-            available.push(i)
-          }
-        }
-        setAvailableOrders(available)
-      } else if (isReviews || isProjects) {
-        // If no data yet, show all orders 1-30
-        const allOrders: number[] = []
-        for (let i = 1; i <= 30; i++) {
-          allOrders.push(i)
-        }
-        setAvailableOrders(allOrders)
-      } else {
-        setAvailableOrders([])
       }
-      
-      // Load contact socials from JSON
-      if (isContact && data) {
-        const socialsJson = data.find((r: any) => r.key === 'contact_socials_json')?.value
-        if (socialsJson) {
-          try {
-            const parsed = JSON.parse(socialsJson)
-            if (Array.isArray(parsed)) {
-              const filled = [...parsed, ...defaultSocialSlots].slice(0, 15)
-              setContactSocials(filled)
-            }
-          } catch {}
-        }
+
+      if (isHero) {
+        const parsedAnimatedTexts = parseSiteSettingsArray<string>({
+          rows: data,
+          key: 'hero_animated_texts',
+          fallback: []
+        })
+        if (parsedAnimatedTexts.length > 0) setHeroAnimatedTexts(parsedAnimatedTexts)
+
+        const parsedBulletPoints = parseSiteSettingsArray<string>({
+          rows: data,
+          key: 'hero_bullet_points',
+          fallback: []
+        })
+        if (parsedBulletPoints.length > 0) setHeroBulletPoints(parsedBulletPoints)
+
+        const parsedNavbarLinks = parseSiteSettingsArray<{ name: string; href: string }>({
+          rows: data,
+          key: 'navbar_links',
+          fallback: []
+        })
+        if (parsedNavbarLinks.length > 0) setNavbarLinks(parsedNavbarLinks)
       }
-      
-      // Load footer socials from JSON
-      if (isFooter && data) {
-        const socialsJson = data.find((r: any) => r.key === 'footer_socials_json')?.value
-        if (socialsJson) {
-          try {
-            const parsed = JSON.parse(socialsJson)
-            if (Array.isArray(parsed)) {
-              const filled = [...parsed, ...defaultSocialSlots].slice(0, 15)
-              setFooterSocials(filled)
-            }
-          } catch {}
-        }
-      }
-      
-      // Load hero section data from JSON
-      if (isHero && data) {
-        const animatedTextsJson = data.find((r: any) => r.key === 'hero_animated_texts')?.value
-        if (animatedTextsJson) {
-          try {
-            const parsed = JSON.parse(animatedTextsJson)
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              setHeroAnimatedTexts(parsed)
-            }
-          } catch {}
-        }
-        const bulletPointsJson = data.find((r: any) => r.key === 'hero_bullet_points')?.value
-        if (bulletPointsJson) {
-          try {
-            const parsed = JSON.parse(bulletPointsJson)
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              setHeroBulletPoints(parsed)
-            }
-          } catch {}
-        }
-        const navbarLinksJson = data.find((r: any) => r.key === 'navbar_links')?.value
-        if (navbarLinksJson) {
-          try {
-            const parsed = JSON.parse(navbarLinksJson)
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              setNavbarLinks(parsed)
-            }
-          } catch {}
-        }
-      }
-      
+
       setLoading(false)
-    }, [table, isReviews, isTeamLike, isCourses, isServices, isContact, isFooter, isHero, defaultSocialSlots, editingId])
+    }, [table, isReviews, isTeamLike, isCourses, isServices, isContact, isFooter, isHero, isSupport, isProjects, defaultSocialSlots, editingId])
   
   useEffect(() => {
     // Realtime subscriptions removed - data now comes from backend API
@@ -672,7 +410,7 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
       // Compute socials JSON from UI if provided
       const uiSocials = contactSocials.filter(s => s.name && s.href).map(s => ({ name: s.name, href: s.href }))
       const socialsJson = uiSocials.length ? JSON.stringify(uiSocials) : String(kv['contact_socials_json'] ?? '')
-      ;['contact_address','contact_website','contact_phone','contact_map_src','contact_primary_name','contact_primary_tagline','contact_whatsapp']
+      ;CONTACT_SITE_SETTING_KEYS.filter((key) => key !== 'contact_socials_json')
         .forEach(k => { if (kv[k] !== undefined) entries.push({ key: k, value: String(kv[k] ?? '') }) })
       entries.push({ key: 'contact_socials_json', value: socialsJson })
       if (entries.length) {
@@ -682,7 +420,7 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
           return setError(result.error)
         }
         // refresh immediately
-        const refreshedResult = await landingApi.getSiteSettings(['contact_address','contact_website','contact_phone','contact_map_src','contact_primary_name','contact_primary_tagline','contact_whatsapp','contact_socials_json'])
+        const refreshedResult = await landingApi.getSiteSettings([...CONTACT_SITE_SETTING_KEYS])
         setRows((refreshedResult.data as any) || [])
         toast.success('Saved contact settings')
       }
@@ -697,7 +435,7 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
       // Compute links JSON from UI if provided
       const uiLinks = footerLinks.filter(l => l.name && l.url).map(l => ({ name: l.name, url: l.url, external: l.external || false }))
       const linksJson = uiLinks.length ? JSON.stringify(uiLinks) : String(kv['footer_links_json'] ?? '')
-      ;['footer_about_text','footer_version']
+      ;FOOTER_SITE_SETTING_KEYS.filter((key) => key !== 'footer_socials_json' && key !== 'footer_links_json')
         .forEach(k => { if (kv[k] !== undefined) entries.push({ key: k, value: String(kv[k] ?? '') }) })
       entries.push({ key: 'footer_socials_json', value: socialsJson })
       entries.push({ key: 'footer_links_json', value: linksJson })
@@ -707,7 +445,7 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
           toast.error(result.error)
           return setError(result.error)
         }
-        const refreshedResult = await landingApi.getSiteSettings(['footer_about_text','footer_socials_json','footer_version','footer_links_json'])
+        const refreshedResult = await landingApi.getSiteSettings([...FOOTER_SITE_SETTING_KEYS])
         setRows((refreshedResult.data as any) || [])
         toast.success('Saved footer settings')
       }
@@ -717,7 +455,9 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
       const kv = form as any
       const entries: Array<{ key: string; value: string }> = []
       // Save counters
-      ;['hero_projects_count','hero_services_count','hero_courses_count']
+      ;HERO_SITE_SETTING_KEYS.filter((key) =>
+        key === 'hero_projects_count' || key === 'hero_services_count' || key === 'hero_courses_count'
+      )
         .forEach(k => { 
           if (kv[k] !== undefined) {
             entries.push({ key: k, value: String(kv[k] ?? '') }) 
@@ -742,7 +482,7 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
           toast.error(result.error)
           return setError(result.error)
         }
-        const refreshedResult = await landingApi.getSiteSettings(['hero_projects_count','hero_services_count','hero_courses_count','hero_animated_texts','hero_bullet_points','navbar_links'])
+        const refreshedResult = await landingApi.getSiteSettings([...HERO_SITE_SETTING_KEYS])
         setRows((refreshedResult.data as any) || [])
         toast.success('Saved hero settings')
         setHeroSettingsOpen(false)
@@ -750,59 +490,17 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
       return
     }
     if (editingId) {
-      // For team_members, map title->name and description->role on write
-    const payload = isTeamLike
-        ? {
-            name: form.title,
-            role: form.role_text,
-            description: form.description,
-            image_url: form.image_url,
-            profile_image_url: form.profile_image_url || null,
-            banner_image_url: form.banner_image_url || null,
-            portfolio_url: form.portfolio_url || null,
-            github_url: form.github_url || null,
-            primary_tag: form.primary_tag || null,
-            order_index: form.order_index ?? null,
-            active: form.active !== false,
-            is_head: !!form.is_head
-          }
-        : isProjects
-          ? {
-              title: form.title,
-              description: form.description || null,
-              video_id: (form as any).video_id || null,
-              github_url: (form as any).github_url || null,
-              image_url: form.image_url || null,
-              order_index: form.order_index ?? null
-            }
-        : isCourses
-          ? {
-              title: form.title,
-              description: form.description,
-              level: form.level || null,
-              duration: form.duration || null,
-              price: form.price || null,
-              note: form.note || null,
-              features: toFeaturesJson(form.features),
-              order_index: form.order_index ?? null,
-              active: form.active !== false
-            }
-        : isServices
-          ? {
-              title: form.title,
-              description: form.description || null,
-              image_url: form.image_url || null,
-              emoji: form.emoji || null,
-              gradient_color: form.gradient_color || null,
-              contact: form.contact || null,
-              order_index: form.order_index ?? null,
-              active: form.active !== false
-            }
-          : form
+    const payload = buildContentRecordPayload({
+      form: form as ContentEditorRow & Record<string, any>,
+      isTeamLike,
+      isProjects,
+      isCourses,
+      isServices
+    })
     
     // No conflict check needed - dropdown only shows available orders (including current service's order when editing)
     
-    const result = await updateTableRecord(table, editingId, payload)
+    const result = await updateContentTableRecord(table, editingId, payload)
     if (result.error) {
       toast.error(result.error)
       return setError(result.error)
@@ -813,62 +511,21 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
         closeEditor()
       } else {
         setEditingId(null)
-        setForm({ title: '', description: '', image_url: '', is_head: false, profile_image_url: '', banner_image_url: '', portfolio_url: '', github_url: '', primary_tag: '', order_index: undefined, active: true, emoji: '', gradient_color: '', contact: '' })
+        setForm(createEmptyContentEditorRow())
       }
       return
     }
-    const payload = isTeamLike
-      ? {
-          name: form.title,
-          role: form.role_text,
-          description: form.description,
-          image_url: form.image_url,
-          profile_image_url: form.profile_image_url || null,
-          banner_image_url: form.banner_image_url || null,
-          portfolio_url: form.portfolio_url || null,
-          github_url: form.github_url || null,
-          primary_tag: form.primary_tag || null,
-          order_index: form.order_index ?? null,
-          active: form.active !== false,
-          is_head: !!form.is_head
-        }
-      : isProjects
-        ? {
-            title: form.title,
-            description: form.description || null,
-            video_id: (form as any).video_id || null,
-            github_url: (form as any).github_url || null,
-            image_url: form.image_url || null,
-            order_index: form.order_index ?? null
-          }
-      : isCourses
-        ? {
-            title: form.title,
-            description: form.description,
-            level: form.level || null,
-            duration: form.duration || null,
-            price: form.price || null,
-            note: form.note || null,
-            features: toFeaturesJson(form.features),
-            order_index: form.order_index ?? null,
-            active: form.active !== false
-          }
-      : isServices
-        ? {
-            title: form.title,
-            description: form.description || null,
-            image_url: form.image_url || null,
-            emoji: form.emoji || null,
-            gradient_color: form.gradient_color || null,
-            contact: form.contact || null,
-            order_index: form.order_index ?? null,
-            active: form.active !== false
-          }
-        : form
+    const payload = buildContentRecordPayload({
+      form: form as ContentEditorRow & Record<string, any>,
+      isTeamLike,
+      isProjects,
+      isCourses,
+      isServices
+    })
     
     // No conflict check needed - dropdown only shows available orders
     
-    const result = await createTableRecord(table, payload)
+    const result = await createContentTableRecord(table, payload)
     if (result.error) {
       toast.error(result.error)
       return setError(result.error)
@@ -878,11 +535,11 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
     if (isRecordEditorPage) {
       closeEditor()
     } else {
-      setForm({ title: '', description: '', role_text: '', image_url: '', is_head: false, profile_image_url: '', banner_image_url: '', portfolio_url: '', github_url: '', primary_tag: '', order_index: undefined, active: true, level: '', duration: '', price: '', note: '', features: '', emoji: '', gradient_color: '', contact: '' })
+      setForm(createEmptyContentEditorRow())
     }
   }
 
-  const startEdit = (r: Row | any) => {
+  const startEdit = (r: ContentEditorRow | any) => {
     setEditingId((r as any).id || null)
     if (isTeamLike) {
       setForm({
@@ -929,7 +586,7 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
         image_url: r.image_url || '',
         order_index: (r as any).order_index ?? undefined,
         ...({ video_id: (r as any).video_id ?? '', github_url: (r as any).github_url ?? '' } as Record<string, unknown>)
-      } as Row)
+      } as ContentEditorRow)
     } else {
       setForm({ title: r.title || '', description: r.description || '', image_url: r.image_url || '', is_head: false })
     }
@@ -942,7 +599,7 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
     if (!ok) return
     
     try {
-      const result = await deleteTableRecord(table, id)
+      const result = await deleteContentTableRecord(table, id)
       if (result.error) {
         const msg = result.error || 'Failed to delete record. Please check permissions.'
         toast.error(msg)
@@ -972,7 +629,7 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
   if (!table || table === 'users' || table === 'settings') {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-red-500">Invalid Page</h1>
+        <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-linear-to-r from-orange-500 to-red-500">Invalid Page</h1>
         <p className="text-gray-600 dark:text-gray-400">This page is not available. Please use the navigation menu.</p>
       </div>
     )
@@ -985,7 +642,7 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
         className={
           isHero
             ? 'relative overflow-hidden rounded-xl border border-slate-700 bg-slate-900 p-4 text-white shadow-md sm:p-5'
-            : 'relative overflow-hidden rounded-xl border border-white/20 bg-gradient-to-r from-orange-500/90 to-red-500/90 p-5 text-white shadow-xl backdrop-blur-xl'
+            : 'relative overflow-hidden rounded-xl border border-white/20 bg-linear-to-r from-orange-500/90 to-red-500/90 p-5 text-white shadow-xl backdrop-blur-xl'
         }
       >
         {!isHero ? <div className="absolute inset-0 bg-black/5" /> : null}
@@ -1020,9 +677,9 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
           <div
             className={
               isRecordEditorPage && editorOpen
-                ? 'relative z-[1] my-auto w-full max-w-4xl rounded-2xl border border-cyan-500/20 bg-slate-950/95 p-4 shadow-2xl backdrop-blur-md sm:p-5'
+                ? 'relative z-1 my-auto w-full max-w-4xl rounded-2xl border border-cyan-500/20 bg-slate-950/95 p-4 shadow-2xl backdrop-blur-md sm:p-5'
                 : isHero && heroSettingsOpen
-                  ? 'landing-admin-plain-ui relative z-[1] my-auto flex w-full max-h-[min(90dvh,calc(100dvh-1.25rem))] min-h-0 max-w-2xl flex-col rounded-lg border border-slate-700 bg-slate-950/95 p-3 shadow-none backdrop-blur-md sm:p-4'
+                  ? 'landing-admin-plain-ui relative z-1 my-auto flex w-full max-h-[min(90dvh,calc(100dvh-1.25rem))] min-h-0 max-w-2xl flex-col rounded-lg border border-slate-700 bg-slate-950/95 p-3 shadow-none backdrop-blur-md sm:p-4'
                   : 'rounded-xl border border-cyan-500/20 bg-slate-900/50 p-4 shadow-lg'
             }
           >
@@ -1049,7 +706,7 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
                   aria-label="Close hero settings"
                   onClick={closeHeroSettings}
                 >
-                  <span className="relative z-[2]">×</span>
+                  <span className="relative z-2">×</span>
                 </button>
               </div>
             ) : null}
@@ -1313,11 +970,11 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
                         </select>
                         <button
                           type="button"
-                          className={`${heroRemoveBtnClass} absolute right-1 top-1/2 z-[2] -translate-y-1/2`}
+                          className={`${heroRemoveBtnClass} absolute right-1 top-1/2 z-2 -translate-y-1/2`}
                           aria-label="Remove line"
                           onClick={() => setHeroAnimatedTexts(heroAnimatedTexts.filter((_, i) => i !== idx))}
                         >
-                          <span className="relative z-[2]">×</span>
+                          <span className="relative z-2">×</span>
                         </button>
                       </div>
                     ))}
@@ -1359,11 +1016,11 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
                       >
                         <button
                           type="button"
-                          className={`${heroRemoveBtnClass} absolute right-1.5 top-1.5 z-[2]`}
+                          className={`${heroRemoveBtnClass} absolute right-1.5 top-1.5 z-2`}
                           aria-label="Remove link"
                           onClick={() => setNavbarLinks(navbarLinks.filter((_, i) => i !== idx))}
                         >
-                          <span className="relative z-[2]">×</span>
+                          <span className="relative z-2">×</span>
                         </button>
                         <div className="mb-1 flex items-center gap-1 sm:hidden">
                           <span className="w-4 text-center text-[10px] tabular-nums text-slate-500">{idx + 1}</span>
@@ -1474,7 +1131,7 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
                 className={
                   isHero
                     ? 'landing-admin-glass rounded-md border border-cyan-500/40 bg-cyan-950/90 px-3 py-1.5 text-xs font-semibold text-cyan-50 shadow-none transition hover:border-cyan-400/55 hover:bg-cyan-900'
-                    : 'rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 px-6 py-3 font-semibold text-white shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl active:scale-95'
+                    : 'rounded-xl bg-linear-to-r from-indigo-600 via-purple-600 to-pink-600 px-6 py-3 font-semibold text-white shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl active:scale-95'
                 }
               >
                 {isHero ? 'Save hero' : editingId ? 'Update' : 'Create'}
@@ -1496,7 +1153,7 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
                     if (isRecordEditorPage) closeEditor()
                     else {
                       setEditingId(null)
-                      setForm({ title: '', description: '', role_text: '', image_url: '', is_head: false, profile_image_url: '', banner_image_url: '', portfolio_url: '', github_url: '', primary_tag: '', order_index: undefined, active: true })
+                      setForm(createEmptyContentEditorRow())
                     }
                   }}
                 >
@@ -1576,17 +1233,39 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
                       
                       <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4 mb-3">
                         <div className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Message:</div>
-                        <div className="text-gray-900 dark:text-white whitespace-pre-wrap break-words">
+                        <div className="text-gray-900 dark:text-white whitespace-pre-wrap wrap-break-word">
                           {r.message || 'No message provided'}
                         </div>
                       </div>
+
+                      {r.screenshot_url && (
+                        <div className="mb-3">
+                          <div className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                            Screenshot:
+                          </div>
+                          <a
+                            href={sanitizeImageUrl(r.screenshot_url)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex text-xs font-semibold text-blue-600 dark:text-blue-300 hover:underline mb-2"
+                          >
+                            Open full image
+                          </a>
+                          <img
+                            src={sanitizeImageUrl(r.screenshot_url)}
+                            alt="Support screenshot"
+                            className="max-h-56 w-full rounded-lg border border-gray-200 dark:border-gray-700 object-contain bg-black/5 dark:bg-white/5"
+                            loading="lazy"
+                          />
+                        </div>
+                      )}
                       
                       <div className="text-xs text-gray-500 dark:text-gray-400">
                         Submitted: {r.created_at ? new Date(r.created_at).toLocaleString() : 'Unknown date'}
                       </div>
                     </div>
                     
-                    <div className="flex flex-col gap-2 flex-shrink-0">
+                    <div className="flex flex-col gap-2 shrink-0">
                       {!r.viewed && (
                         <button
                           onClick={async () => {
@@ -1627,7 +1306,7 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
               <button
                 type="button"
                 onClick={openNewRecord}
-                className="inline-flex shrink-0 items-center justify-center rounded-lg bg-gradient-to-r from-cyan-600 to-teal-600 px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:from-cyan-500 hover:to-teal-500"
+                className="inline-flex shrink-0 items-center justify-center rounded-lg bg-linear-to-r from-cyan-600 to-teal-600 px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:from-cyan-500 hover:to-teal-500"
               >
                 + Add {recordTypeLabel}
               </button>
@@ -1656,10 +1335,9 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
                         setForm((s) => ({ ...s, ...map }))
                       }}>Load into form</button>
                       <button type="button" className="rounded-md border border-red-900/60 bg-red-950/80 px-3 py-1.5 text-xs font-medium text-red-200 hover:bg-red-900/50" onClick={async () => {
-                        const keys = ['contact_address','contact_website','contact_phone','contact_map_src','contact_primary_name','contact_primary_tagline','contact_whatsapp','contact_socials_json']
                         const ok = window.confirm('Delete all contact settings?')
                         if (!ok) return
-                        await deleteSiteSettingKeys(keys)
+                        await deleteSiteSettingKeys([...CONTACT_SITE_SETTING_KEYS])
                       }}>Delete all</button>
                     </div>
                   </div>
@@ -1667,7 +1345,7 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
                     {rows.map((r: any) => (
                       <div key={r.key} className="min-w-0 rounded border border-slate-800/90 bg-slate-900/50 p-2">
                         <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{String(r.key).replace(/_/g, ' ')}</dt>
-                        <dd className="mt-1 max-h-32 overflow-y-auto break-words text-xs leading-relaxed text-slate-200">{r.value || '—'}</dd>
+                        <dd className="mt-1 max-h-32 overflow-y-auto wrap-break-word text-xs leading-relaxed text-slate-200">{r.value || '—'}</dd>
                       </div>
                     ))}
                   </dl>
@@ -1683,10 +1361,9 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
                         setForm((s) => ({ ...s, ...map }))
                       }}>Load into form</button>
                       <button type="button" className="rounded-md border border-red-900/60 bg-red-950/80 px-3 py-1.5 text-xs font-medium text-red-200 hover:bg-red-900/50" onClick={async () => {
-                        const keys = ['footer_about_text','footer_socials_json','footer_version','footer_links_json']
                         const ok = window.confirm('Delete all footer settings?')
                         if (!ok) return
-                        await deleteSiteSettingKeys(keys)
+                        await deleteSiteSettingKeys([...FOOTER_SITE_SETTING_KEYS])
                       }}>Delete all</button>
                     </div>
                   </div>
@@ -1694,7 +1371,7 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
                     {rows.map((r: any) => (
                       <div key={r.key} className="min-w-0 rounded border border-slate-800/90 bg-slate-900/50 p-2">
                         <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{String(r.key).replace(/_/g, ' ')}</dt>
-                        <dd className="mt-1 max-h-32 overflow-y-auto break-words text-xs leading-relaxed text-slate-200">{r.value || '—'}</dd>
+                        <dd className="mt-1 max-h-32 overflow-y-auto wrap-break-word text-xs leading-relaxed text-slate-200">{r.value || '—'}</dd>
                       </div>
                     ))}
                   </dl>
@@ -1732,10 +1409,9 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
                               Load into form
                             </button>
                             <button type="button" className="rounded-md border border-red-900/60 bg-red-950/80 px-3 py-1.5 text-xs font-medium text-red-200 hover:bg-red-900/50" onClick={async () => {
-                              const keys = ['hero_projects_count','hero_services_count','hero_courses_count','hero_animated_texts','hero_bullet_points','navbar_links']
                               const ok = window.confirm('Delete all hero section settings?')
                               if (!ok) return
-                              await deleteSiteSettingKeys(keys)
+                              await deleteSiteSettingKeys([...HERO_SITE_SETTING_KEYS])
                             }}>Delete all</button>
                           </div>
                         </div>
@@ -1764,7 +1440,7 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
                                 {headlines.map((t, i) => (
                                   <div key={i} className="flex gap-2 rounded border border-slate-800/60 px-2 py-1">
                                     <span className="w-4 shrink-0 tabular-nums text-slate-500">{i + 1}.</span>
-                                    <span className="min-w-0 break-words text-slate-200">{t || <span className="text-slate-600">(empty)</span>}</span>
+                                    <span className="min-w-0 wrap-break-word text-slate-200">{t || <span className="text-slate-600">(empty)</span>}</span>
                                   </div>
                                 ))}
                               </div>
@@ -1845,7 +1521,7 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
                           
                           setError(null)
                           try {
-                            const updateResult = await updateTableRecord(table, r.id, { order_index: value })
+                            const updateResult = await updateContentTableRecord(table, r.id, { order_index: value })
                             if (updateResult.error) {
                               const msg = updateResult.error || 'Failed to update order'
                               toast.error(msg)
@@ -1885,10 +1561,10 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
                   <div className="mt-2 text-sm text-gray-700 dark:text-gray-200">{r.comment}</div>
                   <div className="mt-3 flex gap-2">
                     {r.status !== 'approved' ? (
-                      <button className="px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white font-semibold shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-300" onClick={async () => {
+                      <button className="px-4 py-2 rounded-lg bg-linear-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white font-semibold shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-300" onClick={async () => {
                         setError(null)
                         try {
-                          const updateResult = await updateTableRecord(table, r.id, { status: 'approved' })
+                          const updateResult = await updateContentTableRecord(table, r.id, { status: 'approved' })
                           if (updateResult.error) {
                             const msg = updateResult.error || 'Failed to approve review'
                             toast.error(msg)
@@ -1907,10 +1583,10 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
                         }
                       }}>Approve</button>
                     ) : (
-                      <button className="px-4 py-2 rounded-lg bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-semibold shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-300" onClick={async () => {
+                      <button className="px-4 py-2 rounded-lg bg-linear-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-semibold shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-300" onClick={async () => {
                         setError(null)
                         try {
-                          const updateResult = await updateTableRecord(table, r.id, { status: 'pending' })
+                          const updateResult = await updateContentTableRecord(table, r.id, { status: 'pending' })
                           if (updateResult.error) {
                             const msg = updateResult.error || 'Failed to unapprove review'
                             toast.error(msg)
@@ -1937,7 +1613,7 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
                   <div className="flex items-center justify-between">
                     <div className="font-semibold text-gray-900 dark:text-white">{(r as any).name}</div>
                     {(r as any).is_head && (
-                      <span className="px-2 py-0.5 rounded-full text-xs bg-gradient-to-r from-amber-500 to-orange-600 text-white">Team Head</span>
+                      <span className="px-2 py-0.5 rounded-full text-xs bg-linear-to-r from-amber-500 to-orange-600 text-white">Team Head</span>
                     )}
                   </div>
                   <div className="text-xs text-gray-600 dark:text-gray-300">{(r as any).role}</div>
@@ -1990,7 +1666,7 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
                           
                           setError(null)
                           try {
-                            const updateResult = await updateTableRecord(table, r.id, { order_index: value })
+                            const updateResult = await updateContentTableRecord(table, r.id, { order_index: value })
                             if (updateResult.error) {
                               const msg = updateResult.error || 'Failed to update order'
                               toast.error(msg)
@@ -2039,7 +1715,7 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
                   )}
                   <div className="mt-3 flex gap-2">
                     <button className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 hover:scale-105 active:scale-95 transition-all duration-300 shadow-md hover:shadow-lg" onClick={() => startEdit(r)}>Edit</button>
-                    <button className="px-4 py-2 rounded-lg bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-semibold shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-300" onClick={() => del(r.id)}>Delete</button>
+                    <button className="px-4 py-2 rounded-lg bg-linear-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-semibold shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-300" onClick={() => del(r.id)}>Delete</button>
                   </div>
                 </>
               ) : (
@@ -2064,7 +1740,7 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
                   {isServices && (
                     <div className="mt-2 flex items-center gap-3">
                       {(r as any).emoji && (
-                        <div className={`w-12 h-12 bg-gradient-to-r ${(r as any).gradient_color || 'from-purple-500 to-blue-500'} rounded-full flex items-center justify-center text-xl`}>
+                        <div className={`w-12 h-12 bg-linear-to-r ${(r as any).gradient_color || 'from-purple-500 to-blue-500'} rounded-full flex items-center justify-center text-xl`}>
                           {(r as any).emoji}
                         </div>
                       )}
@@ -2085,7 +1761,7 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
                   )}
                   <div className="mt-3 flex gap-2">
                     <button className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 hover:scale-105 active:scale-95 transition-all duration-300 shadow-md hover:shadow-lg" onClick={(e) => { e.stopPropagation(); startEdit(r); }}>Edit</button>
-                    <button className="px-4 py-2 rounded-lg bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-semibold shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-300" onClick={(e) => { e.stopPropagation(); del(r.id); }}>Delete</button>
+                    <button className="px-4 py-2 rounded-lg bg-linear-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-semibold shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-300" onClick={(e) => { e.stopPropagation(); del(r.id); }}>Delete</button>
                   </div>
                 </>
               )}
@@ -2099,10 +1775,10 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
       {selectedService && isServices && (
         <>
           <div 
-            className="fixed inset-0 z-[9998] bg-black/60 backdrop-blur-sm transition-opacity"
+            className="fixed inset-0 z-9998 bg-black/60 backdrop-blur-sm transition-opacity"
             onClick={() => setSelectedService(null)}
           />
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-9999 flex items-center justify-center p-4">
             <div 
               className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-2xl max-w-md w-full p-6 relative"
               onClick={(e) => e.stopPropagation()}
@@ -2119,7 +1795,7 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
               
               <div className="flex items-center gap-4 mb-4">
                 {(selectedService as any).emoji && (
-                  <div className={`w-16 h-16 bg-gradient-to-r ${(selectedService as any).gradient_color || 'from-purple-500 to-blue-500'} rounded-full flex items-center justify-center text-3xl`}>
+                  <div className={`w-16 h-16 bg-linear-to-r ${(selectedService as any).gradient_color || 'from-purple-500 to-blue-500'} rounded-full flex items-center justify-center text-3xl`}>
                     {(selectedService as any).emoji}
                   </div>
                 )}
@@ -2142,7 +1818,7 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
               
               <div className="mt-4 flex gap-2">
                 <button 
-                  className="px-4 py-2 rounded-md bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 transition-colors"
+                  className="px-4 py-2 rounded-md bg-linear-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 transition-colors"
                   onClick={() => {
                     setSelectedService(null);
                     startEdit(selectedService);
@@ -2162,43 +1838,6 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
         </>
       )}
     </div>
-  )
-}
-
-/** Renders children in document.body when modal open so fixed overlay is not clipped by admin main scroll. */
-function LandingAdminFormMount({
-  usePortal,
-  onBackdropClose,
-  children
-}: {
-  usePortal: boolean
-  onBackdropClose: () => void
-  children: React.ReactNode
-}) {
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
-
-  if (!usePortal) {
-    return <>{children}</>
-  }
-  if (!mounted) return null
-  return createPortal(
-    <div className="fixed inset-0 z-[200] overflow-y-auto overflow-x-hidden admin-custom-scrollbar">
-      {/* fixed + inset-0: full viewport; do not put padding on this layer or absolute inset-0 backdrops miss edges */}
-      <button
-        type="button"
-        aria-label="Close"
-        className="btn-no-liquid fixed inset-0 z-0 rounded-none border-0 bg-black/60 backdrop-blur-md"
-        onClick={onBackdropClose}
-      />
-      <div
-        className="relative z-[1] flex min-h-full justify-center px-4 pb-10 pointer-events-none"
-        style={{ paddingTop: 'max(1rem, calc(var(--admin-header-height, 80px) + 0.5rem))' }}
-      >
-        <div className="pointer-events-auto w-full max-w-full flex justify-center">{children}</div>
-      </div>
-    </div>,
-    document.body
   )
 }
 

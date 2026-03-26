@@ -1,27 +1,48 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
+import type { Area } from 'react-easy-crop';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { persistClientAuthSessionFromSignInData } from '@/lib/auth/persistClientAuthSession';
-import { usersApi, landingApi } from '@/lib/api';
+import { usersApi, landingApi, coursesApi } from '@/lib/api';
 import emailjs from '@emailjs/browser';
+import ProfileImageCropDialog from './user-settings/ProfileImageCropDialog';
+import { getCroppedImageBlob } from './user-settings/imageCropUtils';
 
 
 
 interface UserSettingsModalProps {
   isOpen: boolean;
-  onClose: () => void;
+  onClose?: () => void;
+  asPage?: boolean;
 }
 
-const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }) => {
+const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose, asPage = false }) => {
   const { user, refresh, signOut } = useAuth();
   const { isDarkMode, toggleDarkMode } = useTheme();
+  const isVisible = asPage || isOpen;
+  const handleClose = () => {
+    onClose?.();
+  };
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     username: ''
   });
+  const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
+  const [profileImagePreview, setProfileImagePreview] = useState('');
+  const [usernameValidation, setUsernameValidation] = useState<{
+    status: 'idle' | 'checking' | 'valid' | 'invalid';
+    message: string;
+  }>({ status: 'idle', message: '' });
+  const [cropImageSrc, setCropImageSrc] = useState('');
+  const [isCropDialogOpen, setIsCropDialogOpen] = useState(false);
+  const [cropPosition, setCropPosition] = useState({ x: 0, y: 0 });
+  const [cropZoom, setCropZoom] = useState(1);
+  const [cropAreaPixels, setCropAreaPixels] = useState<Area | null>(null);
+  const [cropApplying, setCropApplying] = useState(false);
+  const profileImageInputRef = useRef<HTMLInputElement | null>(null);
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -32,11 +53,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [currentPasswordError, setCurrentPasswordError] = useState<string | null>(null);
   const [settings, setSettings] = useState({
-    emailNotifications: true,
-    profileVisibility: 'public' as 'public' | 'private',
-    browserNotifications: false,
-    cookieConsent: true,
-    analyticsOptIn: true
+    emailNotifications: true
   });
   const [courseSettings, setCourseSettings] = useState({
     emailReminders: true,
@@ -48,16 +65,9 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
     showCompletedLessons: true,
     compactCourseList: false
   });
-  const [websiteSettings, setWebsiteSettings] = useState({
-    language: 'en' as 'en' | 'ur' | 'ar',
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    dateFormat: 'MM/DD/YYYY' as 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD',
-    currency: 'USD' as 'USD' | 'PKR' | 'EUR',
-    twoFactorAuth: false,
-    sessionTimeout: 30 // minutes
-  });
-  const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'preferences' | 'courses' | 'website'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'preferences' | 'courses'>('profile');
   const [loading, setLoading] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleteText, setDeleteText] = useState('');
@@ -68,10 +78,16 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  const normalizedUsername = formData.username.trim().toLowerCase();
+  const passwordHasLetter = /[a-zA-Z]/.test(passwordData.newPassword);
+  const passwordHasNumber = /\d/.test(passwordData.newPassword);
+  const passwordHasSpecial = /[^a-zA-Z0-9]/.test(passwordData.newPassword);
+  const passwordStrong = passwordData.newPassword.length >= 8 && passwordHasLetter && passwordHasNumber && passwordHasSpecial;
+
   // Load user settings from database
   useEffect(() => {
     const loadUserSettings = async () => {
-      if (!user || !isOpen) return;
+      if (!user || !isVisible) return;
 
       try {
         const result = await usersApi.getUserById(user.id);
@@ -87,11 +103,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
           // Load preferences
           if (savedSettings.preferences) {
             setSettings({
-              emailNotifications: savedSettings.preferences.emailNotifications ?? true,
-              profileVisibility: savedSettings.preferences.profileVisibility || 'public',
-              browserNotifications: savedSettings.preferences.browserNotifications ?? false,
-              cookieConsent: savedSettings.preferences.cookieConsent ?? true,
-              analyticsOptIn: savedSettings.preferences.analyticsOptIn ?? true
+              emailNotifications: savedSettings.preferences.emailNotifications ?? true
             });
           }
 
@@ -108,18 +120,6 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
               compactCourseList: c.compactCourseList ?? false
             });
           }
-
-          // Load website settings
-          if (savedSettings.website) {
-            setWebsiteSettings({
-              language: savedSettings.website.language || 'en',
-              timezone: savedSettings.website.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
-              dateFormat: savedSettings.website.dateFormat || 'MM/DD/YYYY',
-              currency: savedSettings.website.currency || 'USD',
-              twoFactorAuth: savedSettings.website.twoFactorAuth ?? false,
-              sessionTimeout: savedSettings.website.sessionTimeout || 30
-            });
-          }
         }
       } catch (error) {
         // No sensitive info in logs
@@ -127,15 +127,86 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
     };
 
     loadUserSettings();
-  }, [user, isOpen]);
+  }, [user, isVisible]);
 
   useEffect(() => {
-    if (user && isOpen) {
+    if (!isVisible || !user) return;
+
+    if (!normalizedUsername) {
+      setUsernameValidation({ status: 'idle', message: '' });
+      return;
+    }
+
+    if (!/^[a-z0-9]+$/.test(normalizedUsername)) {
+      setUsernameValidation({
+        status: 'invalid',
+        message: 'Only lowercase letters and numbers are allowed (no special characters).'
+      });
+      return;
+    }
+
+    if (!/[a-z]/.test(normalizedUsername) || !/[0-9]/.test(normalizedUsername)) {
+      setUsernameValidation({
+        status: 'invalid',
+        message: 'Username must include at least one letter and one number.'
+      });
+      return;
+    }
+
+    if ((user.username || '').toLowerCase() === normalizedUsername) {
+      setUsernameValidation({
+        status: 'valid',
+        message: 'Current username is valid.'
+      });
+      return;
+    }
+
+    setUsernameValidation({ status: 'checking', message: 'Checking availability...' });
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const result = await usersApi.checkUsernameAvailability(normalizedUsername);
+        const resultData = result.data as { available?: boolean } | undefined;
+        if (cancelled) return;
+
+        if (result.error) {
+          setUsernameValidation({ status: 'invalid', message: 'Unable to verify username right now.' });
+          return;
+        }
+
+        if (resultData?.available === true) {
+          setUsernameValidation({ status: 'valid', message: 'Username is available.' });
+          return;
+        }
+
+        setUsernameValidation({ status: 'invalid', message: 'Username is already taken.' });
+      } catch {
+        if (!cancelled) {
+          setUsernameValidation({ status: 'invalid', message: 'Unable to verify username right now.' });
+        }
+      }
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [isVisible, normalizedUsername, user]);
+
+  useEffect(() => {
+    if (user && isVisible) {
       setFormData({
         name: user.name || '',
         email: user.email || '',
         username: user.username || ''
       });
+      setProfileImagePreview(user.avatar_url || '');
+      setProfileImageFile(null);
+      setCropImageSrc('');
+      setIsCropDialogOpen(false);
+      setCropZoom(1);
+      setCropPosition({ x: 0, y: 0 });
+      setCropAreaPixels(null);
       // Only reset delete-related states if we're not in the middle of delete flow
       // Check if we're not currently verifying (to avoid resetting during delete process)
       if (!isVerifyingDelete && !deleteConfirm) {
@@ -147,12 +218,12 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
         setIsVerifyingDelete(false);
       }
     }
-  }, [user, isOpen]);
+  }, [user, isVisible]);
 
 
   // Prevent body scroll when modal is open
   useEffect(() => {
-    if (isOpen) {
+    if (isVisible && !asPage) {
       // Save current scroll position
       const scrollY = window.scrollY;
       // Prevent body scroll
@@ -171,7 +242,93 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
         window.scrollTo(0, scrollY);
       };
     }
-  }, [isOpen]);
+  }, [isVisible, asPage]);
+
+  const uploadProfileImageToCloudinary = async (file: File): Promise<string> => {
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          resolve(reader.result);
+          return;
+        }
+        reject(new Error('Invalid image data'));
+      };
+      reader.onerror = () => reject(new Error('Unable to read selected image'));
+      reader.readAsDataURL(file);
+    });
+
+    const uploadResult = await coursesApi.uploadImageToCloudinary(dataUrl, 'team4stack/profile-avatars');
+    const uploadData = uploadResult.data as { secure_url?: string } | undefined;
+    if (uploadResult.error || !uploadData?.secure_url) {
+      throw new Error(uploadResult.error || 'Failed to upload profile image.');
+    }
+
+    return uploadData.secure_url;
+  };
+
+  const handleProfileImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const isImage = file.type.startsWith('image/');
+    if (!isImage) {
+      setMessage({ type: 'error', text: 'Please choose a valid image file.' });
+      return;
+    }
+
+    const maxSize = 3 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setMessage({ type: 'error', text: 'Image size should be less than 3MB.' });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result !== 'string') {
+        setMessage({ type: 'error', text: 'Unable to open image for cropping.' });
+        return;
+      }
+      setCropImageSrc(reader.result);
+      setCropZoom(1);
+      setCropPosition({ x: 0, y: 0 });
+      setCropAreaPixels(null);
+      setIsCropDialogOpen(true);
+      setMessage(null);
+    };
+    reader.onerror = () => {
+      setMessage({ type: 'error', text: 'Unable to read selected image.' });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleApplyCroppedImage = async () => {
+    if (!cropImageSrc || !cropAreaPixels) return;
+    setCropApplying(true);
+    try {
+      const croppedBlob = await getCroppedImageBlob(cropImageSrc, cropAreaPixels);
+      const croppedFile = new File([croppedBlob], `profile-${Date.now()}.jpg`, { type: 'image/jpeg' });
+      const localPreviewUrl = URL.createObjectURL(croppedBlob);
+      setProfileImageFile(croppedFile);
+      setProfileImagePreview(localPreviewUrl);
+      setIsCropDialogOpen(false);
+      setCropImageSrc('');
+      if (profileImageInputRef.current) profileImageInputRef.current.value = '';
+    } catch (error: any) {
+      setMessage({ type: 'error', text: error?.message || 'Failed to crop image.' });
+    } finally {
+      setCropApplying(false);
+    }
+  };
+
+  const handleCancelCrop = () => {
+    setIsCropDialogOpen(false);
+    setCropImageSrc('');
+    setCropAreaPixels(null);
+    setCropZoom(1);
+    setCropPosition({ x: 0, y: 0 });
+    if (profileImageInputRef.current) profileImageInputRef.current.value = '';
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -209,8 +366,20 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
       }
 
       // Validate username format
-      if (formData.username && !/^[a-z0-9_]+$/.test(formData.username.toLowerCase())) {
-        setMessage({ type: 'error', text: 'Username can only contain lowercase letters, numbers, and underscores.' });
+      if (formData.username && !/^[a-z0-9]+$/.test(formData.username.toLowerCase())) {
+        setMessage({ type: 'error', text: 'Username can only contain lowercase letters and numbers.' });
+        setLoading(false);
+        return;
+      }
+
+      if (formData.username && (!/[a-z]/.test(formData.username) || !/[0-9]/.test(formData.username))) {
+        setMessage({ type: 'error', text: 'Username must include at least one letter and one number.' });
+        setLoading(false);
+        return;
+      }
+
+      if (formData.username && usernameValidation.status !== 'valid') {
+        setMessage({ type: 'error', text: 'Please choose a valid and unique username.' });
         setLoading(false);
         return;
       }
@@ -219,6 +388,17 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
       if (formData.name !== user.name) updateData.name = formData.name || null;
       if (formData.email !== user.email) updateData.email = formData.email || null;
       if (formData.username !== user.username) updateData.username = formData.username.toLowerCase() || null;
+      if (profileImageFile) {
+        setImageUploading(true);
+        try {
+          const avatarUrl = await uploadProfileImageToCloudinary(profileImageFile);
+          if (avatarUrl && avatarUrl !== user.avatar_url) {
+            updateData.avatar_url = avatarUrl;
+          }
+        } finally {
+          setImageUploading(false);
+        }
+      }
 
       if (Object.keys(updateData).length === 0) {
         setMessage({ type: 'success', text: 'No changes to save.' });
@@ -246,16 +426,19 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
               email: freshProfile.email || '',
               username: freshProfile.username || ''
             });
+            setProfileImagePreview(freshProfile.avatar_url || '');
+            setProfileImageFile(null);
           }
         }
         setTimeout(() => {
-          onClose();
+          handleClose();
         }, 1500);
       }
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message || 'Failed to update profile' });
     } finally {
       setLoading(false);
+      setImageUploading(false);
     }
   };
 
@@ -326,8 +509,8 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
       return;
     }
 
-    if (passwordData.newPassword.length < 6) {
-      setMessage({ type: 'error', text: 'Password must be at least 6 characters long.' });
+      if (!passwordStrong) {
+        setMessage({ type: 'error', text: 'Password must be at least 8 characters and include letters, numbers, and special characters.' });
       return;
     }
 
@@ -413,7 +596,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
   };
 
   // Save user settings to database
-  const saveUserSettings = async (settingsType: 'preferences' | 'courses' | 'website') => {
+  const saveUserSettings = async (settingsType: 'preferences' | 'courses') => {
     if (!user) return;
 
     setLoading(true);
@@ -436,11 +619,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
 
       if (settingsType === 'preferences') {
         updatedSettings.preferences = {
-          emailNotifications: settings.emailNotifications,
-          profileVisibility: settings.profileVisibility,
-          browserNotifications: settings.browserNotifications,
-          cookieConsent: settings.cookieConsent,
-          analyticsOptIn: settings.analyticsOptIn
+          emailNotifications: settings.emailNotifications
         };
       } else if (settingsType === 'courses') {
         updatedSettings.courses = {
@@ -453,15 +632,6 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
           showCompletedLessons: courseSettings.showCompletedLessons,
           compactCourseList: courseSettings.compactCourseList
         };
-      } else if (settingsType === 'website') {
-        updatedSettings.website = {
-          language: websiteSettings.language,
-          timezone: websiteSettings.timezone,
-          dateFormat: websiteSettings.dateFormat,
-          currency: websiteSettings.currency,
-          twoFactorAuth: websiteSettings.twoFactorAuth,
-          sessionTimeout: websiteSettings.sessionTimeout
-        };
       }
 
       // Update database via API
@@ -472,8 +642,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
       } else {
         const typeNames = {
           preferences: 'Preferences',
-          courses: 'Courses settings',
-          website: 'Website settings'
+          courses: 'Courses settings'
         };
         setMessage({ type: 'success', text: `${typeNames[settingsType]} saved successfully!` });
       }
@@ -688,36 +857,39 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
     }
   };
 
-  if (!isOpen) return null;
+  if (!isVisible) return null;
 
   return (
     <>
+      {!asPage && (
+        <div
+          className="fixed inset-0 z-[9998] bg-black/60 backdrop-blur-sm transition-opacity"
+          onClick={handleClose}
+        />
+      )}
       <div 
-        className="fixed inset-0 z-[9998] bg-black/60 backdrop-blur-sm transition-opacity"
-        onClick={onClose}
-      />
-      <div 
-        className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4"
-        onWheel={(e) => {
-          // Prevent scroll propagation to body
-          e.stopPropagation();
-        }}
-        onTouchMove={(e) => {
-          // Prevent touch scroll propagation
-          e.stopPropagation();
-        }}
+        className={
+          asPage
+            ? `min-h-screen pt-20 md:pt-28 pb-10 px-4 ${isDarkMode ? 'bg-gradient-to-b from-black via-gray-900 to-black' : 'bg-gradient-to-b from-gray-50 via-white to-gray-50'}`
+            : 'fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4'
+        }
+        onWheel={asPage ? undefined : (e) => e.stopPropagation()}
+        onTouchMove={asPage ? undefined : (e) => e.stopPropagation()}
       >
         <div 
-          className="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl border border-gray-200 dark:border-gray-700 shadow-2xl max-w-lg w-full p-4 sm:p-6 relative max-h-[95vh] sm:max-h-[90vh] overflow-y-auto custom-scrollbar"
-          style={{
+          className={
+            asPage
+              ? 'max-w-5xl w-full mx-auto p-0 relative overflow-visible'
+              : 'bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl border border-gray-200 dark:border-gray-700 shadow-2xl max-w-lg w-full p-4 sm:p-6 relative max-h-[95vh] sm:max-h-[90vh] overflow-y-auto custom-scrollbar'
+          }
+          style={asPage ? undefined : {
             scrollBehavior: 'smooth',
             WebkitOverflowScrolling: 'touch',
             overscrollBehavior: 'contain',
             touchAction: 'pan-y'
           }}
-          onClick={(e) => e.stopPropagation()}
-          onWheel={(e) => {
-            // Stop wheel event from propagating to body
+          onClick={asPage ? undefined : (e) => e.stopPropagation()}
+          onWheel={asPage ? undefined : (e) => {
             e.stopPropagation();
             const target = e.currentTarget;
             const { scrollTop, scrollHeight, clientHeight } = target;
@@ -729,36 +901,53 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
               e.preventDefault();
             }
           }}
-          onTouchStart={(e) => {
-            // Prevent touch events from propagating
-            e.stopPropagation();
-          }}
-          onTouchMove={(e) => {
-            // Allow touch scroll within modal
-            e.stopPropagation();
-          }}
+          onTouchStart={asPage ? undefined : (e) => e.stopPropagation()}
+          onTouchMove={asPage ? undefined : (e) => e.stopPropagation()}
         >
-          <button
-            onClick={onClose}
-            className="absolute top-3 right-3 sm:top-4 sm:right-4 w-9 h-9 sm:w-8 sm:h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 active:bg-gray-300 dark:active:bg-gray-500 transition-colors touch-manipulation"
-            aria-label="Close"
-          >
-            <svg className="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          {!asPage && (
+            <button
+              onClick={handleClose}
+              className="absolute top-3 right-3 sm:top-4 sm:right-4 w-9 h-9 sm:w-8 sm:h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 active:bg-gray-300 dark:active:bg-gray-500 transition-colors touch-manipulation"
+              aria-label="Close"
+            >
+              <svg className="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
 
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-3 sm:mb-4 pr-10">Settings</h2>
+          {asPage && (
+            <div className="mb-6 max-w-3xl mx-auto rounded-2xl border border-gray-200 bg-white/95 p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800/90">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Account Settings</h1>
+              <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-2">
+                Manage your profile, security, course preferences, and website options from one complete page.
+              </p>
+            </div>
+          )}
+
+          {!asPage && (
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-3 sm:mb-4 pr-10">Settings</h2>
+          )}
 
           {/* Tabs */}
-          <div className="flex gap-1 mb-4 sm:mb-6 border-b border-gray-200 dark:border-gray-700 overflow-x-auto custom-scrollbar -mx-4 sm:-mx-6 px-4 sm:px-6">
+          <div
+            className={
+              asPage
+                ? 'max-w-3xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4'
+                : 'flex gap-1 mb-4 sm:mb-6 border-b border-gray-200 dark:border-gray-700 overflow-x-auto custom-scrollbar -mx-4 sm:-mx-6 px-4 sm:px-6'
+            }
+          >
             <button
               type="button"
               onClick={() => setActiveTab('profile')}
               className={`px-3 py-2.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap touch-manipulation min-w-[60px] ${
-                activeTab === 'profile'
-                  ? 'text-purple-600 dark:text-purple-400 border-b-2 border-purple-600 dark:border-purple-400'
-                  : 'text-gray-600 dark:text-gray-400 active:text-gray-900 dark:active:text-gray-200'
+                asPage
+                  ? activeTab === 'profile'
+                    ? 'rounded-lg bg-purple-600 text-white'
+                    : 'rounded-lg bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-gray-700'
+                  : activeTab === 'profile'
+                    ? 'text-purple-600 dark:text-purple-400 border-b-2 border-purple-600 dark:border-purple-400'
+                    : 'text-gray-600 dark:text-gray-400 active:text-gray-900 dark:active:text-gray-200'
               }`}
             >
               Profile
@@ -767,9 +956,13 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
               type="button"
               onClick={() => setActiveTab('security')}
               className={`px-3 py-2.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap touch-manipulation min-w-[70px] ${
-                activeTab === 'security'
-                  ? 'text-purple-600 dark:text-purple-400 border-b-2 border-purple-600 dark:border-purple-400'
-                  : 'text-gray-600 dark:text-gray-400 active:text-gray-900 dark:active:text-gray-200'
+                asPage
+                  ? activeTab === 'security'
+                    ? 'rounded-lg bg-purple-600 text-white'
+                    : 'rounded-lg bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-gray-700'
+                  : activeTab === 'security'
+                    ? 'text-purple-600 dark:text-purple-400 border-b-2 border-purple-600 dark:border-purple-400'
+                    : 'text-gray-600 dark:text-gray-400 active:text-gray-900 dark:active:text-gray-200'
               }`}
             >
               Security
@@ -778,9 +971,13 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
               type="button"
               onClick={() => setActiveTab('preferences')}
               className={`px-3 py-2.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap touch-manipulation min-w-[85px] ${
-                activeTab === 'preferences'
-                  ? 'text-purple-600 dark:text-purple-400 border-b-2 border-purple-600 dark:border-purple-400'
-                  : 'text-gray-600 dark:text-gray-400 active:text-gray-900 dark:active:text-gray-200'
+                asPage
+                  ? activeTab === 'preferences'
+                    ? 'rounded-lg bg-purple-600 text-white'
+                    : 'rounded-lg bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-gray-700'
+                  : activeTab === 'preferences'
+                    ? 'text-purple-600 dark:text-purple-400 border-b-2 border-purple-600 dark:border-purple-400'
+                    : 'text-gray-600 dark:text-gray-400 active:text-gray-900 dark:active:text-gray-200'
               }`}
             >
               Preferences
@@ -789,29 +986,54 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
               type="button"
               onClick={() => setActiveTab('courses')}
               className={`px-3 py-2.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap touch-manipulation min-w-[72px] ${
-                activeTab === 'courses'
-                  ? 'text-purple-600 dark:text-purple-400 border-b-2 border-purple-600 dark:border-purple-400'
-                  : 'text-gray-600 dark:text-gray-400 active:text-gray-900 dark:active:text-gray-200'
+                asPage
+                  ? activeTab === 'courses'
+                    ? 'rounded-lg bg-purple-600 text-white'
+                    : 'rounded-lg bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-gray-700'
+                  : activeTab === 'courses'
+                    ? 'text-purple-600 dark:text-purple-400 border-b-2 border-purple-600 dark:border-purple-400'
+                    : 'text-gray-600 dark:text-gray-400 active:text-gray-900 dark:active:text-gray-200'
               }`}
             >
               Courses
             </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('website')}
-              className={`px-3 py-2.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap touch-manipulation min-w-[70px] ${
-                activeTab === 'website'
-                  ? 'text-purple-600 dark:text-purple-400 border-b-2 border-purple-600 dark:border-purple-400'
-                  : 'text-gray-600 dark:text-gray-400 active:text-gray-900 dark:active:text-gray-200'
-              }`}
-            >
-              Website
-            </button>
           </div>
+
+          <div className={asPage ? 'max-w-3xl mx-auto rounded-2xl border border-gray-200 bg-white p-4 sm:p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800' : ''}>
 
           {/* Profile Tab */}
           {activeTab === 'profile' && (
           <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+            <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5 flex flex-col items-center text-center gap-3">
+              <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-purple-400/60 bg-gray-100 dark:bg-gray-700">
+                {profileImagePreview ? (
+                  <img src={profileImagePreview} alt="Profile avatar preview" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-gray-500 dark:text-gray-300">
+                    <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM4 20a8 8 0 1116 0" />
+                    </svg>
+                  </div>
+                )}
+              </div>
+              <div>
+                <input
+                  ref={profileImageInputRef}
+                  id="profileAvatarInput"
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg,image/webp"
+                  className="hidden"
+                  onChange={handleProfileImageChange}
+                />
+                <label
+                  htmlFor="profileAvatarInput"
+                  className="inline-flex cursor-pointer items-center justify-center rounded-lg bg-gray-200 dark:bg-gray-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                >
+                  Change Profile Picture
+                </label>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">PNG, JPG, WebP up to 3MB</p>
+              </div>
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                 Name
@@ -845,16 +1067,38 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                 Username
               </label>
-              <input
-                type="text"
-                className="w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm rounded-md bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation"
-                value={formData.username}
-                onChange={(e) => setFormData({ ...formData, username: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') })}
-                placeholder="username"
-                pattern="[a-z0-9_]+"
-              />
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Only lowercase letters, numbers, and underscores allowed
+              <div className="relative">
+                <input
+                  type="text"
+                  className={`w-full px-3 py-2.5 sm:py-2 pr-10 text-base sm:text-sm rounded-md bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white border focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation ${
+                    usernameValidation.status === 'valid'
+                      ? 'border-emerald-500'
+                      : usernameValidation.status === 'invalid'
+                        ? 'border-red-500'
+                        : 'border-gray-300 dark:border-gray-600'
+                  }`}
+                  value={formData.username}
+                  onChange={(e) => setFormData({ ...formData, username: e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '') })}
+                  placeholder="username123"
+                  pattern="[a-z0-9]+"
+                />
+                {usernameValidation.status === 'checking' && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">...</span>
+                )}
+                {usernameValidation.status === 'valid' && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-500" aria-hidden>
+                    ✓
+                  </span>
+                )}
+              </div>
+              <p className={`text-xs mt-1 ${
+                usernameValidation.status === 'invalid'
+                  ? 'text-red-500'
+                  : usernameValidation.status === 'valid'
+                    ? 'text-emerald-500'
+                    : 'text-gray-500 dark:text-gray-400'
+              }`}>
+                {usernameValidation.message || 'Use lowercase letters and numbers; include at least one letter and one number.'}
               </p>
             </div>
 
@@ -871,18 +1115,20 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-2 pt-3 sm:pt-2">
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || imageUploading}
                 className="flex-1 px-4 py-3 sm:py-2 rounded-md bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 active:from-indigo-800 active:to-purple-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation text-sm sm:text-base font-medium"
               >
-                {loading ? 'Saving...' : 'Save Changes'}
+                {loading || imageUploading ? 'Saving...' : 'Save Changes'}
               </button>
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-3 sm:py-2 rounded-md bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 active:bg-gray-300 dark:active:bg-gray-600 transition-colors touch-manipulation text-sm sm:text-base font-medium"
-              >
-                Cancel
-              </button>
+              {!asPage && (
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  className="px-4 py-3 sm:py-2 rounded-md bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 active:bg-gray-300 dark:active:bg-gray-600 transition-colors touch-manipulation text-sm sm:text-base font-medium"
+                >
+                  Cancel
+                </button>
+              )}
             </div>
           </form>
           )}
@@ -959,8 +1205,8 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
                         className="w-full px-3 py-2.5 sm:py-2 pr-10 text-base sm:text-sm rounded-md bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation"
                         value={passwordData.newPassword}
                         onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                        placeholder="Enter new password (min 6 characters)"
-                        minLength={6}
+                        placeholder="Enter new password (min 8 chars)"
+                        minLength={8}
                       />
                       <button
                         type="button"
@@ -979,6 +1225,25 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
                           </svg>
                         )}
                       </button>
+                      {passwordData.newPassword.length > 0 && passwordStrong && (
+                        <span className="absolute right-10 top-1/2 -translate-y-1/2 text-emerald-500" aria-hidden>
+                          ✓
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-2 space-y-1 text-xs">
+                      <p className={passwordHasLetter ? 'text-emerald-500' : 'text-gray-500 dark:text-gray-400'}>
+                        {passwordHasLetter ? '✓' : '•'} Contains letters
+                      </p>
+                      <p className={passwordHasNumber ? 'text-emerald-500' : 'text-gray-500 dark:text-gray-400'}>
+                        {passwordHasNumber ? '✓' : '•'} Contains numbers
+                      </p>
+                      <p className={passwordHasSpecial ? 'text-emerald-500' : 'text-gray-500 dark:text-gray-400'}>
+                        {passwordHasSpecial ? '✓' : '•'} Contains special character
+                      </p>
+                      <p className={passwordData.newPassword.length >= 8 ? 'text-emerald-500' : 'text-gray-500 dark:text-gray-400'}>
+                        {passwordData.newPassword.length >= 8 ? '✓' : '•'} Minimum 8 characters
+                      </p>
                     </div>
                   </div>
 
@@ -999,7 +1264,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
                         value={passwordData.confirmPassword}
                         onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
                         placeholder="Confirm new password"
-                        minLength={6}
+                        minLength={8}
                       />
                       <button
                         type="button"
@@ -1242,117 +1507,6 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
                 </button>
               </div>
 
-              {/* Profile Visibility */}
-              <div className="py-3">
-                <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-2">Profile Visibility</h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                  Control who can see your profile information
-                </p>
-                <div className="space-y-2">
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      name="visibility"
-                      value="public"
-                      checked={settings.profileVisibility === 'public'}
-                      onChange={(e) => setSettings({ ...settings, profileVisibility: e.target.value as 'public' | 'private' })}
-                      className="mr-2 text-purple-600 focus:ring-purple-500"
-                    />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">Public - Anyone can view your profile</span>
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      name="visibility"
-                      value="private"
-                      checked={settings.profileVisibility === 'private'}
-                      onChange={(e) => setSettings({ ...settings, profileVisibility: e.target.value as 'public' | 'private' })}
-                      className="mr-2 text-purple-600 focus:ring-purple-500"
-                    />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">Private - Only you can view your profile</span>
-                  </label>
-                </div>
-              </div>
-
-              {/* Browser Notifications */}
-              <div className="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-700">
-                <div>
-                  <h3 className="text-sm font-medium text-gray-900 dark:text-white">Browser Notifications</h3>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Receive browser push notifications
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!settings.browserNotifications && 'Notification' in window) {
-                      Notification.requestPermission().then(permission => {
-                        if (permission === 'granted') {
-                          setSettings({ ...settings, browserNotifications: true });
-                        }
-                      });
-                    } else {
-                      setSettings({ ...settings, browserNotifications: !settings.browserNotifications });
-                    }
-                  }}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
-                    settings.browserNotifications ? 'bg-purple-600' : 'bg-gray-300'
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      settings.browserNotifications ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
-              </div>
-
-              {/* Cookie Consent */}
-              <div className="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-700">
-                <div>
-                  <h3 className="text-sm font-medium text-gray-900 dark:text-white">Cookie Consent</h3>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Allow cookies for better experience
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSettings({ ...settings, cookieConsent: !settings.cookieConsent })}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
-                    settings.cookieConsent ? 'bg-purple-600' : 'bg-gray-300'
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      settings.cookieConsent ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
-              </div>
-
-              {/* Analytics Opt-in */}
-              <div className="flex items-center justify-between py-3">
-                <div>
-                  <h3 className="text-sm font-medium text-gray-900 dark:text-white">Analytics</h3>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Help us improve by sharing usage data
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSettings({ ...settings, analyticsOptIn: !settings.analyticsOptIn })}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
-                    settings.analyticsOptIn ? 'bg-purple-600' : 'bg-gray-300'
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      settings.analyticsOptIn ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
-              </div>
-
               <button
                 type="button"
                 onClick={() => saveUserSettings('preferences')}
@@ -1572,182 +1726,6 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
             </div>
           )}
 
-          {/* Website Tab */}
-          {activeTab === 'website' && (
-            <div className="space-y-6">
-              {/* Language Preference */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Language
-                </label>
-                <select
-                  value={websiteSettings.language}
-                  onChange={(e) => setWebsiteSettings({ ...websiteSettings, language: e.target.value as 'en' | 'ur' | 'ar' })}
-                  className="w-full px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="en">English</option>
-                  <option value="ur">اردو (Urdu)</option>
-                  <option value="ar">العربية (Arabic)</option>
-                </select>
-              </div>
-
-              {/* Timezone */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Timezone
-                </label>
-                <select
-                  value={websiteSettings.timezone}
-                  onChange={(e) => setWebsiteSettings({ ...websiteSettings, timezone: e.target.value })}
-                  className="w-full px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="Asia/Karachi">Asia/Karachi (PKT)</option>
-                  <option value="America/New_York">America/New_York (EST)</option>
-                  <option value="Europe/London">Europe/London (GMT)</option>
-                  <option value="Asia/Dubai">Asia/Dubai (GST)</option>
-                  <option value="Asia/Tokyo">Asia/Tokyo (JST)</option>
-                </select>
-              </div>
-
-              {/* Date Format */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Date Format
-                </label>
-                <div className="space-y-2">
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      name="dateFormat"
-                      value="MM/DD/YYYY"
-                      checked={websiteSettings.dateFormat === 'MM/DD/YYYY'}
-                      onChange={(e) => setWebsiteSettings({ ...websiteSettings, dateFormat: e.target.value as 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD' })}
-                      className="mr-2 text-purple-600 focus:ring-purple-500"
-                    />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">MM/DD/YYYY (US Format)</span>
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      name="dateFormat"
-                      value="DD/MM/YYYY"
-                      checked={websiteSettings.dateFormat === 'DD/MM/YYYY'}
-                      onChange={(e) => setWebsiteSettings({ ...websiteSettings, dateFormat: e.target.value as 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD' })}
-                      className="mr-2 text-purple-600 focus:ring-purple-500"
-                    />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">DD/MM/YYYY (European Format)</span>
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      name="dateFormat"
-                      value="YYYY-MM-DD"
-                      checked={websiteSettings.dateFormat === 'YYYY-MM-DD'}
-                      onChange={(e) => setWebsiteSettings({ ...websiteSettings, dateFormat: e.target.value as 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD' })}
-                      className="mr-2 text-purple-600 focus:ring-purple-500"
-                    />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">YYYY-MM-DD (ISO Format)</span>
-                  </label>
-                </div>
-              </div>
-
-              {/* Currency */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Currency
-                </label>
-                <select
-                  value={websiteSettings.currency}
-                  onChange={(e) => setWebsiteSettings({ ...websiteSettings, currency: e.target.value as 'USD' | 'PKR' | 'EUR' })}
-                  className="w-full px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="USD">USD ($)</option>
-                  <option value="PKR">PKR (₨)</option>
-                  <option value="EUR">EUR (€)</option>
-                </select>
-              </div>
-
-              {/* Two-Factor Authentication */}
-              <div className="flex items-center justify-between py-3 border-t border-gray-200 dark:border-gray-700">
-                <div>
-                  <h3 className="text-sm font-medium text-gray-900 dark:text-white">Two-Factor Authentication</h3>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Add an extra layer of security to your account
-                  </p>
-                </div>
-              <button
-                type="button"
-                  onClick={() => setWebsiteSettings({ ...websiteSettings, twoFactorAuth: !websiteSettings.twoFactorAuth })}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
-                    websiteSettings.twoFactorAuth ? 'bg-purple-600' : 'bg-gray-300'
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      websiteSettings.twoFactorAuth ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
-              </button>
-            </div>
-
-              {/* Session Timeout */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Session Timeout (minutes)
-                </label>
-                <input
-                  type="number"
-                  min="5"
-                  max="120"
-                  value={websiteSettings.sessionTimeout}
-                  onChange={(e) => setWebsiteSettings({ ...websiteSettings, sessionTimeout: parseInt(e.target.value) || 30 })}
-                  className="w-full px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Automatically log out after inactivity (5-120 minutes)
-                </p>
-              </div>
-
-              {/* Data Export */}
-              <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-                <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-2">Data Management</h3>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      // Export user data as JSON
-                      const userData = {
-                        profile: user,
-                        settings: settings,
-                        courseSettings: courseSettings,
-                        websiteSettings: websiteSettings,
-                        exportDate: new Date().toISOString()
-                      };
-                      const blob = new Blob([JSON.stringify(userData, null, 2)], { type: 'application/json' });
-                      const url = URL.createObjectURL(blob);
-                      const a = document.createElement('a');
-                      a.href = url;
-                      a.download = `user-data-${Date.now()}.json`;
-                      a.click();
-                      URL.revokeObjectURL(url);
-                      setMessage({ type: 'success', text: 'Data exported successfully!' });
-                    }}
-                    className="w-full px-4 py-3 sm:py-2 rounded-md bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 active:bg-gray-300 dark:active:bg-gray-600 transition-colors touch-manipulation text-sm sm:text-base font-medium"
-                  >
-                    Export My Data
-                  </button>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => saveUserSettings('website')}
-                disabled={loading}
-                className="w-full px-4 py-3 sm:py-2 rounded-md bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 active:from-indigo-800 active:to-purple-800 transition-colors touch-manipulation text-sm sm:text-base font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? 'Saving...' : 'Save Website Settings'}
-              </button>
-            </div>
-          )}
-
           {/* Global Message Display */}
           {message && (
             <div className={`mt-4 p-3 rounded-md text-sm ${
@@ -1758,8 +1736,21 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose }
               {message.text}
             </div>
           )}
+          </div>
         </div>
       </div>
+      <ProfileImageCropDialog
+        isOpen={isCropDialogOpen}
+        imageSrc={cropImageSrc}
+        crop={cropPosition}
+        zoom={cropZoom}
+        onCropChange={setCropPosition}
+        onZoomChange={setCropZoom}
+        onCropComplete={(_, croppedPixels) => setCropAreaPixels(croppedPixels)}
+        onCancel={handleCancelCrop}
+        onConfirm={handleApplyCroppedImage}
+        confirming={cropApplying}
+      />
     </>
   );
 };

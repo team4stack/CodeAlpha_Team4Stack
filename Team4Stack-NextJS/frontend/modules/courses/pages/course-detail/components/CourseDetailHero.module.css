@@ -1,0 +1,29 @@
+@keyframes softPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 0.75;
+  }
+}
+
+.glowPrimary {
+  background: radial-gradient(
+    circle at 30% 30%,
+    rgba(56, 189, 248, 0.45),
+    rgba(56, 189, 248, 0) 60%
+  );
+  animation: softPulse 4s ease-in-out infinite;
+}
+
+.glowSecondary {
+  background: radial-gradient(
+    circle at 70% 70%,
+    rgba(168, 85, 247, 0.45),
+    rgba(168, 85, 247, 0) 60%
+  );
+  animation: softPulse 5s ease-in-out 1s infinite;
+}

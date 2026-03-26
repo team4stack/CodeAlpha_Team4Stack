@@ -3,8 +3,8 @@
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import TeamAdminSidebar from './TeamAdminSidebar'
-import AdminHeader from '../../../../components/admin/shared/AdminHeader'
-import AdminFooter from '../../../../components/admin/shared/AdminFooter'
+import AdminHeader from '@/components/admin/shared/AdminHeader'
+import AdminFooter from '@/components/admin/shared/AdminFooter'
 interface TeamAdminLayoutProps {
   children: React.ReactNode
 }
@@ -56,8 +56,9 @@ const TeamAdminLayout: React.FC<TeamAdminLayoutProps> = ({ children }) => {
         // Check if user is admin in admin_users table via API
         const { superadminApi } = await import('@/lib/api')
         const adminResult = await superadminApi.checkAdminByEmail(userEmail)
+        const adminRow = adminResult.data as any
 
-        if (adminResult.error || !adminResult.data || !adminResult.data.email) {
+        if (adminResult.error || !adminRow || !adminRow.email) {
           sessionStorage.removeItem('admin_session')
           router.replace('/adminteamt4s/login')
           setLoading(false)
@@ -67,7 +68,7 @@ const TeamAdminLayout: React.FC<TeamAdminLayoutProps> = ({ children }) => {
         // Step 3: ROLE-BASED ACCESS CONTROL
         // Check if user has permission to access team admin panel
         // Only super_admin or team_admin role can access
-        const userRole = (adminResult.data as any)?.role || 'admin'
+        const userRole = adminRow?.role || 'admin'
         const allowedRoles = ['super_admin', 'team_admin']
         if (!allowedRoles.includes(userRole)) {
           // User doesn't have permission for this admin panel

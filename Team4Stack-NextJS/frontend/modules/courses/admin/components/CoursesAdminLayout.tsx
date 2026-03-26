@@ -3,8 +3,8 @@
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import CoursesAdminSidebar from './CoursesAdminSidebar'
-import AdminHeader from '../../../../components/admin/shared/AdminHeader'
-import AdminFooter from '../../../../components/admin/shared/AdminFooter'
+import AdminHeader from '@/components/admin/shared/AdminHeader'
+import AdminFooter from '@/components/admin/shared/AdminFooter'
 interface CoursesAdminLayoutProps {
   children: React.ReactNode
 }
@@ -54,8 +54,9 @@ const CoursesAdminLayout: React.FC<CoursesAdminLayoutProps> = ({ children }) => 
         // Check if user is admin in admin_users table via API
         const { superadminApi } = await import('@/lib/api')
         const adminResult = await superadminApi.checkAdminByEmail(userEmail)
+        const adminRow = adminResult.data as any
 
-        if (adminResult.error || !adminResult.data || !adminResult.data.email) {
+        if (adminResult.error || !adminRow || !adminRow.email) {
           sessionStorage.removeItem('admin_session')
           router.replace('/admincourset4s/login')
           setLoading(false)
@@ -65,7 +66,7 @@ const CoursesAdminLayout: React.FC<CoursesAdminLayoutProps> = ({ children }) => 
         // Step 3: ROLE-BASED ACCESS CONTROL
         // Check if user has permission to access courses admin panel
         // Only super_admin or courses_admin role can access
-        const userRole = (adminResult.data as any)?.role || 'admin'
+        const userRole = adminRow?.role || 'admin'
         const allowedRoles = ['super_admin', 'courses_admin']
         if (!allowedRoles.includes(userRole)) {
           sessionStorage.removeItem('admin_session')

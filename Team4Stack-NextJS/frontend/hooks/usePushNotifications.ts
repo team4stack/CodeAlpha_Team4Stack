@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { devError, devLog } from '../utils/devUtils';
+import { devError, devLog } from '@/lib/utils/devUtils';
 
 export const usePushNotifications = () => {
   const [isSupported, setIsSupported] = useState(false);

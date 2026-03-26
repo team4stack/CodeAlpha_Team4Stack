@@ -5,7 +5,6 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import AuthModal from '@/lib/auth/components/AuthModal';
-import UserSettingsModal from '@/modals/UserSettingsModal';
 import MobileNavigation from '@/components/MobileNavigation';
 
 type NavbarLink = {
@@ -24,7 +23,6 @@ const Navbar: React.FC = () => {
   const [logoLoaded, setLogoLoaded] = useState(false);
   const [logoKey, setLogoKey] = useState(0);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [oauthError, setOauthError] = useState<string | null>(null);
   const [navbarLinks, setNavbarLinks] = useState<NavbarLink[]>([
     { name: 'Services', href: '#services' },
@@ -54,7 +52,7 @@ const Navbar: React.FC = () => {
       try {
         const { landingApi } = await import('@/lib/api')
         const result = await landingApi.getSiteSettings(['navbar_links'])
-        const data = result.data?.find((s: any) => s.key === 'navbar_links')
+        const data = (Array.isArray(result.data) ? result.data : []).find((s: any) => s.key === 'navbar_links')
         
         if (data?.value) {
           try {
@@ -283,13 +281,13 @@ const Navbar: React.FC = () => {
             {/* Logo – admin style, size thora chota */}
             <a 
               href="#home" 
-              className={`flex items-center gap-2 sm:gap-3 group focus:outline-none rounded-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-95 flex-shrink-0 ${
+              className={`flex items-center gap-2 sm:gap-3 group focus:outline-none rounded-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-95 shrink-0 ${
                 'opacity-100'
               }`}
               aria-label="Team4Stack Home"
               onClick={(e) => handleLinkClick(e, '#home')}
             >
-              <div className="relative w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center flex-shrink-0">
+              <div className="relative w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center shrink-0">
                 <img
                   src={
                     !isScrolled
@@ -334,7 +332,7 @@ const Navbar: React.FC = () => {
                 }}
               >
                 Team
-                <span className="pointer-events-none absolute left-1/2 -bottom-0.5 w-0 h-0.5 bg-gradient-to-r from-blue-400 to-cyan-500 rounded-full transition-all duration-300 group-hover:left-0 group-hover:w-full"></span>
+                <span className="pointer-events-none absolute left-1/2 -bottom-0.5 w-0 h-0.5 bg-linear-to-r from-blue-400 to-cyan-500 rounded-full transition-all duration-300 group-hover:left-0 group-hover:w-full"></span>
               </a>
               {navbarLinks
                 .filter((link) => link.name?.toLowerCase() !== 'team') // Filter out Team from navbarLinks since we show it separately
@@ -364,7 +362,7 @@ const Navbar: React.FC = () => {
                       }}
                     >
                       {link.name}
-                      <span className="pointer-events-none absolute left-1/2 -bottom-0.5 w-0 h-px bg-gradient-to-r from-cyan-400 to-purple-500 rounded-full transition-all duration-300 group-hover:left-0 group-hover:w-full"></span>
+                      <span className="pointer-events-none absolute left-1/2 -bottom-0.5 w-0 h-px bg-linear-to-r from-cyan-400 to-purple-500 rounded-full transition-all duration-300 group-hover:left-0 group-hover:w-full"></span>
                     </a>
                   );
                 }
@@ -378,7 +376,7 @@ const Navbar: React.FC = () => {
                     onClick={(e) => handleLinkClick(e, link.href)}
                   >
                     {link.name}
-                    <span className="pointer-events-none absolute left-1/2 -bottom-0.5 w-0 h-px bg-gradient-to-r from-cyan-400 to-purple-500 rounded-full transition-all duration-300 group-hover:left-0 group-hover:w-full"></span>
+                    <span className="pointer-events-none absolute left-1/2 -bottom-0.5 w-0 h-px bg-linear-to-r from-cyan-400 to-purple-500 rounded-full transition-all duration-300 group-hover:left-0 group-hover:w-full"></span>
                   </a>
                 );
               })}
@@ -397,7 +395,7 @@ const Navbar: React.FC = () => {
                 }}
               >
                 StackStore
-                <span className="pointer-events-none absolute left-1/2 -bottom-0.5 w-0 h-0.5 bg-gradient-to-r from-cyan-400 to-purple-500 rounded-full transition-all duration-300 group-hover:left-0 group-hover:w-full"></span>
+                <span className="pointer-events-none absolute left-1/2 -bottom-0.5 w-0 h-0.5 bg-linear-to-r from-cyan-400 to-purple-500 rounded-full transition-all duration-300 group-hover:left-0 group-hover:w-full"></span>
               </a> */}
             </div>
 
@@ -416,7 +414,7 @@ const Navbar: React.FC = () => {
                       }}
                       className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 hover:bg-white/15 transition-all cursor-pointer"
                     >
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center overflow-hidden">
+                      <div className="w-8 h-8 rounded-full bg-linear-to-br from-purple-500 to-pink-500 flex items-center justify-center overflow-hidden">
                         {user.avatar_url ? (
                           <img src={user.avatar_url} alt="avatar" className="w-full h-full object-cover" />
                         ) : (
@@ -435,14 +433,14 @@ const Navbar: React.FC = () => {
                     {isUserMenuOpen && (
                       <>
                         <div 
-                          className="fixed inset-0 z-[10000]"
+                          className="fixed inset-0 z-10000"
                           onClick={(e) => {
                             e.stopPropagation()
                             setIsUserMenuOpen(false)
                           }}
                         />
                         <div 
-                          className={`absolute right-0 mt-2 w-48 rounded-lg shadow-xl z-[10001] ${
+                          className={`absolute right-0 mt-2 w-48 rounded-lg shadow-xl z-10001 ${
                             isDarkMode 
                               ? 'bg-gray-800 border border-gray-700' 
                               : 'bg-white border border-gray-200'
@@ -469,7 +467,7 @@ const Navbar: React.FC = () => {
                             <div className="mt-1 space-y-1">
                               <button 
                                 onClick={() => {
-                                  setIsSettingsOpen(true);
+                                  router.push('/settings');
                                   setIsUserMenuOpen(false);
                                 }}
                                 className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center gap-2 ${
@@ -486,7 +484,7 @@ const Navbar: React.FC = () => {
                           </button>
                               <a 
                                 href="/adminlandingt4s" 
-                                className={`block px-3 py-2 text-sm rounded-md transition-colors flex items-center gap-2 ${
+                                className={`px-3 py-2 text-sm rounded-md transition-colors flex items-center gap-2 ${
                                   user.role === 'admin' 
                                     ? (isDarkMode
                                         ? 'text-gray-300 hover:bg-gray-700'
@@ -526,7 +524,7 @@ const Navbar: React.FC = () => {
                 ) : (
                   <button
                     onClick={() => setIsAuthOpen(true)}
-                    className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-indigo-500 text-white shadow-[0_10px_30px_rgba(168,85,247,0.35)] hover:shadow-[0_12px_36px_rgba(99,102,241,0.45)] transition-all hover:scale-110 flex items-center justify-center"
+                    className="w-10 h-10 rounded-full bg-linear-to-br from-purple-500 via-pink-500 to-indigo-500 text-white shadow-[0_10px_30px_rgba(168,85,247,0.35)] hover:shadow-[0_12px_36px_rgba(99,102,241,0.45)] transition-all hover:scale-110 flex items-center justify-center"
                     aria-label="Sign In"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -562,9 +560,9 @@ const Navbar: React.FC = () => {
                   className={`p-2 rounded-lg transition-all flex items-center justify-center ${
                     isScrolled
                       ? (isDarkMode 
-                          ? 'bg-gradient-to-br from-purple-500 via-pink-500 to-indigo-500 hover:from-purple-600 hover:via-pink-600 hover:to-indigo-600 text-white shadow-lg' 
-                          : 'bg-gradient-to-br from-purple-500 via-pink-500 to-indigo-500 hover:from-purple-600 hover:via-pink-600 hover:to-indigo-600 text-white shadow-lg')
-                      : 'bg-gradient-to-br from-purple-500 via-pink-500 to-indigo-500 hover:from-purple-600 hover:via-pink-600 hover:to-indigo-600 text-white shadow-lg'
+                          ? 'bg-linear-to-br from-purple-500 via-pink-500 to-indigo-500 hover:from-purple-600 hover:via-pink-600 hover:to-indigo-600 text-white shadow-lg' 
+                          : 'bg-linear-to-br from-purple-500 via-pink-500 to-indigo-500 hover:from-purple-600 hover:via-pink-600 hover:to-indigo-600 text-white shadow-lg')
+                      : 'bg-linear-to-br from-purple-500 via-pink-500 to-indigo-500 hover:from-purple-600 hover:via-pink-600 hover:to-indigo-600 text-white shadow-lg'
                   } focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2`}
                   aria-label="Sign In"
                 >
@@ -585,7 +583,7 @@ const Navbar: React.FC = () => {
                   // Fallback for browsers that don't reliably fire pointer events.
                   setIsMenuOpen((prev) => !prev);
                 }}
-                className={`p-2 relative z-[10002] rounded-lg transition-colors flex items-center justify-center ${
+                className={`p-2 relative z-10002 rounded-lg transition-colors flex items-center justify-center ${
                   isScrolled
                     ? (isDarkMode 
                         ? 'bg-white/20 backdrop-blur-lg hover:bg-white/30 border border-white/30' 
@@ -612,6 +610,7 @@ const Navbar: React.FC = () => {
             </div>
           </div>
         </div>
+        <div className="pointer-events-none h-[2px] w-full bg-linear-to-r from-transparent via-cyan-400/80 to-transparent" />
       </nav>
       <AuthModal 
         isOpen={isAuthOpen} 
@@ -622,17 +621,11 @@ const Navbar: React.FC = () => {
         initialError={oauthError}
       />
 
-      {/* User Settings Modal */}
-      <UserSettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-      />
-
       {/* Mobile Navigation */}
       <MobileNavigation
         isOpen={isMenuOpen}
         onClose={() => setIsMenuOpen(false)}
-        onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenSettings={() => router.push('/settings')}
         onOpenAuth={() => setIsAuthOpen(true)}
       />
     </>

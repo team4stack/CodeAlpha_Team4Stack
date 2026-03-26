@@ -1,7 +1,9 @@
+"use client"
+
 import React, { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useRouter } from 'next/navigation'
 const LoginPage: React.FC = () => {
-  const navigate = useNavigate()
+  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -17,7 +19,7 @@ const LoginPage: React.FC = () => {
           const adminSession = JSON.parse(adminSessionStr)
           // Check if session is still valid
           if (adminSession.expiresAt && Date.now() < adminSession.expiresAt) {
-            navigate('/adminlandingt4s', { replace: true })
+            router.replace('/adminlandingt4s')
           } else {
             // Session expired, remove it
             sessionStorage.removeItem('admin_session')
@@ -29,7 +31,7 @@ const LoginPage: React.FC = () => {
       }
     }
     checkSession()
-  }, [navigate])
+  }, [router])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -110,7 +112,7 @@ const LoginPage: React.FC = () => {
       sessionStorage.setItem('admin_session', JSON.stringify(adminSession))
 
       // Success - navigate to admin dashboard
-      navigate('/adminlandingt4s', { replace: true })
+      router.replace('/adminlandingt4s')
     } catch (error: any) {
       // Generic error message - no sensitive info
       setError('An error occurred. Please try again.')

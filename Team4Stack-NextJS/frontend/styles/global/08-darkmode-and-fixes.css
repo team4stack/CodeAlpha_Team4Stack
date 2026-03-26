@@ -1,0 +1,468 @@
+/* Dark Mode Sections */
+.dark #services,
+.dark #about,
+.dark #projects,
+.dark #courses,
+.dark #contact,
+.dark #reviews {
+  background: var(--gradient-bg) !important;
+}
+
+/* Dark Mode Cards */
+.dark .card {
+  background: #1a1a1a !important;
+  border: 1px solid rgba(0, 255, 136, 0.3) !important;
+  color: #ffffff !important;
+  box-shadow: var(--shadow-glow) !important;
+}
+
+.dark .card * {
+  color: #ffffff !important;
+}
+
+/* Additional fixes at the end of the file */
+/* Fix for white flash during theme transitions */
+html, body {
+  /* Ensure background is always set to prevent flashes */
+  background-color: var(--bg-primary) !important;
+  transition: background-color 0.3s ease !important;
+}
+
+/* Fix for smooth scrolling on all elements */
+* {
+  scroll-behavior: smooth;
+}
+
+/* Hardware acceleration for smoother animations - applied selectively */
+.transform-gpu {
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+}
+
+/* Prevent white flash during theme switching */
+.theme-transition {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Smooth scroll behavior for the entire document */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Optimize scrolling performance without breaking fixed elements */
+body {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  overscroll-behavior-y: contain;
+  overscroll-behavior-x: none;
+  /* NOTE: avoid transform/perspective/contain here because they can
+     create a new containing block and break position: fixed (navbar). */
+}
+
+/* Ensure all scrollable elements have smooth scrolling */
+.scroll-smooth {
+  scroll-behavior: smooth;
+}
+
+/* Prevent layout shifts during loading */
+img, video {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+/* Remove texture/glass effects from avatar images */
+img[src*="avatar"], 
+img[alt*="Avatar"], 
+img[alt*="avatar"],
+.avatar-selection img,
+.avatar-preview img {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  filter: none !important;
+  -webkit-filter: none !important;
+  mix-blend-mode: normal !important;
+  opacity: 1 !important;
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  isolation: isolate !important;
+}
+
+/* GitHub button - Match 3-line button style exactly */
+#about .t4s-card .actions .cta-row a.github-btn-navbar-style,
+#about .t4s-card.team-neon .actions .cta-row a.github-btn-navbar-style,
+#about article.t4s-card .actions .cta-row a.github-btn-navbar-style,
+#about .t4s-card a.github-btn-navbar-style,
+#about .t4s-card.team-neon a.github-btn-navbar-style,
+#about article.t4s-card a.github-btn-navbar-style {
+  background: rgba(255, 255, 255, 0.2) !important;
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  background-image: none !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  border-radius: 0.5rem !important;
+  color: rgba(255, 255, 255, 1) !important;
+  box-shadow: none !important;
+  backdrop-filter: blur(16px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+  position: relative !important;
+  overflow: hidden !important;
+  z-index: 1 !important;
+  filter: none !important;
+  padding: 0.5rem !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  transition: background-color 0.2s ease !important;
+}
+
+#about .t4s-card .actions .cta-row a.github-btn-navbar-style:hover,
+#about .t4s-card.team-neon .actions .cta-row a.github-btn-navbar-style:hover,
+#about article.t4s-card .actions .cta-row a.github-btn-navbar-style:hover,
+#about .t4s-card a.github-btn-navbar-style:hover,
+#about .t4s-card.team-neon a.github-btn-navbar-style:hover,
+#about article.t4s-card a.github-btn-navbar-style:hover {
+  background: rgba(255, 255, 255, 0.3) !important;
+  background-color: rgba(255, 255, 255, 0.3) !important;
+  background-image: none !important;
+  transform: none !important;
+  filter: none !important;
+}
+
+/* Texture effect - Match 3-line button exactly */
+#about .t4s-card .actions .cta-row a.github-btn-navbar-style::before,
+#about .t4s-card.team-neon .actions .cta-row a.github-btn-navbar-style::before,
+#about article.t4s-card .actions .cta-row a.github-btn-navbar-style::before,
+#about .t4s-card a.github-btn-navbar-style::before,
+#about .t4s-card.team-neon a.github-btn-navbar-style::before,
+#about article.t4s-card a.github-btn-navbar-style::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background: linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.05) 40%, rgba(255,255,255,0.02) 70%, transparent 100%) !important;
+  pointer-events: none !important;
+  border-radius: inherit !important;
+  z-index: 0 !important;
+}
+
+#about .t4s-card .actions .cta-row a.github-btn-navbar-style::after,
+#about .t4s-card.team-neon .actions .cta-row a.github-btn-navbar-style::after,
+#about article.t4s-card .actions .cta-row a.github-btn-navbar-style::after,
+#about .t4s-card a.github-btn-navbar-style::after,
+#about .t4s-card.team-neon a.github-btn-navbar-style::after,
+#about article.t4s-card a.github-btn-navbar-style::after {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 50% !important;
+  height: 50% !important;
+  background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 100%) !important;
+  pointer-events: none !important;
+  border-radius: inherit !important;
+  z-index: 0 !important;
+}
+
+/* Portfolio button gradient design - Modern gradient matching website style */
+#about .t4s-card .actions .cta-row a.portfolio-btn-gradient,
+#about .t4s-card.team-neon .actions .cta-row a.portfolio-btn-gradient,
+#about article.t4s-card .actions .cta-row a.portfolio-btn-gradient,
+#about .t4s-card a.portfolio-btn-gradient,
+#about .t4s-card.team-neon a.portfolio-btn-gradient,
+#about article.t4s-card a.portfolio-btn-gradient {
+  background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 50%, #8b5cf6 100%) !important;
+  background-image: linear-gradient(135deg, #06b6d4 0%, #3b82f6 50%, #8b5cf6 100%) !important;
+  background-color: transparent !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 50px !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.4), 0 0 0 rgba(6, 182, 212, 0.25) !important;
+  position: relative !important;
+  overflow: hidden !important;
+  z-index: 1 !important;
+  filter: none !important;
+}
+
+/* Portfolio button shimmer effect */
+#about .t4s-card .actions .cta-row a.portfolio-btn-gradient::before,
+#about .t4s-card.team-neon .actions .cta-row a.portfolio-btn-gradient::before,
+#about article.t4s-card .actions .cta-row a.portfolio-btn-gradient::before,
+#about .t4s-card a.portfolio-btn-gradient::before,
+#about .t4s-card.team-neon a.portfolio-btn-gradient::before,
+#about article.t4s-card a.portfolio-btn-gradient::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: -100% !important;
+  width: 100% !important;
+  height: 100% !important;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent) !important;
+  transition: left 0.6s ease !important;
+  z-index: 0 !important;
+}
+
+#about .t4s-card .actions .cta-row a.portfolio-btn-gradient:hover,
+#about .t4s-card.team-neon .actions .cta-row a.portfolio-btn-gradient:hover,
+#about article.t4s-card .actions .cta-row a.portfolio-btn-gradient:hover,
+#about .t4s-card a.portfolio-btn-gradient:hover,
+#about .t4s-card.team-neon a.portfolio-btn-gradient:hover,
+#about article.t4s-card a.portfolio-btn-gradient:hover {
+  background: linear-gradient(135deg, #22d3ee 0%, #60a5fa 50%, #a78bfa 100%) !important;
+  background-image: linear-gradient(135deg, #22d3ee 0%, #60a5fa 50%, #a78bfa 100%) !important;
+  box-shadow: 0 12px 32px rgba(59, 130, 246, 0.5), 0 0 20px rgba(6, 182, 212, 0.35) !important;
+  transform: translateY(-2px) !important;
+  filter: brightness(1.15) !important;
+}
+
+#about .t4s-card .actions .cta-row a.portfolio-btn-gradient:hover::before,
+#about .t4s-card.team-neon .actions .cta-row a.portfolio-btn-gradient:hover::before,
+#about article.t4s-card .actions .cta-row a.portfolio-btn-gradient:hover::before,
+#about .t4s-card a.portfolio-btn-gradient:hover::before,
+#about .t4s-card.team-neon a.portfolio-btn-gradient:hover::before,
+#about article.t4s-card a.portfolio-btn-gradient:hover::before {
+  left: 100% !important;
+}
+
+/* Portfolio buttons with new gradient design - ensure white text in all modes */
+#about .t4s-card .actions .cta-row a.portfolio-btn-new,
+#about .t4s-card.team-neon .actions .cta-row a.portfolio-btn-new,
+#about article.t4s-card .actions .cta-row a.portfolio-btn-new,
+#about .t4s-card a.portfolio-btn-new,
+#about .t4s-card.team-neon a.portfolio-btn-new,
+#about article.t4s-card a.portfolio-btn-new,
+#about .t4s-card .actions .cta-row a.portfolio-btn-new span,
+#about .t4s-card.team-neon .actions .cta-row a.portfolio-btn-new span,
+#about article.t4s-card .actions .cta-row a.portfolio-btn-new span,
+#about .t4s-card a.portfolio-btn-new span,
+#about .t4s-card.team-neon a.portfolio-btn-new span,
+#about article.t4s-card a.portfolio-btn-new span {
+  color: #ffffff !important;
+}
+
+/* Mentor section (Sir Abdullah) Profile button - ensure white text in light mode */
+#about a.portfolio-btn-new,
+#about a.portfolio-btn-new span {
+  color: #ffffff !important;
+}
+
+/* Admission form submit button - ensure white text in all modes - override light mode card styles */
+.admission-submit-btn,
+.admission-submit-btn {
+  color: #ffffff !important;
+}
+
+.admission-submit-btn svg,
+.admission-submit-btn svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+  fill: #ffffff !important;
+}
+
+.admission-submit-btn span,
+.admission-submit-btn span {
+  color: #ffffff !important;
+}
+
+/* Force white text for all text content inside the button - override light mode card styles */
+.admission-submit-btn *,
+.admission-submit-btn * {
+  color: #ffffff !important;
+}
+
+/* Open in Google Maps button - ensure white text in all modes - override light mode card styles */
+.google-maps-btn,
+.google-maps-btn {
+  color: #ffffff !important;
+}
+
+.google-maps-btn svg,
+.google-maps-btn svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+  fill: #ffffff !important;
+}
+
+.google-maps-btn span,
+.google-maps-btn span {
+  color: #ffffff !important;
+}
+
+/* Force white text for all text content inside the Google Maps button - override light mode card styles */
+.google-maps-btn *,
+.google-maps-btn * {
+  color: #ffffff !important;
+}
+
+/* Footer support button - ensure white text in all modes */
+.footer-support-btn,
+footer .footer-support-btn {
+  color: #ffffff !important;
+}
+
+.footer-support-btn svg,
+footer .footer-support-btn svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+.footer-support-btn span,
+footer .footer-support-btn span {
+  color: #ffffff !important;
+}
+
+.footer-support-btn *,
+footer .footer-support-btn * {
+  color: #ffffff !important;
+}
+
+/* Footer text - ensure white in light mode */
+.footer-about-text,
+footer .footer-about-text {
+  color: #ffffff !important;
+}
+
+.footer-copyright,
+footer .footer-copyright {
+  color: #ffffff !important;
+}
+
+.footer-owners,
+footer .footer-owners {
+  color: #ffffff !important;
+}
+
+.footer-version,
+footer .footer-version {
+  color: #ffffff !important;
+}
+
+/* Professional Custom Scrollbar for Settings Modal */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(139, 92, 246, 0.5) rgba(0, 0, 0, 0.1);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 10px;
+  margin: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(139, 92, 246, 0.6), rgba(99, 102, 241, 0.6));
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background 0.2s ease;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(139, 92, 246, 0.8), rgba(99, 102, 241, 0.8));
+  background-clip: padding-box;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(180deg, rgba(139, 92, 246, 1), rgba(99, 102, 241, 1));
+  background-clip: padding-box;
+}
+
+/* Dark mode scrollbar */
+.dark .custom-scrollbar {
+  scrollbar-color: rgba(139, 92, 246, 0.6) rgba(255, 255, 255, 0.05);
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(139, 92, 246, 0.7), rgba(99, 102, 241, 0.7));
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(139, 92, 246, 0.9), rgba(99, 102, 241, 0.9));
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(180deg, rgba(139, 92, 246, 1), rgba(99, 102, 241, 1));
+}
+
+/* Ensure mouse wheel scrolling works */
+.custom-scrollbar {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  will-change: scroll-position;
+}
+
+
+
+/* Preview Modal Close Button (X) - Fix positioning relative to popup content */
+.preview-modal-close-btn {
+  position: absolute !important;
+  top: 0 !important;
+  right: 0 !important;
+  z-index: 50 !important;
+  width: 2.5rem !important;
+  height: 2.5rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transform: translate(50%, -50%) !important;
+  margin-top: 0 !important;
+  margin-right: 0 !important;
+}
+
+@media (min-width: 768px) {
+  .preview-modal-close-btn {
+    width: 3rem !important;
+    height: 3rem !important;
+  }
+}
+
+/* Services Modal Close Button (X) - Fix positioning relative to popup content */
+.services-modal-close-btn {
+  position: absolute !important;
+  top: -0.75rem !important;
+  right: -0.75rem !important;
+  z-index: 50 !important;
+  width: 2rem !important;
+  height: 2rem !important;
+  min-width: 2rem !important;
+  min-height: 2rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.services-modal-close-btn svg {
+  width: 1.25rem !important;
+  height: 1.25rem !important;
+}
+
+@media (min-width: 768px) {
+  .services-modal-close-btn {
+    top: -1rem !important;
+    right: -1rem !important;
+    width: 2.5rem !important;
+    height: 2.5rem !important;
+    min-width: 2.5rem !important;
+    min-height: 2.5rem !important;
+  }
+  
+  .services-modal-close-btn svg {
+    width: 1.5rem !important;
+    height: 1.5rem !important;
+  }
+}

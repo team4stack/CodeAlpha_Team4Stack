@@ -2,9 +2,20 @@ import { supabaseAdmin } from '../../../config/supabase';
 import {
   pickAllowedKeys,
   updateByIdWithTimestampRetry,
-  notFoundError
+  notFoundError,
+  badRequestError
 } from '../../../shared/utils/supabaseAdminWrite';
-import { Course, Video, AdmissionForm, ProgressRecord, StudentCourseNotification } from '../types';
+import {
+  Course,
+  Video,
+  AdmissionForm,
+  ProgressRecord,
+  StudentCourseNotification,
+  StudentCourseReportSummary,
+  CertificateApplication,
+  CourseAssignment,
+  CourseAssignmentSubmission
+} from '../types';
 
 const COURSE_KEYS = [
   'name',
@@ -23,6 +34,18 @@ const COURSE_KEYS = [
 ] as const;
 
 const VIDEO_KEYS = ['course_id', 'title', 'description', 'video_url', 'duration', 'order_index'] as const;
+const ASSIGNMENT_KEYS = [
+  'course_id',
+  'video_id',
+  'title',
+  'instructions',
+  'required_format',
+  'max_file_size_mb',
+  'total_marks',
+  'template_file_url',
+  'template_file_name',
+  'template_file_type'
+] as const;
 
 const ADMISSION_KEYS = [
   'name',
@@ -34,6 +57,7 @@ const ADMISSION_KEYS = [
   'course_name_2',
   'message',
   'gender',
+  'date_of_birth',
   'age',
   'cnic',
   'image_attached',
@@ -58,6 +82,7 @@ export const ADMISSION_APPLICANT_KEYS = [
   'course_name_2',
   'message',
   'gender',
+  'date_of_birth',
   'age',
   'cnic',
   'image_attached'
@@ -73,6 +98,7 @@ export const ADMISSION_OWNER_PATCH_KEYS = [
   'course_name_2',
   'message',
   'gender',
+  'date_of_birth',
   'age',
   'cnic',
   'image_attached'
@@ -91,7 +117,261 @@ export function isAdmissionFormApproved(app: AdmissionForm | Record<string, unkn
   return a.approved === true;
 }
 
+function isCourseReportCompleted(report: StudentCourseReportSummary): boolean {
+  const lecturesDone =
+    report.lectures.total > 0 && report.lectures.completed >= report.lectures.total;
+  const quizzesDone =
+    report.quizzes.total === 0 || report.quizzes.passed >= report.quizzes.total;
+  return lecturesDone && quizzesDone;
+}
+
+function toValidDateMs(value?: string | null): number {
+  if (!value) return 0;
+  const parsed = Date.parse(String(value));
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function resolveAssignmentTitle(assignment: Record<string, unknown>): string {
+  const title = assignment.title;
+  if (typeof title !== 'string') return 'Assignment';
+  const trimmed = title.trim();
+  return trimmed.length > 0 ? trimmed : 'Assignment';
+}
+
 export class CourseService {
+  private extractYouTubeId(url?: string): string | null {
+    if (!url) return null;
+    const input = String(url);
+    const watchMatch = /[?&]v=([a-zA-Z0-9_-]{11})/.exec(input);
+    if (watchMatch) return watchMatch[1];
+    const shortMatch = /youtu\.be\/([a-zA-Z0-9_-]{11})/.exec(input);
+    if (shortMatch) return shortMatch[1];
+    const embedMatch = /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/.exec(input);
+    if (embedMatch) return embedMatch[1];
+    return null;
+  }
+
+  private normalizeVideoKey(url?: string): string {
+    const raw = String(url || '').trim();
+    const ytId = this.extractYouTubeId(raw);
+    if (ytId) return `youtube:${ytId}`;
+    return `url:${raw.toLowerCase()}`;
+  }
+
+  private async assertNoDuplicateCourseVideo(
+    courseId: number,
+    videoUrl?: string,
+    ignoreVideoId?: number
+  ): Promise<void> {
+    const normalizedIncoming = this.normalizeVideoKey(videoUrl);
+    if (!videoUrl || normalizedIncoming === 'url:') return;
+
+    const { data, error } = await supabaseAdmin
+      .from('videos')
+      .select('id, video_url')
+      .eq('course_id', courseId);
+    if (error) throw error;
+
+    const rows = (data || []) as Array<{ id: number; video_url?: string }>;
+    const duplicate = rows.find((row) => {
+      if (ignoreVideoId && row.id === ignoreVideoId) return false;
+      return this.normalizeVideoKey(row.video_url) === normalizedIncoming;
+    });
+
+    if (duplicate) {
+      const err = new Error(
+        'This video is already added in the same course. Please use a different video URL.'
+      ) as Error & { status?: number };
+      err.status = 409;
+      throw err;
+    }
+  }
+
+  private async resetVideoLearningState(videoId: number, courseId: number): Promise<void> {
+    // 1) Reset lecture completion/progress for this video only.
+    const { error: progressDeleteError } = await supabaseAdmin
+      .from('progress_records')
+      .delete()
+      .eq('course_id', courseId)
+      .eq('video_id', videoId);
+    if (progressDeleteError) throw progressDeleteError;
+
+    // 2) Reset quiz attempts tied to this video (so changed lecture/quiz must be retaken).
+    const { data: quizzes, error: quizzesError } = await supabaseAdmin
+      .from('quizzes')
+      .select('id')
+      .eq('video_id', videoId);
+    if (quizzesError) throw quizzesError;
+    const quizIds = ((quizzes || []) as Array<{ id: number | string }>).map((q) => q.id);
+    if (quizIds.length === 0) return;
+
+    const { data: attempts, error: attemptsError } = await supabaseAdmin
+      .from('quiz_attempts')
+      .select('id')
+      .in('quiz_id', quizIds);
+    if (attemptsError) throw attemptsError;
+    const attemptIds = ((attempts || []) as Array<{ id: number | string }>).map((a) => a.id);
+
+    if (attemptIds.length > 0) {
+      const { error: answersDeleteError } = await supabaseAdmin
+        .from('quiz_attempt_answers')
+        .delete()
+        .in('attempt_id', attemptIds);
+      if (answersDeleteError) throw answersDeleteError;
+    }
+
+    const { error: attemptsDeleteError } = await supabaseAdmin
+      .from('quiz_attempts')
+      .delete()
+      .in('quiz_id', quizIds);
+    if (attemptsDeleteError) throw attemptsDeleteError;
+  }
+
+  private computeAgeFromDateOfBirth(value: unknown): number | null {
+    if (typeof value !== 'string') return null;
+    const dobStr = value.trim();
+    if (!dobStr) return null;
+    const t = Date.parse(dobStr.includes('T') ? dobStr : `${dobStr}T12:00:00`);
+    if (Number.isNaN(t)) return null;
+    const d = new Date(t);
+    const now = new Date();
+    let age = now.getFullYear() - d.getFullYear();
+    const md = now.getMonth() - d.getMonth();
+    if (md < 0 || (md === 0 && now.getDate() < d.getDate())) age -= 1;
+    return Math.max(0, age);
+  }
+
+  private async insertAdmissionFormWithDateFallback(insert: Record<string, unknown>): Promise<AdmissionForm> {
+    let { data, error } = await supabaseAdmin.from('admission_form').insert(insert).select().single();
+
+    // Older DBs may not have date_of_birth yet — retry with age only.
+    if (error && insert.date_of_birth !== undefined) {
+      const msg = String((error as { message?: string }).message || '').toLowerCase();
+      if (msg.includes('date_of_birth') || msg.includes('column') || msg.includes('schema')) {
+        const retry = { ...insert };
+        delete retry.date_of_birth;
+        ({ data, error } = await supabaseAdmin.from('admission_form').insert(retry).select().single());
+      }
+    }
+
+    if (error) throw error;
+    return data as AdmissionForm;
+  }
+
+  private normalizeStaleProgressRows(
+    progressRows: ProgressRecord[],
+    videoUpdatedAtById: Map<number, number>
+  ): ProgressRecord[] {
+    return progressRows.map((row) => {
+      const videoId = Number(row.video_id || 0);
+      const videoUpdatedAt = videoUpdatedAtById.get(videoId);
+      if (!videoUpdatedAt) return row;
+      const progressAt = toValidDateMs(row.updated_at || row.created_at || null);
+      if (progressAt <= 0 || progressAt >= videoUpdatedAt) return row;
+      return { ...row, completed: false, score: 0 };
+    });
+  }
+
+  private async getQuizReportStats(args: {
+    userId: string;
+    videoIds: number[];
+    videoUpdatedAtById: Map<number, number>;
+  }): Promise<{
+    total: number;
+    passed: number;
+    totalMarks: number;
+    obtainedMarks: number;
+  }> {
+    if (args.videoIds.length === 0) {
+      return { total: 0, passed: 0, totalMarks: 0, obtainedMarks: 0 };
+    }
+
+    const { data: quizzesData, error: quizzesError } = await supabaseAdmin
+      .from('quizzes')
+      .select('id, video_id, total_marks, updated_at, created_at')
+      .in('video_id', args.videoIds);
+    if (quizzesError) throw quizzesError;
+
+    const quizzes = (quizzesData || []) as Array<{
+      id: number | string;
+      video_id?: number;
+      total_marks?: number;
+      updated_at?: string | null;
+      created_at?: string | null;
+    }>;
+    const total = quizzes.length;
+    const totalMarks = quizzes.reduce((sum, quiz) => sum + (quiz.total_marks || 0), 0);
+    const quizIds = quizzes.map((quiz) => quiz.id);
+    if (quizIds.length === 0) {
+      return { total, passed: 0, totalMarks, obtainedMarks: 0 };
+    }
+
+    const quizContentUpdatedAtById = new Map<string, number>();
+    quizzes.forEach((quiz) => {
+      const quizUpdatedAt = toValidDateMs(quiz.updated_at || quiz.created_at || null);
+      const videoUpdatedAt = quiz.video_id ? args.videoUpdatedAtById.get(Number(quiz.video_id)) || 0 : 0;
+      quizContentUpdatedAtById.set(String(quiz.id), Math.max(quizUpdatedAt, videoUpdatedAt));
+    });
+
+    const { data: attemptsData, error: attemptsError } = await supabaseAdmin
+      .from('quiz_attempts')
+      .select('quiz_id, score, passed, submitted_at, created_at')
+      .eq('user_id', args.userId)
+      .in('quiz_id', quizIds);
+    if (attemptsError) throw attemptsError;
+
+    const attempts = (attemptsData || []) as Array<{
+      quiz_id: number | string;
+      score?: number;
+      passed?: boolean;
+      submitted_at?: string | null;
+      created_at?: string | null;
+    }>;
+
+    const bestByQuiz = new Map<string, { score: number; passed: boolean }>();
+    attempts.forEach((attempt) => {
+      const key = String(attempt.quiz_id);
+      const contentUpdatedAt = quizContentUpdatedAtById.get(key) || 0;
+      const attemptAt = toValidDateMs(attempt.submitted_at || attempt.created_at || null);
+      if (contentUpdatedAt > 0 && (attemptAt <= 0 || attemptAt < contentUpdatedAt)) return;
+
+      const score = attempt.score || 0;
+      const passed = attempt.passed === true;
+      const existing = bestByQuiz.get(key);
+      if (!existing || score > existing.score) {
+        bestByQuiz.set(key, { score, passed });
+      } else if (!existing.passed && passed) {
+        bestByQuiz.set(key, { ...existing, passed: true });
+      }
+    });
+
+    const passed = [...bestByQuiz.values()].filter((entry) => entry.passed).length;
+    const obtainedMarks = [...bestByQuiz.values()].reduce((sum, entry) => sum + entry.score, 0);
+    return { total, passed, totalMarks, obtainedMarks };
+  }
+
+  private async getAssignmentReportStats(
+    userId: string,
+    courseId: number
+  ): Promise<{ total: number; uploaded: number; totalMarks: number; obtainedMarks: number }> {
+    const assignments = await this.listAssignmentsByCourse(courseId);
+    if (assignments.length === 0) {
+      return { total: 0, uploaded: 0, totalMarks: 0, obtainedMarks: 0 };
+    }
+    const assignmentIds = assignments.map((a) => a.id);
+    const { data: submissionData, error: submissionError } = await supabaseAdmin
+      .from('course_assignment_submissions')
+      .select('assignment_id, awarded_marks')
+      .eq('user_id', userId)
+      .in('assignment_id', assignmentIds);
+    if (submissionError) throw submissionError;
+    const submissions = (submissionData || []) as Array<{ assignment_id: number; awarded_marks?: number | null }>;
+    const uploaded = submissions.length;
+    const obtainedMarks = submissions.reduce((sum, row) => sum + Number(row.awarded_marks || 0), 0);
+    const totalMarks = assignments.reduce((sum, row) => sum + Number(row.total_marks || 0), 0);
+    return { total: assignments.length, uploaded, totalMarks, obtainedMarks };
+  }
+
   async getAllCourses(): Promise<Course[]> {
     const { data, error } = await supabaseAdmin
       .from('courses')
@@ -143,6 +423,10 @@ export class CourseService {
   }
 
   async createVideo(video: Partial<Video>): Promise<Video> {
+    const courseId = Number(video.course_id);
+    if (!Number.isNaN(courseId) && courseId > 0) {
+      await this.assertNoDuplicateCourseVideo(courseId, video.video_url);
+    }
     const insert = pickAllowedKeys(video, VIDEO_KEYS);
     const { data, error } = await supabaseAdmin.from('videos').insert(insert).select().single();
 
@@ -151,8 +435,30 @@ export class CourseService {
   }
 
   async updateVideo(id: number, video: Partial<Video>): Promise<Video> {
+    const existing = await supabaseAdmin.from('videos').select('id, course_id, video_url').eq('id', id).maybeSingle();
+    if (existing.error) throw existing.error;
+    const existingRow = existing.data as { id: number; course_id: number; video_url?: string } | null;
+    if (!existingRow) {
+      throw notFoundError('Video not found');
+    }
+    const targetCourseId = Number(video.course_id || existingRow.course_id);
+    const targetUrl = video.video_url || existingRow.video_url;
+    const oldVideoKey = this.normalizeVideoKey(existingRow.video_url);
+    const newVideoKey = this.normalizeVideoKey(targetUrl);
+    const shouldResetLearningState = oldVideoKey !== newVideoKey;
+    if (!Number.isNaN(targetCourseId) && targetCourseId > 0) {
+      await this.assertNoDuplicateCourseVideo(targetCourseId, targetUrl, id);
+    }
+
     const patch = pickAllowedKeys(video, VIDEO_KEYS);
+    if (shouldResetLearningState && (patch.duration === undefined || patch.duration === null)) {
+      // Ensure old duration is not shown after URL changes.
+      patch.duration = 0;
+    }
     const row = await updateByIdWithTimestampRetry('videos', id, patch, { notFoundMessage: 'Video not found' });
+    if (shouldResetLearningState && !Number.isNaN(targetCourseId) && targetCourseId > 0) {
+      await this.resetVideoLearningState(id, targetCourseId);
+    }
     return row as unknown as Video;
   }
 
@@ -203,11 +509,18 @@ export class CourseService {
   }
 
   async createAdmissionForm(form: Partial<AdmissionForm>): Promise<AdmissionForm> {
-    const insert = pickAllowedKeys(form, ADMISSION_APPLICANT_KEYS);
-    const { data, error } = await supabaseAdmin.from('admission_form').insert(insert).select().single();
+    const insert: Record<string, unknown> = { ...pickAllowedKeys(form, ADMISSION_APPLICANT_KEYS) };
 
-    if (error) throw error;
-    return data;
+    // Form sends date_of_birth but not age; DB typically requires integer age.
+    if (insert.age === undefined || insert.age === null) {
+      const computedAge = this.computeAgeFromDateOfBirth(insert.date_of_birth);
+      if (computedAge !== null) insert.age = computedAge;
+    }
+    if (insert.age === undefined || insert.age === null) {
+      throw badRequestError('Valid date of birth (or age) is required');
+    }
+
+    return this.insertAdmissionFormWithDateFallback(insert);
   }
 
   async updateAdmissionForm(id: number, form: Partial<AdmissionForm>): Promise<AdmissionForm> {
@@ -255,9 +568,48 @@ export class CourseService {
     }
 
     const { data, error } = await query;
-
     if (error) throw error;
-    return data || [];
+    const rows = (data || []) as ProgressRecord[];
+    if (rows.length === 0) return [];
+
+    const videoIds = [...new Set(rows.map((row) => Number(row.video_id)).filter((id) => Number.isFinite(id) && id > 0))];
+    if (videoIds.length === 0) return rows;
+
+    const { data: videosData, error: videosError } = await supabaseAdmin
+      .from('videos')
+      .select('id, updated_at')
+      .in('id', videoIds);
+    if (videosError) throw videosError;
+
+    const videoUpdatedAtById = new Map<number, number>();
+    ((videosData || []) as Array<{ id: number; updated_at?: string | null }>).forEach((video) => {
+      if (!video.updated_at) return;
+      const t = Date.parse(String(video.updated_at));
+      if (!Number.isNaN(t)) {
+        videoUpdatedAtById.set(Number(video.id), t);
+      }
+    });
+
+    // If lecture was updated after user progress timestamp, treat that lecture progress as stale.
+    return rows.map((row) => {
+      const videoId = Number(row.video_id || 0);
+      const videoUpdatedAt = videoUpdatedAtById.get(videoId);
+      if (!videoUpdatedAt) return row;
+
+      const progressTimestampRaw =
+        (row as unknown as { updated_at?: string | null; created_at?: string | null }).updated_at ||
+        (row as unknown as { created_at?: string | null }).created_at;
+      if (!progressTimestampRaw) return row;
+
+      const progressAt = Date.parse(String(progressTimestampRaw));
+      if (Number.isNaN(progressAt) || progressAt >= videoUpdatedAt) return row;
+
+      return {
+        ...row,
+        completed: false,
+        score: 0
+      };
+    });
   }
 
   async getAllProgress(filters?: { courseId?: string; userId?: string; completed?: boolean }): Promise<ProgressRecord[]> {
@@ -285,6 +637,396 @@ export class CourseService {
       console.error('getAllProgress error:', error);
       throw error;
     }
+  }
+
+  async listAssignmentsByCourse(courseId: number): Promise<CourseAssignment[]> {
+    const { data, error } = await supabaseAdmin
+      .from('course_assignments')
+      .select('*')
+      .eq('course_id', courseId)
+      .order('video_id', { ascending: true })
+      .order('id', { ascending: false });
+    if (error) throw error;
+    return (data || []) as CourseAssignment[];
+  }
+
+  async listAssignmentsByVideo(videoId: number): Promise<CourseAssignment[]> {
+    const { data, error } = await supabaseAdmin
+      .from('course_assignments')
+      .select('*')
+      .eq('video_id', videoId)
+      .order('id', { ascending: false });
+    if (error) throw error;
+    return (data || []) as CourseAssignment[];
+  }
+
+  async createAssignment(input: Partial<CourseAssignment>): Promise<CourseAssignment> {
+    const payload = pickAllowedKeys(input, ASSIGNMENT_KEYS);
+    const { data, error } = await supabaseAdmin.from('course_assignments').insert(payload).select('*').single();
+    if (error) throw error;
+    return data as CourseAssignment;
+  }
+
+  async updateAssignment(id: number, patch: Partial<CourseAssignment>): Promise<CourseAssignment> {
+    const safePatch = pickAllowedKeys(patch, ASSIGNMENT_KEYS);
+    const row = await updateByIdWithTimestampRetry('course_assignments', id, safePatch, {
+      notFoundMessage: 'Assignment not found'
+    });
+    return row as unknown as CourseAssignment;
+  }
+
+  async deleteAssignment(id: number): Promise<void> {
+    const { error } = await supabaseAdmin.from('course_assignments').delete().eq('id', id);
+    if (error) throw error;
+  }
+
+  async submitAssignment(input: {
+    assignmentId: number;
+    userId: string;
+    fileUrl: string;
+    fileName: string;
+    fileType?: string;
+    studentNotes?: string;
+  }): Promise<CourseAssignmentSubmission> {
+    const payload = {
+      assignment_id: input.assignmentId,
+      user_id: input.userId,
+      file_url: input.fileUrl,
+      file_name: input.fileName,
+      file_type: input.fileType || null,
+      student_notes: input.studentNotes || null,
+      status: 'submitted',
+      awarded_marks: null,
+      admin_feedback: null
+    };
+    const { data, error } = await supabaseAdmin
+      .from('course_assignment_submissions')
+      .upsert(payload, { onConflict: 'assignment_id,user_id' })
+      .select('*')
+      .single();
+    if (error) throw error;
+    return data as CourseAssignmentSubmission;
+  }
+
+  async listAssignmentSubmissionsByVideo(videoId: number): Promise<Array<CourseAssignmentSubmission & { assignment_title: string }>> {
+    const { data, error } = await supabaseAdmin
+      .from('course_assignment_submissions')
+      .select('*, course_assignments!inner(id,title,video_id)')
+      .eq('course_assignments.video_id', videoId)
+      .order('submitted_at', { ascending: false });
+    if (error) throw error;
+    return ((data || []) as Array<Record<string, unknown>>).map((row) => {
+      const assignment = row.course_assignments as Record<string, unknown>;
+      return {
+        ...(row as unknown as CourseAssignmentSubmission),
+        assignment_title: resolveAssignmentTitle(assignment)
+      };
+    });
+  }
+
+  async listAssignmentSubmissions(filters?: {
+    userId?: string;
+    courseId?: number;
+    videoId?: number;
+  }): Promise<
+    Array<
+      CourseAssignmentSubmission & {
+        assignment_title: string;
+        course_id: number;
+        video_id: number;
+      }
+    >
+  > {
+    let query = supabaseAdmin
+      .from('course_assignment_submissions')
+      .select('*, course_assignments!inner(id,title,course_id,video_id)')
+      .order('submitted_at', { ascending: false });
+
+    if (filters?.userId) {
+      query = query.eq('user_id', filters.userId);
+    }
+    if (filters?.courseId) {
+      query = query.eq('course_assignments.course_id', filters.courseId);
+    }
+    if (filters?.videoId) {
+      query = query.eq('course_assignments.video_id', filters.videoId);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    return ((data || []) as Array<Record<string, unknown>>).map((row) => {
+      const assignment = (row.course_assignments || {}) as Record<string, unknown>;
+      return {
+        ...(row as unknown as CourseAssignmentSubmission),
+        assignment_title: resolveAssignmentTitle(assignment),
+        course_id: Number(assignment.course_id || 0),
+        video_id: Number(assignment.video_id || 0)
+      };
+    });
+  }
+
+  async updateAssignmentSubmission(
+    id: number,
+    patch: Partial<Pick<CourseAssignmentSubmission, 'status' | 'awarded_marks' | 'admin_feedback'>>
+  ): Promise<CourseAssignmentSubmission> {
+    const safePatch: Record<string, unknown> = {};
+    const allowedStatuses = new Set(['submitted', 'reviewed', 'accepted', 'rejected']);
+    if (typeof patch.status === 'string' && allowedStatuses.has(patch.status)) {
+      safePatch.status = patch.status;
+    }
+    if (typeof patch.awarded_marks === 'number' || patch.awarded_marks === null) {
+      safePatch.awarded_marks = patch.awarded_marks;
+    }
+    if (typeof patch.admin_feedback === 'string' || patch.admin_feedback === null) {
+      safePatch.admin_feedback = patch.admin_feedback || null;
+    }
+    const row = await updateByIdWithTimestampRetry('course_assignment_submissions', id, safePatch, {
+      notFoundMessage: 'Assignment submission not found'
+    });
+    return row as unknown as CourseAssignmentSubmission;
+  }
+
+  async getStudentCourseAssignmentsWithSubmissions(
+    userId: string,
+    courseId: number
+  ): Promise<Array<CourseAssignment & { submission: CourseAssignmentSubmission | null }>> {
+    const assignments = await this.listAssignmentsByCourse(courseId);
+    if (assignments.length === 0) return [];
+    const assignmentIds = assignments.map((a) => a.id);
+    const { data, error } = await supabaseAdmin
+      .from('course_assignment_submissions')
+      .select('*')
+      .eq('user_id', userId)
+      .in('assignment_id', assignmentIds);
+    if (error) throw error;
+    const byAssignment = new Map<number, CourseAssignmentSubmission>();
+    ((data || []) as CourseAssignmentSubmission[]).forEach((s) => {
+      byAssignment.set(Number(s.assignment_id), s);
+    });
+    return assignments.map((assignment) => ({
+      ...assignment,
+      submission: byAssignment.get(assignment.id) || null
+    }));
+  }
+
+  async getStudentCourseReport(userId: string, courseId: number): Promise<StudentCourseReportSummary> {
+    const course = await this.getCourseById(courseId);
+    if (!course) {
+      const err = new Error('Course not found') as Error & { status?: number };
+      err.status = 404;
+      throw err;
+    }
+
+    const videos = await this.getCourseVideos(courseId);
+    const videoIds = videos.map((video) => video.id);
+
+    const videoUpdatedAtById = new Map<number, number>();
+    videos.forEach((video) => {
+      const updatedAt = toValidDateMs(video.updated_at || video.created_at || null);
+      if (updatedAt > 0) videoUpdatedAtById.set(video.id, updatedAt);
+    });
+
+    let progressRows: ProgressRecord[] = [];
+    if (videoIds.length > 0) {
+      const { data, error } = await supabaseAdmin
+        .from('progress_records')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('course_id', courseId)
+        .in('video_id', videoIds);
+      if (error) throw error;
+      progressRows = this.normalizeStaleProgressRows((data || []) as ProgressRecord[], videoUpdatedAtById);
+    }
+
+    const completedLectures = progressRows.filter((row) => row.completed === true && row.video_id).length;
+    const totalCourseTimeSeconds = videos.reduce((sum, video) => sum + (video.duration || 0), 0);
+    const watchedTimeSeconds = progressRows.reduce((sum, row) => sum + (row.score || 0), 0);
+    const totalLectures = videos.length;
+    const lectureProgress =
+      totalLectures > 0 ? Math.round((completedLectures / totalLectures) * 100) : 0;
+
+    const quizStats = await this.getQuizReportStats({
+      userId,
+      videoIds,
+      videoUpdatedAtById
+    });
+
+    const { data: applicationData, error: applicationError } = await supabaseAdmin
+      .from('course_certificate_applications')
+      .select('id, status, certificate_url')
+      .eq('user_id', userId)
+      .eq('course_id', courseId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (applicationError) throw applicationError;
+
+    const assignmentStats = await this.getAssignmentReportStats(userId, courseId);
+
+    const provisionalReport: StudentCourseReportSummary = {
+      course: {
+        id: course.id,
+        title: course.title || course.name || 'Course',
+        description: course.description,
+        thumbnail_url: course.thumbnail_url
+      },
+      lectures: {
+        total: totalLectures,
+        completed: completedLectures,
+        progress_percentage: lectureProgress,
+        total_time_seconds: totalCourseTimeSeconds,
+        watched_time_seconds: watchedTimeSeconds
+      },
+      quizzes: {
+        total: quizStats.total,
+        passed: quizStats.passed,
+        total_marks: quizStats.totalMarks,
+        obtained_marks: quizStats.obtainedMarks
+      },
+      assignments: {
+        total: assignmentStats.total,
+        uploaded: assignmentStats.uploaded,
+        unuploaded: Math.max(assignmentStats.total - assignmentStats.uploaded, 0),
+        total_marks: assignmentStats.totalMarks,
+        obtained_marks: assignmentStats.obtainedMarks
+      },
+      certificate: {
+        eligible: false,
+        application_status: 'not_applied',
+        application_id: undefined as number | undefined,
+        certificate_url: null as string | null
+      }
+    };
+
+    provisionalReport.certificate.eligible = isCourseReportCompleted(provisionalReport);
+    if (applicationData) {
+      const status = String((applicationData as { status?: string }).status || 'pending');
+      const safeStatus =
+        status === 'approved' || status === 'rejected' || status === 'sent'
+          ? status
+          : 'pending';
+      provisionalReport.certificate.application_status = safeStatus;
+      provisionalReport.certificate.application_id = Number(
+        (applicationData as { id?: number }).id || 0
+      );
+      provisionalReport.certificate.certificate_url =
+        (applicationData as { certificate_url?: string | null }).certificate_url || null;
+    }
+
+    return provisionalReport;
+  }
+
+  async createCertificateApplication(args: {
+    userId: string;
+    courseId: number;
+    fullName: string;
+    cnic: string;
+    email: string;
+    phoneNumber: string;
+    rollNumber: string;
+  }): Promise<CertificateApplication> {
+    const report = await this.getStudentCourseReport(args.userId, args.courseId);
+    if (!report.certificate.eligible) {
+      const err = new Error('Course is not complete yet. Certificate application is not allowed.') as Error & {
+        status?: number;
+      };
+      err.status = 400;
+      throw err;
+    }
+
+    const { data: existing, error: existingError } = await supabaseAdmin
+      .from('course_certificate_applications')
+      .select('id, status')
+      .eq('user_id', args.userId)
+      .eq('course_id', args.courseId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (existingError) throw existingError;
+    if (existing && String((existing as { status?: string }).status || '') !== 'rejected') {
+      const err = new Error('Certificate request already exists for this course.') as Error & {
+        status?: number;
+      };
+      err.status = 409;
+      throw err;
+    }
+
+    const payload = {
+      user_id: args.userId,
+      course_id: args.courseId,
+      full_name: args.fullName.trim(),
+      cnic: args.cnic.trim(),
+      email: args.email.trim().toLowerCase(),
+      phone_number: args.phoneNumber.trim(),
+      roll_number: args.rollNumber.trim(),
+      status: 'pending'
+    };
+
+    if (existing && String((existing as { status?: string }).status || '') === 'rejected') {
+      const { data, error } = await supabaseAdmin
+        .from('course_certificate_applications')
+        .update({
+          ...payload,
+          admin_notes: null,
+          certificate_url: null
+        })
+        .eq('id', Number((existing as { id?: number }).id || 0))
+        .select('*')
+        .single();
+      if (error) throw error;
+      return data as CertificateApplication;
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('course_certificate_applications')
+      .insert(payload)
+      .select('*')
+      .single();
+    if (error) throw error;
+    return data as CertificateApplication;
+  }
+
+  async listCertificateApplications(filters?: {
+    userId?: string;
+    courseId?: number;
+    status?: string;
+  }): Promise<CertificateApplication[]> {
+    let query = supabaseAdmin.from('course_certificate_applications').select('*');
+    if (filters?.userId) {
+      query = query.eq('user_id', filters.userId);
+    }
+    if (filters?.courseId) {
+      query = query.eq('course_id', filters.courseId);
+    }
+    if (filters?.status) {
+      query = query.eq('status', filters.status);
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data || []) as CertificateApplication[];
+  }
+
+  async updateCertificateApplication(
+    id: number,
+    patch: Partial<Pick<CertificateApplication, 'status' | 'admin_notes' | 'certificate_url'>>
+  ): Promise<CertificateApplication> {
+    const allowedStatuses = new Set(['pending', 'approved', 'rejected', 'sent']);
+    const safePatch: Record<string, unknown> = {};
+    if (typeof patch.status === 'string' && allowedStatuses.has(patch.status)) {
+      safePatch.status = patch.status;
+    }
+    if (typeof patch.admin_notes === 'string' || patch.admin_notes === null) {
+      safePatch.admin_notes = patch.admin_notes || null;
+    }
+    if (typeof patch.certificate_url === 'string' || patch.certificate_url === null) {
+      safePatch.certificate_url = patch.certificate_url || null;
+    }
+    const row = await updateByIdWithTimestampRetry('course_certificate_applications', id, safePatch, {
+      notFoundMessage: 'Certificate application not found'
+    });
+    return row as unknown as CertificateApplication;
   }
 
   async updateProgress(progress: Partial<ProgressRecord>): Promise<ProgressRecord> {

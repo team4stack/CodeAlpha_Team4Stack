@@ -46,7 +46,7 @@ const StackStoreAdminSidebar: React.FC = () => {
       try {
         const { stackstoreApi } = await import('@/lib/api')
         const result = await stackstoreApi.getOrders({ status: 'pending' })
-        const pending = result.data || []
+        const pending = Array.isArray(result.data) ? result.data : []
         setPendingOrders(pending.length)
       } catch (error) {
         console.error('Failed to load pending orders:', error)

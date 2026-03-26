@@ -44,7 +44,29 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Optional: faster dev compiler (can be flaky on some Windows setups):
+
+```bash
+npm run dev:turbo
+```
+
+### Dev: `ERR_CONNECTION_REFUSED` / `ERR_CONNECTION_RESET` (Turbopack / HMR)
+
+Those console errors mean the **browser could not load chunks from the Next dev server** — usually not an app bug.
+
+| Error | Typical cause |
+|--------|----------------|
+| **ERR_CONNECTION_REFUSED** | Dev server is **not running**, **crashed**, or you opened the wrong **port** (e.g. 3000 vs 3001). |
+| **ERR_CONNECTION_RESET** | Dev server **restarted** (save crash, nodemon, OOM) or **Turbopack HMR** dropped the connection mid-request. |
+
+**What to do**
+
+1. Run the frontend from the `frontend` folder: `npm run dev` (default uses the stable **webpack** dev server).
+2. Keep **one** dev process on port 3000; if it says “port in use”, stop the old terminal or use another port: `npx next dev -p 3001`.
+3. If you were using **`npm run dev:turbo`** and see many `turbopack` / `hmr-client` failures, switch back to **`npm run dev`**.
+4. Hard refresh the tab (Ctrl+Shift+R) after the server is up again.
+
+**Slow first load in dev** is normal with a large `app/globals.css`; the first compile is heavier; later navigations are usually faster.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 

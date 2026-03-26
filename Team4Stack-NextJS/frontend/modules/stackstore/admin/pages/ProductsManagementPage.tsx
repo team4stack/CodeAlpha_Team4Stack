@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
 import { stackstoreApi } from '@/lib/api'
+import { supabase } from '@/lib/supabase/client'
 
 type Product = {
   id: string
@@ -56,7 +57,7 @@ const ProductsManagementPage: React.FC = () => {
         if (categoriesResult.error) {
           throw new Error(categoriesResult.error)
         }
-        const sortedCategories = (categoriesResult.data || []).sort((a: any, b: any) => 
+        const sortedCategories = (Array.isArray(categoriesResult.data) ? categoriesResult.data : []).sort((a: any, b: any) => 
           (a.name || '').localeCompare(b.name || '')
         )
         setCategories(sortedCategories)
@@ -82,7 +83,7 @@ const ProductsManagementPage: React.FC = () => {
           throw new Error(productsResult.error)
         }
 
-        let productsData = productsResult.data || []
+        let productsData = Array.isArray(productsResult.data) ? productsResult.data : []
 
         // Client-side search filtering
         if (searchQuery.trim()) {

@@ -57,6 +57,22 @@ interface YouTubeApiError {
   };
 }
 
+type YoutubeApiErrorBody = YouTubeApiError['error'];
+
+/** Log missing server key hint once per page load (many projects = many parallel fetches). */
+let loggedYoutubeBackendConfigHint = false;
+
+function fallbackProjectData(videoId: string, githubUrl: string, description: string): ProjectData {
+  return {
+    id: videoId,
+    title: 'Project Title',
+    description,
+    thumbnailUrl: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
+    videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
+    githubUrl,
+  };
+}
+
 // Define the structure for our project data
 export interface ProjectData {
   id: string;
@@ -79,6 +95,182 @@ const pickBestYouTubeThumbnail = (thumbnails: YouTubeVideoSnippet['thumbnails'],
   );
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function isYouTubeApiErrorResponse(data: unknown): data is YouTubeApiError {
+  if (!isRecord(data) || !('error' in data)) {
+    return false;
+  }
+  const err = data.error;
+  return typeof err === 'object' && err !== null && 'code' in err;
+}
+
+function isYouTubeApiSuccessResponse(data: unknown): data is YouTubeApiResponse {
+  if (!isRecord(data) || !('items' in data)) {
+    return false;
+  }
+  return Array.isArray(data.items);
+}
+
+function logDevYoutubeYtError(ytErr: YoutubeApiErrorBody): void {
+  if (process.env.NODE_ENV !== 'development') {
+    return;
+  }
+  console.error(
+    '[youtube] API error:',
+    typeof ytErr.message === 'string' ? ytErr.message : JSON.stringify(ytErr, null, 2)
+  );
+}
+
+function handleStringErrorField(
+  msg: string,
+  response: Response,
+  videoId: string,
+  githubUrl: string
+): ProjectData {
+  const isMissingKey =
+    response.status === 503 ||
+    msg.toLowerCase().includes('not configured') ||
+    msg.toLowerCase().includes('youtube api');
+
+  if (!isMissingKey) {
+    return fallbackProjectData(videoId, githubUrl, msg);
+  }
+
+  if (process.env.NODE_ENV === 'development' && !loggedYoutubeBackendConfigHint) {
+    loggedYoutubeBackendConfigHint = true;
+    console.warn(
+      '[youtube] Backend has no YOUTUBE_API_KEY — using thumbnail fallbacks. Add YOUTUBE_API_KEY to backend/.env and restart the API.'
+    );
+  }
+  return fallbackProjectData(
+    videoId,
+    githubUrl,
+    'Video metadata is unavailable until the server YouTube API key is configured.'
+  );
+}
+
+function handleGoogleStyleErrorInBody(parsed: YouTubeApiError, videoId: string, githubUrl: string): ProjectData | null {
+  const ytErr = parsed.error;
+  logDevYoutubeYtError(ytErr);
+
+  if (ytErr.code === 403) {
+    return fallbackProjectData(
+      videoId,
+      githubUrl,
+      'Unable to load project details. API key restrictions may be preventing access. Site administrator should check YouTube API configuration.'
+    );
+  }
+
+  if (ytErr.code === 400 && String(ytErr.message || '').includes('API key not valid')) {
+    return fallbackProjectData(
+      videoId,
+      githubUrl,
+      'API key is invalid. Please check the YouTube API key configuration.'
+    );
+  }
+
+  return null;
+}
+
+/** @returns ProjectData if handled; null if caller should throw generic error */
+function tryProjectDataFromErrorJson(
+  parsed: unknown,
+  response: Response,
+  videoId: string,
+  githubUrl: string
+): ProjectData | null {
+  if (!isRecord(parsed) || !('error' in parsed)) {
+    return null;
+  }
+
+  const errField = parsed.error;
+  if (typeof errField === 'string') {
+    return handleStringErrorField(errField, response, videoId, githubUrl);
+  }
+
+  if (isYouTubeApiErrorResponse(parsed)) {
+    return handleGoogleStyleErrorInBody(parsed, videoId, githubUrl);
+  }
+
+  return null;
+}
+
+async function handleYoutubeProxyNotOk(
+  response: Response,
+  videoId: string,
+  githubUrl: string
+): Promise<ProjectData> {
+  let errorText = '';
+  try {
+    errorText = await response.text();
+  } catch (textError) {
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Failed to read error response as text:', textError);
+    }
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(errorText);
+    const handled = tryProjectDataFromErrorJson(parsed, response, videoId, githubUrl);
+    if (handled) {
+      return handled;
+    }
+  } catch (parseError) {
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Failed to parse YouTube API error response as JSON:', parseError);
+    }
+  }
+
+  throw new Error(`YouTube API request failed with status ${response.status}: ${response.statusText}`);
+}
+
+function projectDataFromOkJson(data: unknown, videoId: string, githubUrl: string): ProjectData {
+  if (isYouTubeApiErrorResponse(data)) {
+    if (process.env.NODE_ENV === 'development') {
+      const e = data.error;
+      console.error(
+        '[youtube] proxy error:',
+        typeof e.message === 'string' ? e.message : JSON.stringify(e, null, 2)
+      );
+    }
+    return {
+      id: videoId,
+      title: 'Project Title',
+      description: 'Unable to load project details from YouTube. Ensure the backend has YOUTUBE_API_KEY set.',
+      thumbnailUrl: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
+      videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
+      githubUrl,
+    };
+  }
+
+  if (!isYouTubeApiSuccessResponse(data) || data.items.length === 0) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('No video data found for ID:', videoId);
+    }
+    return {
+      id: videoId,
+      title: 'Project Title',
+      description: 'No video data available for this project',
+      thumbnailUrl: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
+      videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
+      githubUrl,
+    };
+  }
+
+  const video = data.items[0];
+  return {
+    id: videoId,
+    title: video.snippet.title,
+    description: video.snippet.description,
+    thumbnailUrl: pickBestYouTubeThumbnail(video.snippet.thumbnails, videoId),
+    videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
+    githubUrl,
+  };
+}
+
 /**
  * Fetch YouTube video data using the YouTube Data API v3
  * @param videoId - The YouTube video ID
@@ -89,114 +281,24 @@ export const fetchYouTubeVideoData = async (videoId: string, githubUrl: string):
     const base = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api').replace(/\/$/, '');
     const apiUrl = `${base}/public/youtube/video?videoId=${encodeURIComponent(videoId)}`;
     const response = await fetch(apiUrl);
-    
+
     if (!response.ok) {
-      let errorText = '';
-      try {
-        errorText = await response.text();
-      } catch (textError) {
-        if (process.env.NODE_ENV === 'development') {
-          console.error('Failed to read error response as text:', textError);
-        }
-      }
-      
-      // Try to parse JSON error response
-      try {
-        const errorData: YouTubeApiError = JSON.parse(errorText);
-        
-        if (errorData.error) {
-          if (process.env.NODE_ENV === 'development') {
-            console.error('YouTube API Error Details:', errorData.error);
-          }
-          
-          // Handle specific error cases
-          if (errorData.error.code === 403) {
-            return {
-              id: videoId,
-              title: 'Project Title',
-              description: 'Unable to load project details. API key restrictions may be preventing access. Site administrator should check YouTube API configuration.',
-              thumbnailUrl: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
-              videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
-              githubUrl
-            };
-          }
-          
-          // Handle API key invalid error
-          if (errorData.error.code === 400 && errorData.error.message.includes('API key not valid')) {
-            return {
-              id: videoId,
-              title: 'Project Title',
-              description: 'API key is invalid. Please check the YouTube API key configuration.',
-              thumbnailUrl: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
-              videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
-              githubUrl
-            };
-          }
-        }
-      } catch (parseError) {
-        // If we can't parse the error, continue with generic error handling
-        if (process.env.NODE_ENV === 'development') {
-          console.error('Failed to parse YouTube API error response as JSON:', parseError);
-        }
-      }
-      
-      throw new Error(`YouTube API request failed with status ${response.status}: ${response.statusText}`);
+      return await handleYoutubeProxyNotOk(response, videoId, githubUrl);
     }
 
-    const data = (await response.json()) as YouTubeApiResponse | YouTubeApiError;
-    if (data && typeof data === 'object' && 'error' in data && (data as YouTubeApiError).error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('YouTube proxy error:', (data as YouTubeApiError).error);
-      }
-      return {
-        id: videoId,
-        title: 'Project Title',
-        description: 'Unable to load project details from YouTube. Ensure the backend has YOUTUBE_API_KEY set.',
-        thumbnailUrl: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
-        videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
-        githubUrl
-      };
-    }
-
-    const okData = data as YouTubeApiResponse;
-
-    if (okData.items && okData.items.length > 0) {
-      const video = okData.items[0];
-      
-      return {
-        id: videoId,
-        title: video.snippet.title,
-        description: video.snippet.description,
-        thumbnailUrl: pickBestYouTubeThumbnail(video.snippet.thumbnails, videoId),
-        videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
-        githubUrl
-      };
-    } else {
-      // Fallback if no data returned
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('No video data found for ID:', videoId);
-      }
-      return {
-        id: videoId,
-        title: 'Project Title',
-        description: 'No video data available for this project',
-        thumbnailUrl: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
-        videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
-        githubUrl
-      };
-    }
+    const data: unknown = await response.json();
+    return projectDataFromOkJson(data, videoId, githubUrl);
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
       console.error('Error fetching YouTube video data:', error);
     }
-    // Return fallback data in case of error
     return {
       id: videoId,
       title: 'Project Title',
       description: 'Unable to load project details. This may be due to a temporary issue or missing configuration.',
       thumbnailUrl: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
       videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
-      githubUrl
+      githubUrl,
     };
   }
 };

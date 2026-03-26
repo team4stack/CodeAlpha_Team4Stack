@@ -36,7 +36,7 @@ const Services: React.FC = () => {
       try {
         const { landingApi } = await import('@/lib/api')
         const result = await landingApi.getServices()
-        if (result.data) {
+        if (Array.isArray(result.data)) {
           // Filter active services and sort
           const activeServices = result.data
             .filter((s: any) => s.active === true)

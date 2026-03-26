@@ -1,23 +1,24 @@
 'use client'
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import AuthModal from '@/lib/auth/components/AuthModal';
-import UserSettingsModal from '@/modals/UserSettingsModal';
 import { useApprovedCourseStudent } from '@/lib/courses/useApprovedCourseStudent';
 import StudentCourseNotificationsBell from '@/components/courses/StudentCourseNotificationsBell';
+import CoursesAreaMobileDrawer from '@/navigation/CoursesAreaMobileDrawer';
 
 const StudentNavbar: React.FC = () => {
   const { isDarkMode } = useTheme();
   const router = useRouter();
+  const pathname = usePathname();
   const { user, loading, signOut } = useAuth();
   const { isApprovedStudent, checking: checkingStudent } = useApprovedCourseStudent(user, loading);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -28,15 +29,42 @@ const StudentNavbar: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const mobileDrawerItems = [
+    { label: 'Dashboard', onNavigate: () => router.push('/student') },
+    { label: 'My Courses', onNavigate: () => router.push('/student/courses') },
+    { label: 'Browse programs', onNavigate: () => router.push('/courses') },
+    { label: 'Home', onNavigate: () => router.push('/') },
+    ...(user
+      ? [
+          {
+            label: 'Profile Settings',
+            onNavigate: () => router.push('/settings'),
+          },
+          {
+            label: 'Logout',
+            onNavigate: async () => {
+              await signOut();
+              router.push('/courses');
+            },
+          },
+        ]
+      : [
+          {
+            label: 'Sign In',
+            onNavigate: () => setIsAuthOpen(true),
+          },
+        ]),
+  ];
+
   return (
     <>
       {/* Fixed navbar with transparent when at top, solid when scrolled */}
       <nav
-        className={`navbar-fixed transition-all duration-300 ${
+        className={`navbar-fixed student-nav transition-all duration-300 ${
           isScrolled
             ? (isDarkMode
-                ? 'nav-glass shadow-lg scrolled'
-                : 'bg-white/90 shadow-lg border-b border-gray-200 scrolled')
+                ? 'nav-glass scrolled'
+                : 'bg-white/90 scrolled')
             : 'bg-transparent'
         }`}
         style={{
@@ -70,16 +98,7 @@ const StudentNavbar: React.FC = () => {
               aria-label="Back to main website"
               onClick={() => router.push('/')}
             >
-              <div
-                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                  isDarkMode ? 'bg-transparent' : 'bg-black'
-                } transition-all duration-300`}
-                style={{
-                  minWidth: '32px',
-                  minHeight: '32px',
-                  padding: isDarkMode ? '0' : '4px',
-                }}
-              >
+              <div className="relative w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center flex-shrink-0">
                 <img
                   src={
                     isDarkMode
@@ -87,13 +106,12 @@ const StudentNavbar: React.FC = () => {
                       : `/Team4StackLogo.svg`
                   }
                   alt="Team4Stack Logo"
-                  className="rounded-lg shadow-sm group-hover:shadow-md transition-all duration-300 object-contain"
-                  style={{ width: '100%', height: '100%', display: 'block' }}
+                  className="w-full h-full object-contain rounded-lg shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md"
                   loading="eager"
                 />
               </div>
               <span
-                className={`text-base sm:text-xl font-display font-bold transition-all duration-300 hidden sm:inline ${
+                className={`text-lg sm:text-xl font-display font-bold transition-all duration-300 inline ${
                   isScrolled
                     ? (isDarkMode ? 'text-white' : 'text-black')
                     : 'text-white group-hover:text-cyan-300'
@@ -107,7 +125,7 @@ const StudentNavbar: React.FC = () => {
             <div className="hidden md:flex items-center justify-center gap-1 sm:gap-2 lg:gap-4 flex-1">
               <button
                 type="button"
-                className={`btn-plain px-3 sm:px-4 py-2 text-sm sm:text-base font-medium transition-all duration-300 relative group focus:outline-none ${
+                className={`btn-plain px-3 sm:px-4 py-2 text-sm sm:text-base font-medium transition-all duration-300 focus:outline-none ${
                   isScrolled
                     ? (isDarkMode
                         ? 'text-white/90 hover:text-white'
@@ -115,13 +133,13 @@ const StudentNavbar: React.FC = () => {
                     : 'text-white hover:text-cyan-300 font-medium'
                 }`}
                 onClick={() => router.push('/student')}
+                aria-current={pathname === '/student' ? 'page' : undefined}
               >
                 Dashboard
-                <span className="pointer-events-none absolute left-1/2 -bottom-0.5 w-0 h-px bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full transition-all duration-300 group-hover:left-0 group-hover:w-full"></span>
               </button>
               <button
                 type="button"
-                className={`btn-plain px-3 sm:px-4 py-2 text-sm sm:text-base font-medium transition-all duration-300 relative group focus:outline-none ${
+                className={`btn-plain px-3 sm:px-4 py-2 text-sm sm:text-base font-medium transition-all duration-300 focus:outline-none ${
                   isScrolled
                     ? (isDarkMode
                         ? 'text-white/90 hover:text-white'
@@ -129,14 +147,18 @@ const StudentNavbar: React.FC = () => {
                     : 'text-white hover:text-cyan-300 font-medium'
                 }`}
                 onClick={() => router.push('/student/courses')}
+                aria-current={pathname.startsWith('/student/courses') ? 'page' : undefined}
               >
                 My Courses
-                <span className="pointer-events-none absolute left-1/2 -bottom-0.5 w-0 h-px bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full transition-all duration-300 group-hover:left-0 group-hover:w-full"></span>
               </button>
             </div>
 
             {/* Right-side actions for student area */}
-            <div className="flex items-center gap-1.5 sm:gap-3">
+            <div className={`flex items-center gap-1.5 sm:gap-3 px-1.5 sm:px-2 py-1 rounded-full border transition-colors ${
+              isScrolled
+                ? (isDarkMode ? 'border-white/20 bg-white/5' : 'border-gray-200 bg-white/80')
+                : 'border-white/15 bg-white/5'
+            }`}>
 
               {!loading && user && isApprovedStudent && !checkingStudent && user.email && (
                 <StudentCourseNotificationsBell
@@ -146,9 +168,11 @@ const StudentNavbar: React.FC = () => {
                 />
               )}
 
+              <div className={`h-5 w-px ${isScrolled ? (isDarkMode ? 'bg-white/20' : 'bg-gray-300') : 'bg-white/20'}`} />
+
               {!loading && (
                 user ? (
-                  <div className="relative">
+                  <div className="relative hidden md:block">
                     <button 
                       type="button"
                       onClick={(e) => {
@@ -230,7 +254,7 @@ const StudentNavbar: React.FC = () => {
                               <button
                                 onClick={() => {
                                   setIsUserMenuOpen(false)
-                                  setIsSettingsOpen(true)
+                                  router.push('/settings')
                                 }}
                                 className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center gap-2 ${
                                   isDarkMode
@@ -271,7 +295,7 @@ const StudentNavbar: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setIsAuthOpen(true)}
-                    className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full transition-all hover:scale-110 flex items-center justify-center focus:outline-none flex-shrink-0 ${
+                    className={`hidden md:flex w-8 h-8 sm:w-10 sm:h-10 rounded-full transition-all hover:scale-110 items-center justify-center focus:outline-none flex-shrink-0 ${
                       isScrolled
                         ? (isDarkMode
                             ? 'bg-gradient-to-br from-cyan-500 via-blue-500 to-purple-500 text-white shadow-[0_10px_30px_rgba(56,189,248,0.35)] hover:shadow-[0_12px_36px_rgba(99,102,241,0.45)]'
@@ -296,10 +320,49 @@ const StudentNavbar: React.FC = () => {
                   </button>
                 )
               )}
+
+              <button
+                type="button"
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onClick={() => setIsMenuOpen((p) => !p)}
+                className={`md:hidden p-2 relative z-[10002] rounded-lg transition-colors flex items-center justify-center ${
+                  isScrolled
+                    ? isDarkMode
+                      ? 'bg-white/20 backdrop-blur-lg hover:bg-white/30 border border-white/30'
+                      : 'bg-gray-100 hover:bg-gray-200 border border-gray-200'
+                    : 'bg-white/20 backdrop-blur-lg hover:bg-white/30 border border-white/30 text-white'
+                } focus:outline-none focus:ring-0 focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-0`}
+                aria-label={isMenuOpen ? 'Close student menu' : 'Open student menu'}
+                aria-expanded={isMenuOpen}
+              >
+                <svg
+                  className={`w-6 h-6 ${isScrolled ? (isDarkMode ? 'text-white' : 'text-gray-600') : 'text-white'}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden
+                >
+                  {isMenuOpen ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  )}
+                </svg>
+              </button>
             </div>
           </div>
         </div>
+        <div className="pointer-events-none h-[2px] w-full bg-gradient-to-r from-transparent via-cyan-400/80 to-transparent" />
       </nav>
+
+      <CoursesAreaMobileDrawer
+        isOpen={isMenuOpen}
+        onClose={() => setIsMenuOpen(false)}
+        items={mobileDrawerItems}
+      />
 
       {/* Auth modal for student area */}
       <AuthModal
@@ -308,11 +371,6 @@ const StudentNavbar: React.FC = () => {
         initialError={null}
       />
 
-      {/* User Settings Modal */}
-      <UserSettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-      />
     </>
   );
 };

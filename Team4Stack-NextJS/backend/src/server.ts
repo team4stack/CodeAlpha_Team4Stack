@@ -1,12 +1,11 @@
+// Must run before any module that reads process.env (e.g. supabase.ts on import chain)
+import './loadEnv';
+
 import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
-
-// Load environment variables
-dotenv.config();
 
 // Import routes
 import coursesRoutes from './modules/courses/routes';
@@ -133,11 +132,24 @@ app.use((req: Request, res: Response) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`🚀 Server is running on port ${PORT}`);
   console.log(`📡 API endpoint: http://localhost:${PORT}/api`);
   console.log(`🌐 Frontend URL: ${FRONTEND_URL}`);
   console.log(`🔧 Environment: ${process.env.NODE_ENV || 'development'}`);
+});
+
+server.on('error', (err: NodeJS.ErrnoException) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(
+      `\n[EADDRINUSE] Port ${PORT} is already in use — another process is listening (not a TypeScript bug).\n` +
+        `  • Stop the other backend: close extra terminals, or Task Manager → end "Node.js"\n` +
+        `  • Or find PID (PowerShell): Get-NetTCPConnection -LocalPort ${PORT} | Select OwningProcess\n` +
+        `  • Or use another port: set PORT=5001 in backend/.env and match NEXT_PUBLIC_API_URL on the frontend.\n`
+    );
+    process.exit(1);
+  }
+  throw err;
 });
 
 export default app;

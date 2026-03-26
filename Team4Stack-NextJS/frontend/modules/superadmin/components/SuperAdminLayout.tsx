@@ -3,8 +3,8 @@
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import SuperAdminSidebar from './SuperAdminSidebar'
-import AdminHeader from '../../../components/admin/shared/AdminHeader'
-import AdminFooter from '../../../components/admin/shared/AdminFooter'
+import AdminHeader from '@/components/admin/shared/AdminHeader'
+import AdminFooter from '@/components/admin/shared/AdminFooter'
 interface SuperAdminLayoutProps {
   children: React.ReactNode
 }
@@ -54,8 +54,9 @@ const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
         // Check if user is super admin in admin_users table via API
         const { superadminApi } = await import('@/lib/api')
         const adminResult = await superadminApi.checkAdminByEmail(userEmail)
+        const adminRow = adminResult.data as any
 
-        if (adminResult.error || !adminResult.data || !adminResult.data.email) {
+        if (adminResult.error || !adminRow || !adminRow.email) {
           sessionStorage.removeItem('admin_session')
           router.replace('/supadmin/login')
           setLoading(false)
@@ -63,7 +64,7 @@ const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
         }
 
         // Check if user has super_admin role
-        const userRole = (adminResult.data as any)?.role || 'admin'
+        const userRole = adminRow?.role || 'admin'
         if (userRole !== 'super_admin') {
           // Not a super admin, redirect to their appropriate admin panel based on role
           switch (userRole) {

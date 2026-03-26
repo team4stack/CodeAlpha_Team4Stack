@@ -1,46 +1,12 @@
 'use client'
 
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { useTheme } from '@/contexts/ThemeContext';
-import MainLayout from '@/app/(main)/layout';
 import './SectionPage.css';
 
 const HelpCenterPage: React.FC = () => {
   const { isDarkMode } = useTheme();
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    subject: '',
-    message: ''
-  });
-  
-  const [isSubmitted, setIsSubmitted] = useState(false);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prevState => ({
-      ...prevState,
-      [name]: value
-    }));
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log('Form submitted:', formData);
-    setIsSubmitted(true);
-    
-    setFormData({
-      name: '',
-      email: '',
-      subject: '',
-      message: ''
-    });
-    
-    setTimeout(() => {
-      setIsSubmitted(false);
-    }, 3000);
-  };
 
   return (
     <div className={`section-page ${isDarkMode ? 'dark' : ''}`}>
@@ -48,106 +14,44 @@ const HelpCenterPage: React.FC = () => {
           <Link href="/" className="back-link">← Back to Home</Link>
           <h1>Help Center</h1>
           <div className="section-content">
-            <p>Find answers to common questions and get help with using Team4Stack services.</p>
+            <p>Start here with the most important steps to use Team4Stack smoothly from day one.</p>
             
             <h2>Getting Started</h2>
-            <div className="help-category">
-              <h3>Account Setup</h3>
-              <ul>
-                <li><a href="#" className="help-link">Creating your account</a></li>
-                <li><a href="#" className="help-link">Verifying your email</a></li>
-                <li><a href="#" className="help-link">Setting up your profile</a></li>
-              </ul>
+            <div className="help-key-steps">
+              <article className="help-key-step">
+                <h3>Step 1: Create your account correctly</h3>
+                <ul>
+                  <li>Use an active email address that you check daily.</li>
+                  <li>Choose a secure password and keep it private.</li>
+                  <li>Complete profile basics (name and username) before applying.</li>
+                </ul>
+              </article>
+
+              <article className="help-key-step">
+                <h3>Step 2: Explore courses and choose the right one</h3>
+                <ul>
+                  <li>Read course details and make sure it matches your goal.</li>
+                  <li>Check prerequisites before submitting the application.</li>
+                  <li>Prepare required data and payment proof in advance.</li>
+                </ul>
+              </article>
+
+              <article className="help-key-step">
+                <h3>Step 3: Submit a complete application</h3>
+                <ul>
+                  <li>Enter accurate CNIC/B-Form and contact information.</li>
+                  <li>Attach clear screenshot evidence where needed.</li>
+                  <li>Review every field once before final submit.</li>
+                </ul>
+              </article>
             </div>
-            
+
+            <h2>Need More Help?</h2>
             <div className="help-category">
-              <h3>Basic Features</h3>
-              <ul>
-                <li><a href="#" className="help-link">Navigating the dashboard</a></li>
-                <li><a href="#" className="help-link">Managing your projects</a></li>
-                <li><a href="#" className="help-link">Collaborating with team members</a></li>
-              </ul>
+              <h3>Contact Our Team</h3>
+              <p>If your issue is still unresolved, contact support with complete details and an optional screenshot.</p>
+              <Link href="/contact" className="help-link">Go to Contact Support</Link>
             </div>
-            
-            <h2>Popular Topics</h2>
-            <div className="help-category">
-              <h3>Billing & Payments</h3>
-              <ul>
-                <li><a href="#" className="help-link">Updating payment methods</a></li>
-                <li><a href="#" className="help-link">Understanding your invoice</a></li>
-                <li><a href="#" className="help-link">Canceling your subscription</a></li>
-              </ul>
-            </div>
-            
-            <div className="help-category">
-              <h3>Troubleshooting</h3>
-              <ul>
-                <li><a href="#" className="help-link">Login issues</a></li>
-                <li><a href="#" className="help-link">Performance problems</a></li>
-                <li><a href="#" className="help-link">Error messages</a></li>
-              </ul>
-            </div>
-            
-            <h2>Contact Our Team</h2>
-            <p>Can't find what you're looking for? Send us a message and our support team will get back to you.</p>
-            
-            {isSubmitted ? (
-              <div className="success-message">
-                <p>Thank you! Your message has been sent successfully. Our team will contact you shortly.</p>
-              </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="contact-form">
-                <div className="form-group">
-                  <label htmlFor="name">Full Name</label>
-                  <input
-                    type="text"
-                    id="name"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-                
-                <div className="form-group">
-                  <label htmlFor="email">Email Address</label>
-                  <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-                
-                <div className="form-group">
-                  <label htmlFor="subject">Subject</label>
-                  <input
-                    type="text"
-                    id="subject"
-                    name="subject"
-                    value={formData.subject}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-                
-                <div className="form-group">
-                  <label htmlFor="message">Message</label>
-                  <textarea
-                    id="message"
-                    name="message"
-                    rows={5}
-                    value={formData.message}
-                    onChange={handleChange}
-                    required
-                  ></textarea>
-                </div>
-                
-                <button type="submit" className="submit-btn">Send Message</button>
-              </form>
-            )}
           </div>
         </div>
     </div>

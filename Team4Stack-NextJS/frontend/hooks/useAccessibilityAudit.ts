@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import axe from 'axe-core';
-import { devLog, devError, devGroup, devGroupEnd } from '../utils/devUtils';
+import { devLog, devError, devGroup, devGroupEnd } from '@/lib/utils/devUtils';
 
 const useAccessibilityAudit = () => {
   useEffect(() => {

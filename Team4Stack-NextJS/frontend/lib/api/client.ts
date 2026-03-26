@@ -1,13 +1,77 @@
 // API Client for Backend
 // This file handles all API calls to the backend server
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+import { getCookieConsent } from '@/lib/cookies/consent';
+import { parseStoredClientAuthSession } from '@/lib/security/clientAuthSession';
+
+/**
+ * Prefer `NEXT_PUBLIC_API_URL` (must include `/api`).
+ * Else use `NEXT_PUBLIC_BACKEND_URL` (e.g. http://localhost:5000) — `/api` is appended if missing.
+ */
+function resolvePublicApiBaseUrl(): string {
+  const api = process.env.NEXT_PUBLIC_API_URL?.trim();
+  if (api) {
+    return api.replace(/\/$/, '');
+  }
+  const backend = process.env.NEXT_PUBLIC_BACKEND_URL?.trim();
+  if (backend) {
+    const b = backend.replace(/\/$/, '');
+    return b.endsWith('/api') ? b : `${b}/api`;
+  }
+  return 'http://localhost:5000/api';
+}
+
+const API_BASE_URL = resolvePublicApiBaseUrl();
+
+function readAuthSessionRawFromBrowser(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const fromLs = localStorage.getItem('auth_session');
+    if (fromLs) return fromLs;
+  } catch {
+    /* ignore */
+  }
+  try {
+    // Mirror AuthContext: cookie may hold tokens when localStorage is empty
+    if (getCookieConsent() === 'essential') return null;
+    const name = 'auth_session=';
+    const all = document.cookie || '';
+    const part = all.split('; ').find((c) => c.startsWith(name));
+    if (!part) return null;
+    const v = decodeURIComponent(part.slice(name.length));
+    return v || null;
+  } catch {
+    return null;
+  }
+}
+
+/** Optional auth mode for requests (not sent over the wire). */
+export type ApiClientRequestInit = RequestInit & {
+  /** `user-only` skips admin_session so student APIs see the Supabase JWT (fixes mixed admin+student tabs). */
+  authMode?: 'default' | 'user-only';
+};
 
 class ApiClient {
   private baseUrl: string;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
+  }
+
+  /** Supabase access token only (no admin_session). Uses localStorage then auth_session cookie. */
+  private getUserOnlyAuthHeaders(): Record<string, string> {
+    if (typeof window === 'undefined') return {};
+    try {
+      const userRaw = readAuthSessionRawFromBrowser();
+      if (!userRaw) return {};
+      const session = parseStoredClientAuthSession(userRaw);
+      if (session?.access_token) {
+        return { Authorization: `Bearer ${session.access_token}` };
+      }
+    } catch {
+      /* ignore */
+    }
+    return {};
   }
 
   /** Admin panel token (sessionStorage) or Supabase access token (localStorage). */
@@ -28,26 +92,16 @@ class ApiClient {
     } catch {
       /* ignore */
     }
-    try {
-      const userRaw = localStorage.getItem('auth_session');
-      if (userRaw) {
-        const u = JSON.parse(userRaw) as { access_token?: string };
-        if (u.access_token && typeof u.access_token === 'string') {
-          return { Authorization: `Bearer ${u.access_token}` };
-        }
-      }
-    } catch {
-      /* ignore */
-    }
-    return {};
+    return { ...this.getUserOnlyAuthHeaders() };
   }
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {},
+    options: ApiClientRequestInit = {},
     retries = 2,
     retryDelay = 1000
   ): Promise<{ success: boolean; data?: T; error?: string }> {
+    const { authMode = 'default', ...fetchInit } = options;
     const url = `${this.baseUrl}${endpoint}`;
     const REQUEST_TIMEOUT_MS = 45000;
 
@@ -57,13 +111,16 @@ class ApiClient {
         const controller = new AbortController();
         timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
+        const authHeaders =
+          authMode === 'user-only' ? this.getUserOnlyAuthHeaders() : this.getAuthHeaders();
+
         const response = await fetch(url, {
-          ...options,
+          ...fetchInit,
           signal: controller.signal,
           headers: {
             'Content-Type': 'application/json',
-            ...this.getAuthHeaders(),
-            ...options.headers,
+            ...authHeaders,
+            ...fetchInit.headers,
           },
         });
 
@@ -125,14 +182,27 @@ class ApiClient {
         }
         // If this is the last attempt, return error
         if (attempt === retries) {
-          // Sanitize error messages to prevent exposing internal information
-          // NEVER expose backend URLs, server details, or technical errors to users
+          // Sanitize error messages; in development we hint at the API base when the network fails
           let errorMessage = 'Unable to connect to the server. Please try again later.';
-          
-          // Check if it's a network error - use generic message for all network errors
-          if (error.message?.includes('fetch') || error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError') || error.message?.includes('ERR_CONNECTION_REFUSED') || error.message?.includes('ERR_NETWORK')) {
-            // Generic message - never expose backend URL or technical details
-            errorMessage = 'Unable to connect to the server. Please check your internet connection and try again.';
+
+          const msg = String(error?.message || error || '');
+          const isNetworkFail =
+            msg.includes('fetch') ||
+            msg.includes('Failed to fetch') ||
+            msg.includes('Load failed') ||
+            msg.includes('NetworkError') ||
+            msg.includes('ERR_CONNECTION_REFUSED') ||
+            msg.includes('ERR_NETWORK') ||
+            msg.includes('ECONNREFUSED');
+
+          if (isNetworkFail) {
+            // Local dev: connection refused usually means Express API is not running
+            errorMessage =
+              process.env.NODE_ENV === 'development'
+                ? 'API server not reachable. Start the backend: open a terminal, `cd backend`, run `npm run dev`, then refresh. (Expected URL: ' +
+                  API_BASE_URL +
+                  ')'
+                : 'Unable to reach the service. Please try again in a moment.';
           } else if (error.message) {
             // Sanitize error message - remove any sensitive information
             try {
@@ -167,45 +237,57 @@ class ApiClient {
   }
 
   // GET request
-  async get<T>(endpoint: string): Promise<{ success: boolean; data?: T; error?: string }> {
-    return this.request<T>(endpoint, { method: 'GET' });
+  async get<T>(
+    endpoint: string,
+    init?: ApiClientRequestInit
+  ): Promise<{ success: boolean; data?: T; error?: string }> {
+    return this.request<T>(endpoint, { method: 'GET', ...init });
   }
 
   // POST request
   async post<T>(
     endpoint: string,
-    body?: any
+    body?: any,
+    init?: ApiClientRequestInit
   ): Promise<{ success: boolean; data?: T; error?: string }> {
     return this.request<T>(endpoint, {
       method: 'POST',
       body: JSON.stringify(body),
+      ...init,
     });
   }
 
   // PUT request
   async put<T>(
     endpoint: string,
-    body?: any
+    body?: any,
+    init?: ApiClientRequestInit
   ): Promise<{ success: boolean; data?: T; error?: string }> {
     return this.request<T>(endpoint, {
       method: 'PUT',
       body: JSON.stringify(body),
+      ...init,
     });
   }
 
   // DELETE request
-  async delete<T>(endpoint: string): Promise<{ success: boolean; data?: T; error?: string }> {
-    return this.request<T>(endpoint, { method: 'DELETE' });
+  async delete<T>(
+    endpoint: string,
+    init?: ApiClientRequestInit
+  ): Promise<{ success: boolean; data?: T; error?: string }> {
+    return this.request<T>(endpoint, { method: 'DELETE', ...init });
   }
 
   // PATCH request
   async patch<T>(
     endpoint: string,
-    body?: any
+    body?: any,
+    init?: ApiClientRequestInit
   ): Promise<{ success: boolean; data?: T; error?: string }> {
     return this.request<T>(endpoint, {
       method: 'PATCH',
       body: JSON.stringify(body),
+      ...init,
     });
   }
 }

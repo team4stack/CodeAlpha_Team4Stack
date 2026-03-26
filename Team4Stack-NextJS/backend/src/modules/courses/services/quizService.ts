@@ -18,6 +18,14 @@ const QUIZ_UPDATE_KEYS = [
 const QUESTION_KEYS = ['quiz_id', 'question_text', 'order_index', 'marks'] as const;
 const OPTION_KEYS = ['question_id', 'option_text', 'is_correct', 'order_index'] as const;
 
+const toIntegerOrUndefined = (value: unknown): number | undefined => {
+  if (value === undefined || value === null || value === '') return undefined;
+  if (typeof value !== 'number' && typeof value !== 'string') return undefined;
+  const parsed = typeof value === 'number' ? Math.trunc(value) : Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed)) return undefined;
+  return parsed;
+};
+
 export class QuizService {
   async getQuizByVideoId(videoId: number): Promise<Quiz | null> {
     const { data, error } = await supabaseAdmin.from('quizzes').select('*').eq('video_id', videoId).maybeSingle();
@@ -70,9 +78,10 @@ export class QuizService {
     
     try {
       // Ensure video_id is integer
-      const videoId = typeof quiz.video_id === 'string' ? parseInt(quiz.video_id) : quiz.video_id;
+      const videoId =
+        typeof quiz.video_id === 'string' ? Number.parseInt(quiz.video_id, 10) : quiz.video_id;
       
-      if (!videoId || isNaN(videoId)) {
+      if (!videoId || Number.isNaN(videoId)) {
         throw new Error('Invalid video_id: must be a valid number');
       }
       
@@ -82,13 +91,27 @@ export class QuizService {
         throw new Error(`Quiz already exists for video ID ${videoId}. Use update instead.`);
       }
       
-      const quizData: any = {
+      const totalMarks = toIntegerOrUndefined(quiz.total_marks) ?? 10;
+      const passingPercentage = toIntegerOrUndefined(quiz.passing_percentage) ?? 80;
+      const timeLimitMinutes = toIntegerOrUndefined(quiz.time_limit_minutes) ?? 10;
+
+      if (totalMarks < 1) {
+        throw new Error('total_marks must be at least 1');
+      }
+      if (passingPercentage < 1 || passingPercentage > 100) {
+        throw new Error('passing_percentage must be between 1 and 100');
+      }
+      if (timeLimitMinutes < 1 || timeLimitMinutes > 180) {
+        throw new Error('time_limit_minutes must be between 1 and 180');
+      }
+
+      const quizData: Record<string, unknown> = {
         video_id: videoId,
         title: quiz.title || 'Quiz',
         description: quiz.description || null,
-        total_marks: quiz.total_marks || 10,
-        passing_percentage: quiz.passing_percentage || 80,
-        time_limit_minutes: quiz.time_limit_minutes || 10
+        total_marks: totalMarks,
+        passing_percentage: passingPercentage,
+        time_limit_minutes: timeLimitMinutes
       };
       
       // Remove undefined and null values for optional fields
@@ -135,6 +158,29 @@ export class QuizService {
   // Update quiz
   async updateQuiz(id: number | string, quiz: Partial<Quiz>): Promise<Quiz> {
     const patch = pickAllowedKeys(quiz, QUIZ_UPDATE_KEYS);
+
+    const parsedTotalMarks = toIntegerOrUndefined(patch.total_marks);
+    if (parsedTotalMarks !== undefined) {
+      if (parsedTotalMarks < 1) throw new Error('total_marks must be at least 1');
+      patch.total_marks = parsedTotalMarks;
+    }
+
+    const parsedPassingPercentage = toIntegerOrUndefined(patch.passing_percentage);
+    if (parsedPassingPercentage !== undefined) {
+      if (parsedPassingPercentage < 1 || parsedPassingPercentage > 100) {
+        throw new Error('passing_percentage must be between 1 and 100');
+      }
+      patch.passing_percentage = parsedPassingPercentage;
+    }
+
+    const parsedTimeLimit = toIntegerOrUndefined(patch.time_limit_minutes);
+    if (parsedTimeLimit !== undefined) {
+      if (parsedTimeLimit < 1 || parsedTimeLimit > 180) {
+        throw new Error('time_limit_minutes must be between 1 and 180');
+      }
+      patch.time_limit_minutes = parsedTimeLimit;
+    }
+
     const row = await updateByIdWithTimestampRetry('quizzes', id, patch, { notFoundMessage: 'Quiz not found' });
     return row as unknown as Quiz;
   }
@@ -264,14 +310,6 @@ export class QuizService {
 
     const quiz = attempt.quizzes as Quiz;
 
-    // Get correct answers for all questions
-    const { data: questions, error: questionsError } = await supabaseAdmin
-      .from('quiz_questions')
-      .select('id, marks')
-      .eq('quiz_id', quiz.id);
-
-    if (questionsError) throw questionsError;
-
     let totalScore = 0;
     const attemptAnswers: Partial<QuizAttemptAnswer>[] = [];
 
@@ -390,6 +428,28 @@ export class QuizService {
 
   // Get user's quiz attempts for a video
   async getUserQuizAttempts(videoId: number, userId: string): Promise<QuizAttempt[]> {
+    const quiz = await this.getQuizByVideoId(videoId);
+    const { data: videoRow, error: videoError } = await supabaseAdmin
+      .from('videos')
+      .select('updated_at, created_at')
+      .eq('id', videoId)
+      .maybeSingle();
+    if (videoError) throw videoError;
+
+    const quizUpdatedAtRaw =
+      (quiz as unknown as { updated_at?: string | null; created_at?: string | null } | null)?.updated_at ||
+      (quiz as unknown as { created_at?: string | null } | null)?.created_at;
+    const videoUpdatedAtRaw =
+      (videoRow as { updated_at?: string | null; created_at?: string | null } | null)?.updated_at ||
+      (videoRow as { created_at?: string | null } | null)?.created_at;
+
+    const quizUpdatedAt = quizUpdatedAtRaw ? Date.parse(String(quizUpdatedAtRaw)) : 0;
+    const videoUpdatedAt = videoUpdatedAtRaw ? Date.parse(String(videoUpdatedAtRaw)) : 0;
+    const contentUpdatedAt = Math.max(
+      Number.isNaN(quizUpdatedAt) ? 0 : quizUpdatedAt,
+      Number.isNaN(videoUpdatedAt) ? 0 : videoUpdatedAt
+    );
+
     const { data, error } = await supabaseAdmin
       .from('quiz_attempts')
       .select('*')
@@ -398,13 +458,64 @@ export class QuizService {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    const attempts = (data || []) as QuizAttempt[];
+    if (contentUpdatedAt <= 0) return attempts;
+
+    return attempts.filter((attempt) => {
+      const attemptAtRaw =
+        (attempt as unknown as { submitted_at?: string | null; created_at?: string | null }).submitted_at ||
+        (attempt as unknown as { created_at?: string | null }).created_at;
+      if (!attemptAtRaw) return false;
+      const attemptAt = Date.parse(String(attemptAtRaw));
+      if (Number.isNaN(attemptAt)) return false;
+      return attemptAt >= contentUpdatedAt;
+    });
   }
 
   // Check if user has passed quiz for video
   async hasUserPassedQuiz(videoId: number, userId: string): Promise<boolean> {
-    const attempts = await this.getUserQuizAttempts(videoId, userId);
-    return attempts.some(attempt => attempt.passed === true);
+    const quiz = await this.getQuizByVideoId(videoId);
+    if (!quiz) return false;
+
+    const { data: latestPassedAttempt, error: attemptError } = await supabaseAdmin
+      .from('quiz_attempts')
+      .select('passed, submitted_at, created_at')
+      .eq('video_id', videoId)
+      .eq('user_id', userId)
+      .eq('passed', true)
+      .order('submitted_at', { ascending: false, nullsFirst: false })
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (attemptError) throw attemptError;
+    if (!latestPassedAttempt) return false;
+
+    const { data: videoRow, error: videoError } = await supabaseAdmin
+      .from('videos')
+      .select('updated_at, created_at')
+      .eq('id', videoId)
+      .maybeSingle();
+    if (videoError) throw videoError;
+
+    const quizUpdatedAtRaw = (quiz as unknown as { updated_at?: string | null; created_at?: string | null }).updated_at
+      || (quiz as unknown as { created_at?: string | null }).created_at;
+    const videoUpdatedAtRaw =
+      (videoRow as { updated_at?: string | null; created_at?: string | null } | null)?.updated_at ||
+      (videoRow as { created_at?: string | null } | null)?.created_at;
+    const attemptAtRaw =
+      (latestPassedAttempt as { submitted_at?: string | null; created_at?: string | null }).submitted_at ||
+      (latestPassedAttempt as { created_at?: string | null }).created_at;
+
+    const quizUpdatedAt = quizUpdatedAtRaw ? Date.parse(String(quizUpdatedAtRaw)) : 0;
+    const videoUpdatedAt = videoUpdatedAtRaw ? Date.parse(String(videoUpdatedAtRaw)) : 0;
+    const attemptAt = attemptAtRaw ? Date.parse(String(attemptAtRaw)) : 0;
+    const contentUpdatedAt = Math.max(
+      Number.isNaN(quizUpdatedAt) ? 0 : quizUpdatedAt,
+      Number.isNaN(videoUpdatedAt) ? 0 : videoUpdatedAt
+    );
+
+    if (Number.isNaN(attemptAt) || attemptAt <= 0) return false;
+    return attemptAt >= contentUpdatedAt;
   }
 
   async getAttemptOwnerUserId(attemptId: number | string): Promise<string | null> {

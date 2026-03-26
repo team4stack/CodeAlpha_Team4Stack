@@ -75,16 +75,16 @@ const Hero: React.FC = () => {
       try {
         const { landingApi, coursesApi } = await import('@/lib/api')
         const [projectsResult, servicesResult, coursesResult, settingsResult] = await Promise.all([
-          landingApi.getProjects().then(r => ({ count: r.data?.length || 0 })),
-          landingApi.getServices().then(r => ({ count: r.data?.length || 0 })),
-          coursesApi.getAllCourses().then(r => ({ count: r.data?.length || 0 })),
+          landingApi.getProjects().then(r => ({ count: (Array.isArray(r.data) ? r.data.length : 0) })),
+          landingApi.getServices().then(r => ({ count: (Array.isArray(r.data) ? r.data.length : 0) })),
+          coursesApi.getAllCourses().then(r => ({ count: (Array.isArray(r.data) ? r.data.length : 0) })),
           landingApi.getSiteSettings(['hero_projects_count', 'hero_services_count', 'hero_courses_count', 'hero_animated_texts', 'hero_bullet_points'])
         ]);
         const projCount = projectsResult.count || 0;
         const servCount = servicesResult.count || 0;
         const courCount = coursesResult.count || 0;
         const map: Record<string, string> = {};
-        (settingsResult.data || []).forEach((r: any) => {
+        (Array.isArray(settingsResult.data) ? settingsResult.data : []).forEach((r: any) => {
           map[r.key] = r.value;
         });
         setProjectsCount(Number.isFinite(parseInt(map['hero_projects_count'])) ? parseInt(map['hero_projects_count']) : projCount);

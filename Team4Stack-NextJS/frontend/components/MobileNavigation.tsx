@@ -114,7 +114,7 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({ isOpen, onClose, on
       try {
         const { landingApi } = await import('@/lib/api')
         const result = await landingApi.getSiteSettings(['navbar_links'])
-        const data = result.data?.find((s: any) => s.key === 'navbar_links')
+        const data = Array.isArray(result.data) ? result.data.find((s: any) => s.key === 'navbar_links') : undefined
         
         if (data?.value) {
           try {

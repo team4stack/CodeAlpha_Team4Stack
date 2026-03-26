@@ -99,7 +99,8 @@ export const verifyAdminPassword = async (
     }
 
     // Check result - API returns { valid: true/false, error?: string }
-    const isValid = verifyResult.data && verifyResult.data.valid === true;
+    const data = verifyResult.data as any
+    const isValid = data?.valid === true;
     
     if (isValid) {
       // Password is valid, create admin token
@@ -117,7 +118,7 @@ export const verifyAdminPassword = async (
       };
     }
 
-    return { success: false, error: verifyResult.data?.error || 'Invalid admin password. Please check your password and try again.' };
+    return { success: false, error: data?.error || 'Invalid admin password. Please check your password and try again.' };
   } catch (error: any) {
     // No sensitive info in logs
     return {

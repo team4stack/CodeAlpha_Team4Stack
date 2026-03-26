@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import AuthModal from '@/lib/auth/components/AuthModal';
-import UserSettingsModal from '@/modals/UserSettingsModal';
 import { useApprovedCourseStudent } from '@/lib/courses/useApprovedCourseStudent';
 import StudentCourseNotificationsBell from '@/components/courses/StudentCourseNotificationsBell';
+import CoursesAreaMobileDrawer from '@/navigation/CoursesAreaMobileDrawer';
 
 const CoursesNavbar: React.FC = () => {
   const { isDarkMode } = useTheme();
@@ -17,7 +17,7 @@ const CoursesNavbar: React.FC = () => {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -27,6 +27,32 @@ const CoursesNavbar: React.FC = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  const mobileDrawerItems = [
+    { label: 'Courses', onNavigate: () => router.push('/courses') },
+    { label: 'Apply', onNavigate: () => router.push('/courses/apply') },
+    { label: 'Home', onNavigate: () => router.push('/') },
+    ...(user
+      ? [
+          {
+            label: 'Profile Settings',
+            onNavigate: () => router.push('/settings'),
+          },
+          {
+            label: 'Logout',
+            onNavigate: async () => {
+              await signOut();
+              router.push('/courses');
+            },
+          },
+        ]
+      : [
+          {
+            label: 'Sign In',
+            onNavigate: () => setIsAuthOpen(true),
+          },
+        ]),
+  ];
 
   return (
     <>
@@ -83,7 +109,7 @@ const CoursesNavbar: React.FC = () => {
                 />
               </div>
               <span
-                className={`text-lg sm:text-xl font-bold tracking-tight transition-all duration-300 hidden sm:inline ${
+                className={`text-lg sm:text-xl font-bold tracking-tight transition-all duration-300 inline ${
                   isScrolled
                     ? (isDarkMode ? 'text-white' : 'text-black')
                     : 'text-white group-hover:text-orange-300'
@@ -95,37 +121,38 @@ const CoursesNavbar: React.FC = () => {
 
             {/* Right-side actions for courses area */}
             <div className="flex items-center gap-1.5 sm:gap-3 ml-auto">
-              {/* Courses button - right aligned */}
-              <button
-                type="button"
-                className={`btn-plain px-3 sm:px-4 py-2 text-sm sm:text-base font-medium transition-all duration-300 relative group focus:outline-none ${
-                  isScrolled
-                    ? (isDarkMode
+              {/* Desktop: tab links (same as before) */}
+              <div className="hidden md:flex items-center gap-1 sm:gap-2">
+                <button
+                  type="button"
+                  className={`btn-plain px-3 sm:px-4 py-2 text-sm sm:text-base font-medium transition-all duration-300 relative group focus:outline-none ${
+                    isScrolled
+                      ? isDarkMode
                         ? 'text-white/90 hover:text-white'
-                        : 'text-gray-800 hover:text-orange-600')
-                    : 'text-white hover:text-orange-300 font-medium'
-                }`}
-                onClick={() => router.push('/courses')}
-              >
-                Courses
-                <span className="pointer-events-none absolute left-1/2 -bottom-0.5 w-0 h-px bg-gradient-to-r from-orange-400 to-red-500 rounded-full transition-all duration-300 group-hover:left-0 group-hover:w-full"></span>
-              </button>
-              
-              {/* Apply button */}
-              <button
-                type="button"
-                className={`btn-plain px-3 sm:px-4 py-2 text-sm sm:text-base font-medium transition-all duration-300 relative group focus:outline-none ${
-                  isScrolled
-                    ? (isDarkMode
+                        : 'text-gray-800 hover:text-orange-600'
+                      : 'text-white hover:text-orange-300 font-medium'
+                  }`}
+                  onClick={() => router.push('/courses')}
+                >
+                  Courses
+                  <span className="pointer-events-none absolute left-1/2 -bottom-0.5 w-0 h-px bg-gradient-to-r from-orange-400 to-red-500 rounded-full transition-all duration-300 group-hover:left-0 group-hover:w-full" />
+                </button>
+                <button
+                  type="button"
+                  className={`btn-plain px-3 sm:px-4 py-2 text-sm sm:text-base font-medium transition-all duration-300 relative group focus:outline-none ${
+                    isScrolled
+                      ? isDarkMode
                         ? 'text-white/90 hover:text-white'
-                        : 'text-gray-800 hover:text-orange-600')
-                    : 'text-white hover:text-orange-300 font-medium'
-                }`}
-                onClick={() => router.push('/courses/apply')}
-              >
-                Apply
-                <span className="pointer-events-none absolute left-1/2 -bottom-0.5 w-0 h-px bg-gradient-to-r from-orange-400 to-red-500 rounded-full transition-all duration-300 group-hover:left-0 group-hover:w-full"></span>
-              </button>
+                        : 'text-gray-800 hover:text-orange-600'
+                      : 'text-white hover:text-orange-300 font-medium'
+                  }`}
+                  onClick={() => router.push('/courses/apply')}
+                >
+                  Apply
+                  <span className="pointer-events-none absolute left-1/2 -bottom-0.5 w-0 h-px bg-gradient-to-r from-orange-400 to-red-500 rounded-full transition-all duration-300 group-hover:left-0 group-hover:w-full" />
+                </button>
+              </div>
+
               {!loading && user && isApprovedStudent && !checkingStudent && user.email && (
                 <StudentCourseNotificationsBell
                   email={user.email}
@@ -136,7 +163,7 @@ const CoursesNavbar: React.FC = () => {
 
               {!loading && (
                 user ? (
-                  <div className="relative">
+                  <div className="relative hidden md:block">
                     <button 
                       type="button"
                       onClick={(e) => {
@@ -218,7 +245,7 @@ const CoursesNavbar: React.FC = () => {
                               <button
                                 onClick={() => {
                                   setIsUserMenuOpen(false)
-                                  setIsSettingsOpen(true)
+                                  router.push('/settings')
                                 }}
                                 className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center gap-2 ${
                                   isDarkMode
@@ -259,7 +286,7 @@ const CoursesNavbar: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setIsAuthOpen(true)}
-                    className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full transition-all hover:scale-110 flex items-center justify-center focus:outline-none flex-shrink-0 ${
+                    className={`hidden md:flex w-8 h-8 sm:w-10 sm:h-10 rounded-full transition-all hover:scale-110 items-center justify-center focus:outline-none flex-shrink-0 ${
                       isScrolled
                         ? (isDarkMode
                             ? 'bg-gradient-to-br from-purple-500 via-pink-500 to-indigo-500 text-white shadow-[0_10px_30px_rgba(168,85,247,0.35)] hover:shadow-[0_12px_36px_rgba(99,102,241,0.45)]'
@@ -284,10 +311,49 @@ const CoursesNavbar: React.FC = () => {
                   </button>
                 )
               )}
+
+              {/* Mobile: hamburger (landing MainNavbar style) */}
+              <button
+                type="button"
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onClick={() => setIsMenuOpen((p) => !p)}
+                className={`md:hidden p-2 relative z-[10002] rounded-lg transition-colors flex items-center justify-center ${
+                  isScrolled
+                    ? isDarkMode
+                      ? 'bg-white/20 backdrop-blur-lg hover:bg-white/30 border border-white/30'
+                      : 'bg-gray-100 hover:bg-gray-200 border border-gray-200'
+                    : 'bg-white/20 backdrop-blur-lg hover:bg-white/30 border border-white/30 text-white'
+                } focus:outline-none focus:ring-0 focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-0`}
+                aria-label={isMenuOpen ? 'Close course menu' : 'Open course menu'}
+                aria-expanded={isMenuOpen}
+              >
+                <svg
+                  className={`w-6 h-6 ${isScrolled ? (isDarkMode ? 'text-white' : 'text-gray-600') : 'text-white'}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden
+                >
+                  {isMenuOpen ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  )}
+                </svg>
+              </button>
             </div>
           </div>
         </div>
       </nav>
+
+      <CoursesAreaMobileDrawer
+        isOpen={isMenuOpen}
+        onClose={() => setIsMenuOpen(false)}
+        items={mobileDrawerItems}
+      />
 
       {/* Auth modal for courses area */}
       <AuthModal
@@ -296,11 +362,6 @@ const CoursesNavbar: React.FC = () => {
         initialError={null}
       />
 
-      {/* User Settings Modal */}
-      <UserSettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-      />
     </>
   );
 };

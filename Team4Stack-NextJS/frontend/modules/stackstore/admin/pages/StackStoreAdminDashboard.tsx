@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import StatCard from '../../../../components/admin/shared/StatCard'
+import StatCard from '@/components/admin/shared/StatCard'
 import { stackstoreApi } from '@/lib/api'
 
 const StackStoreAdminDashboard: React.FC = () => {

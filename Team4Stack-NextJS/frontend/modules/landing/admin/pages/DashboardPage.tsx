@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import StatCard from '../../../../components/admin/shared/StatCard'
-import QuickActions from '../../../../components/admin/shared/QuickActions'
+import StatCard from '@/components/admin/shared/StatCard'
+import QuickActions from '@/components/admin/shared/QuickActions'
 import { landingApi, coursesApi, superadminApi } from '@/lib/api'
 
 type Activity = {

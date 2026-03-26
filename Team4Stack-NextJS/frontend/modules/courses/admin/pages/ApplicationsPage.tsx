@@ -2,37 +2,30 @@
 
 import React, { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
-import { coursesApi, usersApi } from '@/lib/api'
-
-type ApplicationRow = {
-  id: number
-  name: string
-  father_name: string
-  phone: string
-  email: string
-  address: string | null
-  course_name: string
-  course_name_2: string | null
-  message: string | null
-  gender: string
-  age: number
-  image_attached: boolean
-  viewed: boolean
-  approved: boolean | null
-  approved_1: boolean | null
-  approved_2: boolean | null
-  rejection_message: string | null
-  rejection_message_1: string | null
-  rejection_message_2: string | null
-  created_at: string
-  is_blocked?: boolean
-}
+import { loadApplicationsData } from './applications-page/loadApplicationsData'
+import {
+  applyCourseDecisionToApplication,
+  approveApplicationCourse,
+  blockUserByEmail,
+  deleteApplicationById,
+  markApplicationViewed,
+  rejectApplicationCourse
+} from './applications-page/applicationActions'
+import {
+  getApplicationRowBackgroundClass,
+  getApplicationStatusBadge,
+  getCourseApprovalVisualState
+} from './applications-page/applicationRowViewState'
+import BlockUserModal from './applications-page/components/BlockUserModal'
+import DeleteApplicationModal from './applications-page/components/DeleteApplicationModal'
+import RejectApplicationModal from './applications-page/components/RejectApplicationModal'
+import type { ApplicationFilter, ApplicationRow, CourseNumber } from './applications-page/types'
 
 const ApplicationsPage: React.FC = () => {
   const [rows, setRows] = useState<ApplicationRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all')
+  const [filter, setFilter] = useState<ApplicationFilter>('all')
   const [selectedApplication, setSelectedApplication] = useState<ApplicationRow | null>(null)
   const [showRejectModal, setShowRejectModal] = useState(false)
   const [rejectingId, setRejectingId] = useState<number | null>(null)
@@ -46,91 +39,20 @@ const ApplicationsPage: React.FC = () => {
   const load = async () => {
     try {
       setError(null)
-      
-      // Get all admission forms
-      const result = await coursesApi.getAdmissionForms()
-      
+
+      const result = await loadApplicationsData(filter)
       if (result.error) {
         setError(result.error)
         setRows([])
         setLoading(false)
         return
       }
-      
-      // Filter based on status
-      let filteredData = result.data || []
-      if (filter === 'pending') {
-        filteredData = filteredData.filter((app: any) => {
-          const hasNewApprovals = app.approved_1 !== undefined || app.approved_2 !== undefined
-          if (hasNewApprovals) {
-            return !(app.approved_1 === true || app.approved_2 === true) && 
-                   !(app.approved_1 === false && app.approved_2 === false)
-          }
-          return app.approved === null || app.approved === false
-        })
-      } else if (filter === 'approved') {
-        filteredData = filteredData.filter((app: any) => {
-          const hasNewApprovals = app.approved_1 !== undefined || app.approved_2 !== undefined
-          if (hasNewApprovals) {
-            return app.approved_1 === true || app.approved_2 === true
-          }
-          return app.approved === true
-        })
-      } else if (filter === 'rejected') {
-        filteredData = filteredData.filter((app: any) => {
-          const hasNewApprovals = app.approved_1 !== undefined || app.approved_2 !== undefined
-          if (hasNewApprovals) {
-            return (app.approved_1 === false || app.approved_2 === false) && 
-                   !(app.approved_1 === true || app.approved_2 === true)
-          }
-          return app.approved === false
-        })
-      }
-      
-      // Sort by created_at descending
-      filteredData.sort((a: any, b: any) => 
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      )
-      
-      // Check blocked status for each application and calculate overall approved status
-      const applicationsWithBlockStatus = await Promise.all(
-        (filteredData as ApplicationRow[]).map(async (app) => {
-          const userResult = await usersApi.getUserByEmail(app.email.toLowerCase().trim())
-          
-          // Calculate overall approved status based on individual course approvals
-          // Backward compatibility: if old approved field exists and new fields don't, use old field
-          const hasNewApprovals = app.approved_1 !== undefined || app.approved_2 !== undefined
-          
-          let hasApproved: boolean = false
-          let allRejected: boolean = false
-          
-          if (hasNewApprovals) {
-            // New system: check individual course approvals
-            hasApproved = Boolean(app.approved_1 === true || app.approved_2 === true)
-            allRejected = Boolean(
-              (app.course_name && app.approved_1 === false) &&
-              (!app.course_name_2 || app.approved_2 === false)
-            )
-          } else {
-            // Old system: use the approved field directly
-            hasApproved = app.approved === true
-            allRejected = app.approved === false
-          }
-          
-          return {
-            ...app,
-            is_blocked: userResult?.data?.is_blocked || false,
-            approved: hasApproved ? true : (allRejected ? false : null) // null means pending
-          }
-        })
-      )
-      
-      setRows(applicationsWithBlockStatus)
-    } catch (err: any) {
+      setRows(result.data)
+    } catch (err: unknown) {
       if (process.env.NODE_ENV === 'development') {
         console.error('Error loading applications:', err)
       }
-      const errorMsg = err.message || 'Failed to load applications'
+      const errorMsg = err instanceof Error ? err.message : 'Failed to load applications'
       setError(errorMsg)
       toast.error(errorMsg)
     } finally {
@@ -144,102 +66,56 @@ const ApplicationsPage: React.FC = () => {
     // You can add polling if needed: setInterval(load, 5000)
   }, [filter])
 
-  const approveApplication = async (id: number, email: string, courseNumber: 1 | 2) => {
+  const approveApplication = async (id: number, email: string, courseNumber: CourseNumber) => {
     try {
-      const updateField = `approved_${courseNumber}` as 'approved_1' | 'approved_2'
-      const rejectionField = `rejection_message_${courseNumber}` as 'rejection_message_1' | 'rejection_message_2'
-      
-      // Update admission form - approve specific course
-      const result = await coursesApi.updateAdmissionForm(id, {
-        [updateField]: true,
-        [rejectionField]: null,
-        viewed: true
+      const result = await approveApplicationCourse({
+        applicationId: id,
+        email,
+        courseNumber
       })
-      
       if (result.error) {
         setError(result.error)
         toast.error(result.error)
         return
       }
 
-      // Check if user exists, if not create one
-      try {
-        const userResult = await usersApi.getUserByEmail(email.toLowerCase().trim())
+      setRows((previousRows) =>
+        previousRows.map((row) =>
+          row.id === id
+            ? applyCourseDecisionToApplication({
+                row,
+                courseNumber,
+                approved: true,
+                rejectionMessage: null
+              })
+            : row
+        )
+      )
 
-        if (!userResult?.data) {
-          // Create user account for student portal access
-          // Note: User will need to sign up via auth to get a proper auth.users entry
-          // For now, we'll skip user creation if it fails (user can sign up later)
-          try {
-            const createResult = await usersApi.upsertUser({
-              email: email.toLowerCase().trim(),
-              username: email.split('@')[0].toLowerCase(),
-              name: name || email.split('@')[0],
-              is_blocked: false
-            })
-
-            if (createResult.error || !createResult.success) {
-              const errorMsg = createResult.error || 'Failed to create user account'
-              console.warn('User creation warning:', errorMsg)
-              // Don't fail the approval - user can sign up later via auth
-              // Success message already shown below
-            } else {
-              // User created successfully
-              toast.success(`Application approved! User account created.`)
-            }
-          } catch (userError: any) {
-            // User creation failed - this is okay, user can sign up later
-            console.warn('User creation failed (non-critical):', userError?.message || userError)
-            // Continue with approval - success message will be shown below
-          }
-        } else {
-          // Ensure user is not blocked
-          try {
-            const updateResult = await usersApi.updateUser(userResult.data.id, { is_blocked: false })
-            if (updateResult.error) {
-              console.warn('Error updating user:', updateResult.error)
-            }
-          } catch (updateError: any) {
-            console.warn('User update failed (non-critical):', updateError?.message || updateError)
-          }
-        }
-      } catch (userCheckError: any) {
-        // User check failed - non-critical, continue with approval
-        console.warn('User check failed (non-critical):', userCheckError?.message || userCheckError)
-      }
-      
-      // Update local state
-      setRows(rows.map(r => {
-        if (r.id === id) {
-          const updated = { ...r, [updateField]: true, [rejectionField]: null, viewed: true } as ApplicationRow
-          // Set overall approved to true if at least one course is approved
-          updated.approved = updated.approved_1 === true || updated.approved_2 === true
-          return updated
-        }
-        return r
-      }))
-      
-      // Update selected application if it's the same
-      if (selectedApplication && selectedApplication.id === id) {
-        const updated = { ...selectedApplication, [updateField]: true, [rejectionField]: null, viewed: true } as ApplicationRow
-        updated.approved = updated.approved_1 === true || updated.approved_2 === true
-        setSelectedApplication(updated)
-      }
+      setSelectedApplication((previousSelection) => {
+        if (previousSelection?.id !== id) return previousSelection
+        return applyCourseDecisionToApplication({
+          row: previousSelection,
+          courseNumber,
+          approved: true,
+          rejectionMessage: null
+        })
+      })
       
       // Show success message
       toast.success(`Course ${courseNumber} approved successfully!`)
       await load() // Reload to get latest data
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (process.env.NODE_ENV === 'development') {
         console.error('Error approving application:', err)
       }
-      const errorMsg = err.message || 'Failed to approve application'
+      const errorMsg = err instanceof Error ? err.message : 'Failed to approve application'
       setError(errorMsg)
       toast.error(errorMsg)
     }
   }
 
-  const openRejectModal = (id: number, courseNumber: 1 | 2) => {
+  const openRejectModal = (id: number, courseNumber: CourseNumber) => {
     setRejectingId(id)
     setRejectingCourseNumber(courseNumber)
     setRejectionMessage('')
@@ -256,38 +132,41 @@ const ApplicationsPage: React.FC = () => {
     }
     
     try {
-      const updateField = `approved_${rejectingCourseNumber}` as 'approved_1' | 'approved_2'
-      const rejectionField = `rejection_message_${rejectingCourseNumber}` as 'rejection_message_1' | 'rejection_message_2'
-      
-      const result = await coursesApi.updateAdmissionForm(rejectingId, {
-        [updateField]: false,
-        [rejectionField]: rejectionMessage.trim(),
-        viewed: true
+      const trimmedRejectionMessage = rejectionMessage.trim()
+      const result = await rejectApplicationCourse({
+        applicationId: rejectingId,
+        courseNumber: rejectingCourseNumber,
+        rejectionMessage: trimmedRejectionMessage
       })
-      
+
       if (result.error) {
         setError(result.error)
         toast.error(result.error)
         return
       }
-      
-      // Update local state
-      setRows(rows.map(r => {
-        if (r.id === rejectingId) {
-          const updated = { ...r, [updateField]: false, [rejectionField]: rejectionMessage.trim(), viewed: true } as ApplicationRow
-          // Set overall approved based on remaining approved courses
-          updated.approved = updated.approved_1 === true || updated.approved_2 === true
-          return updated
-        }
-        return r
-      }))
-      
-      // Update selected application if it's the same
-      if (selectedApplication && selectedApplication.id === rejectingId) {
-        const updated = { ...selectedApplication, [updateField]: false, [rejectionField]: rejectionMessage.trim(), viewed: true } as ApplicationRow
-        updated.approved = updated.approved_1 === true || updated.approved_2 === true
-        setSelectedApplication(updated)
-      }
+
+      setRows((previousRows) =>
+        previousRows.map((row) =>
+          row.id === rejectingId
+            ? applyCourseDecisionToApplication({
+                row,
+                courseNumber: rejectingCourseNumber,
+                approved: false,
+                rejectionMessage: trimmedRejectionMessage
+              })
+            : row
+        )
+      )
+
+      setSelectedApplication((previousSelection) => {
+        if (previousSelection?.id !== rejectingId) return previousSelection
+        return applyCourseDecisionToApplication({
+          row: previousSelection,
+          courseNumber: rejectingCourseNumber,
+          approved: false,
+          rejectionMessage: trimmedRejectionMessage
+        })
+      })
       
       setShowRejectModal(false)
       setRejectingId(null)
@@ -295,11 +174,11 @@ const ApplicationsPage: React.FC = () => {
       setRejectionMessage('')
       toast.success(`Course ${rejectingCourseNumber} rejected successfully!`)
       await load() // Reload to get latest data
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (process.env.NODE_ENV === 'development') {
         console.error('Error rejecting application:', err)
       }
-      const errorMsg = err.message || 'Failed to reject application'
+      const errorMsg = err instanceof Error ? err.message : 'Failed to reject application'
       setError(errorMsg)
       toast.error(errorMsg)
     }
@@ -307,19 +186,18 @@ const ApplicationsPage: React.FC = () => {
 
   const markAsViewed = async (id: number) => {
     try {
-      const result = await coursesApi.updateAdmissionForm(id, { viewed: true })
-      
+      const result = await markApplicationViewed(id)
       if (result.error) {
         throw new Error(result.error)
       }
       
-      setRows(rows.map(r => r.id === id ? { ...r, viewed: true } : r))
+      setRows((previousRows) => previousRows.map((row) => (row.id === id ? { ...row, viewed: true } : row)))
       toast.success('Application marked as viewed!')
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (process.env.NODE_ENV === 'development') {
         console.error('Error updating viewed status:', err)
       }
-      const errorMsg = err.message || 'Failed to update viewed status'
+      const errorMsg = err instanceof Error ? err.message : 'Failed to update viewed status'
       setError(errorMsg)
       toast.error(errorMsg)
     }
@@ -334,45 +212,9 @@ const ApplicationsPage: React.FC = () => {
     if (!blockingEmail) return
     
     try {
-      // Check if user exists, if not create one with blocked status via API
-      const existingUserResult = await usersApi.getUserByEmail(blockingEmail.toLowerCase().trim())
-
-      if (!existingUserResult.data) {
-        // Create user with blocked status via API
-        const createResult = await usersApi.upsertUser({
-          email: blockingEmail.toLowerCase().trim(),
-          username: blockingEmail.split('@')[0].toLowerCase(),
-          is_blocked: true,
-          created_at: new Date().toISOString()
-        })
-
-        if (createResult.error) {
-          // Ignore duplicate key error (user already exists)
-          if (!createResult.error.includes('duplicate') && !createResult.error.includes('23505')) {
-            throw new Error(createResult.error)
-          }
-        }
-      } else {
-        // Update existing user to blocked via API
-        const updateResult = await usersApi.updateUser(existingUserResult.data.id, { is_blocked: true })
-        
-        if (updateResult.error) {
-          throw new Error(updateResult.error)
-        }
-      }
-
-      // Update admission form status with block message via API
-      const application = rows.find(r => r.email.toLowerCase().trim() === blockingEmail.toLowerCase().trim())
-      if (application) {
-        const updateResult = await coursesApi.updateAdmissionForm(application.id, { 
-          approved: false, 
-          viewed: true,
-          rejection_message: 'Your account has been blocked by the administrator. Please contact support for more information.'
-        })
-        
-        if (updateResult.error) {
-          throw new Error(updateResult.error)
-        }
+      const result = await blockUserByEmail({ email: blockingEmail, rows })
+      if (result.error) {
+        throw new Error(result.error)
       }
       
       setError(null)
@@ -384,7 +226,7 @@ const ApplicationsPage: React.FC = () => {
       await load()
       
       toast.success('User has been blocked successfully!')
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Use secure error handler
       const { sanitizeError, logErrorSecurely } = await import('@/lib/utils/errorHandler')
       logErrorSecurely(err, 'blockUser')
@@ -404,19 +246,17 @@ const ApplicationsPage: React.FC = () => {
     if (!deletingId) return
 
     try {
-      const result = await coursesApi.deleteAdmissionForm(deletingId)
-      
+      const result = await deleteApplicationById(deletingId)
       if (result.error) {
-        console.error('Delete error:', result.error)
         throw new Error(result.error)
       }
       
-      setRows(rows.filter(r => r.id !== deletingId))
+      setRows((previousRows) => previousRows.filter((row) => row.id !== deletingId))
       setShowDeleteModal(false)
       setDeletingId(null)
       setSelectedApplication(null)
       toast.success('Application deleted successfully!')
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Use secure error handler to prevent exposing internal information
       const { sanitizeError, logErrorSecurely } = await import('@/lib/utils/errorHandler')
       logErrorSecurely(err, 'deleteApplication')
@@ -426,6 +266,8 @@ const ApplicationsPage: React.FC = () => {
       toast.error(sanitized.message)
     }
   }
+
+  const deletingApplication = deletingId ? rows.find((row) => row.id === deletingId) : null
 
   if (loading) {
     return (
@@ -509,21 +351,12 @@ const ApplicationsPage: React.FC = () => {
           {/* Table Rows */}
           <div className="divide-y divide-gray-200 dark:divide-gray-700">
             {rows.map((application) => {
+              const statusBadge = getApplicationStatusBadge(application)
               return (
                 <div key={application.id}>
                   {/* Compact Row View */}
                   <div
-                    className={`grid grid-cols-12 gap-4 px-4 py-3 items-center hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors ${
-                      application.is_blocked
-                        ? 'bg-orange-50/30 dark:bg-orange-900/10'
-                        : application.approved === true
-                        ? 'bg-green-50/30 dark:bg-green-900/10'
-                        : application.approved === false
-                        ? 'bg-red-50/30 dark:bg-red-900/10'
-                        : !application.viewed
-                        ? 'bg-blue-50/30 dark:bg-blue-900/10'
-                        : ''
-                    }`}
+                    className={`grid grid-cols-12 gap-4 px-4 py-3 items-center hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors ${getApplicationRowBackgroundClass(application)}`}
                   >
                     <div className="col-span-2">
                       <div className="font-semibold text-gray-900 dark:text-white truncate">
@@ -553,32 +386,9 @@ const ApplicationsPage: React.FC = () => {
                     </div>
                     <div className="col-span-2">
                       <div className="flex items-center gap-2 flex-wrap">
-                        {application.is_blocked ? (
-                          <span className="px-2 py-1 rounded text-xs font-bold bg-orange-600 text-white">
-                            🚫 Blocked
-                          </span>
-                        ) : (() => {
-                          // Check individual course approvals
-                          const hasApproved = application.approved_1 === true || application.approved_2 === true;
-                          const hasRejected = application.approved_1 === false || application.approved_2 === false;
-                          const hasPending = 
-                            (application.course_name && application.approved_1 === null) ||
-                            (application.course_name_2 && application.approved_2 === null);
-                          
-                          if (hasApproved && hasPending) {
-                            return <span className="px-2 py-1 rounded text-xs font-bold bg-green-500 text-white">Partially Approved</span>;
-                          } else if (hasApproved) {
-                            return <span className="px-2 py-1 rounded text-xs font-bold bg-green-500 text-white">Approved</span>;
-                          } else if (hasRejected && hasPending) {
-                            return <span className="px-2 py-1 rounded text-xs font-bold bg-yellow-500 text-white animate-pulse">Pending</span>;
-                          } else if (hasRejected) {
-                            return <span className="px-2 py-1 rounded text-xs font-bold bg-red-500 text-white">Rejected</span>;
-                          } else if (!application.viewed) {
-                            return <span className="px-2 py-1 rounded text-xs font-bold bg-yellow-500 text-white animate-pulse">Pending</span>;
-                          } else {
-                            return <span className="px-2 py-1 rounded text-xs font-bold bg-gray-500 text-white">Pending</span>;
-                          }
-                        })()}
+                        <span className={`px-2 py-1 rounded text-xs font-bold ${statusBadge.className}`}>
+                          {statusBadge.label}
+                        </span>
                         {application.image_attached && (
                           <span className="px-2 py-1 rounded text-xs font-bold bg-blue-500 text-white">
                             📎
@@ -594,7 +404,7 @@ const ApplicationsPage: React.FC = () => {
                         {new Date(application.created_at).toLocaleTimeString()}
                       </div>
                     </div>
-                    <div className="col-span-2 flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                    <div className="col-span-2 flex items-center justify-end gap-2">
                       <button
                         onClick={() => setSelectedApplication(application)}
                         className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
@@ -612,6 +422,10 @@ const ApplicationsPage: React.FC = () => {
 
       {/* View Details Modal */}
       {selectedApplication && (
+        (() => {
+          const course1Status = getCourseApprovalVisualState(selectedApplication.approved_1)
+          const course2Status = getCourseApprovalVisualState(selectedApplication.approved_2)
+          return (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto" style={{ paddingTop: '100px', paddingBottom: '100px' }}>
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-2xl w-full overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
             <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center z-10">
@@ -647,26 +461,16 @@ const ApplicationsPage: React.FC = () => {
                   <div className="space-y-3">
                     {/* Course 1 - Required */}
                     {selectedApplication.course_name && (
-                      <div className={`p-3 rounded-lg border-2 ${
-                        selectedApplication.approved_1 === true 
-                          ? 'bg-green-50 dark:bg-green-900/20 border-green-500' 
-                          : selectedApplication.approved_1 === false
-                          ? 'bg-red-50 dark:bg-red-900/20 border-red-500'
-                          : 'bg-gray-50 dark:bg-gray-700/50 border-gray-300 dark:border-gray-600'
-                      }`}>
+                      <div className={`p-3 rounded-lg border-2 ${course1Status.containerClassName}`}>
                         <div className="flex items-center justify-between mb-2">
                           <div>
                             <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">Course 1 (Required)</span>
                             <p className="text-base font-semibold text-gray-900 dark:text-white mt-1">{selectedApplication.course_name}</p>
                           </div>
                           <div className="flex items-center gap-2">
-                            {selectedApplication.approved_1 === true ? (
-                              <span className="px-2 py-1 rounded text-xs font-bold bg-green-500 text-white">✓ Approved</span>
-                            ) : selectedApplication.approved_1 === false ? (
-                              <span className="px-2 py-1 rounded text-xs font-bold bg-red-500 text-white">✗ Rejected</span>
-                            ) : (
-                              <span className="px-2 py-1 rounded text-xs font-bold bg-yellow-500 text-white">⏳ Pending</span>
-                            )}
+                            <span className={`px-2 py-1 rounded text-xs font-bold ${course1Status.badgeClassName}`}>
+                              {course1Status.badgeLabel}
+                            </span>
                           </div>
                         </div>
                         {selectedApplication.rejection_message_1 && (
@@ -700,26 +504,16 @@ const ApplicationsPage: React.FC = () => {
                     
                     {/* Course 2 - Optional */}
                     {selectedApplication.course_name_2 && (
-                      <div className={`p-3 rounded-lg border-2 ${
-                        selectedApplication.approved_2 === true 
-                          ? 'bg-green-50 dark:bg-green-900/20 border-green-500' 
-                          : selectedApplication.approved_2 === false
-                          ? 'bg-red-50 dark:bg-red-900/20 border-red-500'
-                          : 'bg-gray-50 dark:bg-gray-700/50 border-gray-300 dark:border-gray-600'
-                      }`}>
+                      <div className={`p-3 rounded-lg border-2 ${course2Status.containerClassName}`}>
                         <div className="flex items-center justify-between mb-2">
                           <div>
                             <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">Course 2 (Optional)</span>
                             <p className="text-base font-semibold text-gray-900 dark:text-white mt-1">{selectedApplication.course_name_2}</p>
                           </div>
                           <div className="flex items-center gap-2">
-                            {selectedApplication.approved_2 === true ? (
-                              <span className="px-2 py-1 rounded text-xs font-bold bg-green-500 text-white">✓ Approved</span>
-                            ) : selectedApplication.approved_2 === false ? (
-                              <span className="px-2 py-1 rounded text-xs font-bold bg-red-500 text-white">✗ Rejected</span>
-                            ) : (
-                              <span className="px-2 py-1 rounded text-xs font-bold bg-yellow-500 text-white">⏳ Pending</span>
-                            )}
+                            <span className={`px-2 py-1 rounded text-xs font-bold ${course2Status.badgeClassName}`}>
+                              {course2Status.badgeLabel}
+                            </span>
                           </div>
                         </div>
                         {selectedApplication.rejection_message_2 && (
@@ -791,6 +585,17 @@ const ApplicationsPage: React.FC = () => {
                     Mark Viewed
                   </button>
                 )}
+                {!selectedApplication.is_blocked && (
+                  <button
+                    onClick={() => {
+                      setSelectedApplication(null)
+                      openBlockModal(selectedApplication.email)
+                    }}
+                    className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-semibold transition-colors text-sm"
+                  >
+                    Block User
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     setSelectedApplication(null)
@@ -804,165 +609,44 @@ const ApplicationsPage: React.FC = () => {
             </div>
           </div>
         </div>
+          )
+        })()
       )}
 
-      {/* Reject Modal with Message Input */}
-      {showRejectModal && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto" style={{ paddingTop: '100px', paddingBottom: '100px' }}>
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full border border-gray-200 dark:border-gray-700 overflow-hidden" style={{ maxHeight: 'calc(100vh - 200px)' }}>
-            <div className="bg-gradient-to-r from-red-500 to-red-600 px-6 py-4">
-              <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                <span className="text-2xl">⚠️</span>
-                Reject Course {rejectingCourseNumber}
-              </h3>
-            </div>
-            <div className="p-6">
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                Please provide a reason for rejecting this course. This message will be shown to the applicant.
-              </p>
-              <textarea
-                value={rejectionMessage}
-                onChange={(e) => setRejectionMessage(e.target.value)}
-                placeholder="Enter rejection reason..."
-                className="w-full h-32 px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all"
-              />
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={rejectApplication}
-                  className="flex-1 px-4 py-2.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-lg font-semibold transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
-                >
-                  Reject Application
-                </button>
-                <button
-                  onClick={() => {
-                    setShowRejectModal(false)
-                    setRejectingId(null)
-                    setRejectingCourseNumber(null)
-                    setRejectionMessage('')
-                  }}
-                  className="flex-1 px-4 py-2.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-semibold transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <RejectApplicationModal
+        isOpen={showRejectModal}
+        rejectingCourseNumber={rejectingCourseNumber}
+        rejectionMessage={rejectionMessage}
+        onMessageChange={setRejectionMessage}
+        onConfirm={rejectApplication}
+        onClose={() => {
+          setShowRejectModal(false)
+          setRejectingId(null)
+          setRejectingCourseNumber(null)
+          setRejectionMessage('')
+        }}
+      />
 
-      {/* Block User Confirmation Modal */}
-      {showBlockModal && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto" style={{ paddingTop: '100px', paddingBottom: '100px' }}>
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full border border-gray-200 dark:border-gray-700 overflow-hidden animate-scale-in" style={{ maxHeight: 'calc(100vh - 200px)' }}>
-            <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-4">
-              <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                <span className="text-2xl">🚫</span>
-                Block User
-              </h3>
-            </div>
-            <div className="p-6">
-              <div className="mb-4">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-12 h-12 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
-                    <span className="text-2xl">⚠️</span>
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-900 dark:text-white">Are you sure?</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">This action will block the user from accessing the student portal</p>
-                  </div>
-                </div>
-                <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4 mt-4">
-                  <p className="text-sm text-gray-700 dark:text-gray-300">
-                    <strong>Email:</strong> {blockingEmail}
-                  </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                    The user will not be able to:
-                  </p>
-                  <ul className="text-sm text-gray-600 dark:text-gray-400 mt-1 ml-4 list-disc">
-                    <li>Access the student portal</li>
-                    <li>View enrolled courses</li>
-                    <li>Track their progress</li>
-                  </ul>
-                </div>
-              </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={blockUser}
-                  className="flex-1 px-4 py-2.5 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white rounded-lg font-semibold transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
-                >
-                  Yes, Block User
-                </button>
-                <button
-                  onClick={() => {
-                    setShowBlockModal(false)
-                    setBlockingEmail(null)
-                  }}
-                  className="flex-1 px-4 py-2.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-semibold transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <BlockUserModal
+        isOpen={showBlockModal}
+        email={blockingEmail}
+        onConfirm={blockUser}
+        onClose={() => {
+          setShowBlockModal(false)
+          setBlockingEmail(null)
+        }}
+      />
 
-      {/* Delete Application Confirmation Modal */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto" style={{ paddingTop: '100px', paddingBottom: '100px' }}>
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full border border-gray-200 dark:border-gray-700 overflow-hidden animate-scale-in" style={{ maxHeight: 'calc(100vh - 200px)' }}>
-            <div className="bg-gradient-to-r from-red-500 to-red-600 px-6 py-4">
-              <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                <span className="text-2xl">🗑️</span>
-                Delete Application
-              </h3>
-            </div>
-            <div className="p-6">
-              <div className="mb-4">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-                    <span className="text-2xl">⚠️</span>
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-900 dark:text-white">Are you absolutely sure?</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">This action cannot be undone</p>
-                  </div>
-                </div>
-                {deletingId && (
-                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mt-4">
-                    <p className="text-sm text-gray-700 dark:text-gray-300">
-                      <strong>Application from:</strong> {rows.find(r => r.id === deletingId)?.name || 'Unknown'}
-                    </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                      <strong>Email:</strong> {rows.find(r => r.id === deletingId)?.email || 'Unknown'}
-                    </p>
-                    <p className="text-sm text-red-600 dark:text-red-400 mt-3 font-semibold">
-                      ⚠️ All application data will be permanently deleted
-                    </p>
-                  </div>
-                )}
-              </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={deleteApplication}
-                  className="flex-1 px-4 py-2.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-lg font-semibold transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
-                >
-                  Yes, Delete
-                </button>
-                <button
-                  onClick={() => {
-                    setShowDeleteModal(false)
-                    setDeletingId(null)
-                  }}
-                  className="flex-1 px-4 py-2.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-semibold transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <DeleteApplicationModal
+        isOpen={showDeleteModal}
+        applicantName={deletingApplication?.name || 'Unknown'}
+        applicantEmail={deletingApplication?.email || 'Unknown'}
+        onConfirm={deleteApplication}
+        onClose={() => {
+          setShowDeleteModal(false)
+          setDeletingId(null)
+        }}
+      />
     </div>
   )
 }

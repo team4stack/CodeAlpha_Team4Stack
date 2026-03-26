@@ -47,7 +47,7 @@ const RoleManagementPage: React.FC = () => {
         setError('Failed to load admins: ' + result.error)
         return
       }
-      setAdmins(result.data || [])
+      setAdmins(Array.isArray(result.data) ? result.data : [])
     } catch (err: any) {
       setError('Failed to load admins: ' + err.message)
     } finally {

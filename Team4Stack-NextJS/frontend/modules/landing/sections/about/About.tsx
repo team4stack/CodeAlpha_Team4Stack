@@ -73,7 +73,7 @@ const About: React.FC = () => {
       setIsLoading(true);
       const { teamApi } = await import('@/lib/api')
       const result = await teamApi.getTeamMembers()
-      if (result.data) {
+      if (Array.isArray(result.data)) {
         // Filter active members and sort
         const activeMembers = result.data
           .filter((m: any) => m.active === true)
@@ -97,7 +97,7 @@ const About: React.FC = () => {
 
       // Fetch mentor profile (first active) via API
       const mentorResult = await teamApi.getMentorProfiles()
-      if (mentorResult.data && mentorResult.data.length > 0) {
+      if (Array.isArray(mentorResult.data) && mentorResult.data.length > 0) {
         const m = mentorResult.data[0] as any;
         setMentor({
           name: m.name,

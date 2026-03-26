@@ -65,7 +65,7 @@ const OrdersManagementPage: React.FC = () => {
         }
 
         // Filter by search query on client side
-        let filteredOrders = result.data || []
+        let filteredOrders = Array.isArray(result.data) ? result.data : []
         if (searchQuery.trim()) {
           filteredOrders = filteredOrders.filter((o: Order) => 
             o.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -92,10 +92,11 @@ const OrdersManagementPage: React.FC = () => {
             userIds.map(async (userId) => {
               const userResult = await usersApi.getUserById(userId)
               if (userResult?.data) {
+                const userData = userResult.data as User
                 usersMap[userId] = {
-                  id: userResult.data.id,
-                  email: userResult.data.email || null,
-                  name: userResult.data.name || null
+                  id: userData.id,
+                  email: userData.email || null,
+                  name: userData.name || null
                 }
               }
             })
@@ -104,16 +105,17 @@ const OrdersManagementPage: React.FC = () => {
         }
 
         // Load products
-        const productIds = [...new Set(paginatedOrders.map((o: Order) => o.product_id).filter(Boolean) || [])]
+        const productIds = [...new Set(paginatedOrders.map((o: Order) => o.product_id).filter((id): id is string => Boolean(id)) || [])]
         if (productIds.length > 0) {
           const productsMap: Record<string, Product> = {}
           await Promise.all(
             productIds.map(async (productId) => {
               const productResult = await stackstoreApi.getProductById(productId)
               if (productResult?.data) {
+                const productData = productResult.data as Product
                 productsMap[productId] = {
-                  id: productResult.data.id,
-                  name: productResult.data.name
+                  id: productData.id,
+                  name: productData.name
                 }
               }
             })

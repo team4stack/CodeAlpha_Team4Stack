@@ -58,7 +58,7 @@ const Reviews: React.FC = () => {
       }
       
       // Get total count and paginated reviews
-      const allReviews = result.data || []
+      const allReviews = Array.isArray(result.data) ? result.data : []
       const approvedReviews = allReviews.filter((r: any) => r.status === 'approved')
       setTotalReviews(approvedReviews.length)
       

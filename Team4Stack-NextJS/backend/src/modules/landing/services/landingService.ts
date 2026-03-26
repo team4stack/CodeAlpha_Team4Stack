@@ -18,7 +18,17 @@ const SERVICE_WRITE_KEYS = [
   'order_index',
   'active'
 ] as const;
-const SUPPORT_WRITE_KEYS = ['reason', 'email', 'subject', 'message', 'user_id', 'status', 'viewed'] as const;
+const SUPPORT_WRITE_KEYS = [
+  'reason',
+  'target_area',
+  'email',
+  'subject',
+  'message',
+  'screenshot_url',
+  'user_id',
+  'status',
+  'viewed'
+] as const;
 
 function pickProjectPatch(body: unknown): Record<string, unknown> {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return {};
@@ -198,11 +208,13 @@ export class LandingService {
     user_id?: string;
     status?: string;
     viewed?: boolean;
+    target_area?: 'site' | 'course';
   }): Promise<SupportRequest[]> {
     let query = supabaseAdmin.from('support_requests').select('*');
     if (filters?.user_id) query = query.eq('user_id', filters.user_id);
     if (filters?.status) query = query.eq('status', filters.status);
     if (filters?.viewed !== undefined) query = query.eq('viewed', filters.viewed);
+    if (filters?.target_area) query = query.eq('target_area', filters.target_area);
 
     const { data, error } = await query.order('created_at', { ascending: false });
     if (error) throw error;
@@ -211,7 +223,18 @@ export class LandingService {
 
   async createSupportRequest(request: Partial<SupportRequest>): Promise<SupportRequest> {
     const insert = pickAllowedKeys(request, SUPPORT_WRITE_KEYS);
-    const { data, error } = await supabaseAdmin.from('support_requests').insert(insert).select().single();
+    let { data, error } = await supabaseAdmin.from('support_requests').insert(insert).select().single();
+
+    // Backward compatibility: if DB columns are not migrated yet, retry without new optional fields.
+    if (
+      error &&
+      typeof error.message === 'string' &&
+      (error.message.toLowerCase().includes('screenshot_url') || error.message.toLowerCase().includes('target_area'))
+    ) {
+      const { screenshot_url, target_area, ...fallbackInsert } = insert;
+      ({ data, error } = await supabaseAdmin.from('support_requests').insert(fallbackInsert).select().single());
+    }
+
     if (error) throw error;
     return data;
   }
@@ -222,6 +245,12 @@ export class LandingService {
       notFoundMessage: 'Support request not found'
     });
     return row as unknown as SupportRequest;
+  }
+
+  async getSupportRequestById(id: number): Promise<SupportRequest | null> {
+    const { data, error } = await supabaseAdmin.from('support_requests').select('*').eq('id', id).maybeSingle();
+    if (error) throw error;
+    return data as SupportRequest | null;
   }
 }
 

@@ -1,0 +1,12 @@
+/* Prevent blinking text cursor on non-editable elements (e.g. after closing chat or clicking page).
+   Note: caret-color inherits — so we must reset it on real fields or inputs inherit transparent from parents. */
+*:not(input):not(textarea):not(select):not([contenteditable="true"]) {
+  caret-color: transparent;
+}
+
+input,
+textarea,
+select,
+[contenteditable='true'] {
+  caret-color: currentColor;
+}

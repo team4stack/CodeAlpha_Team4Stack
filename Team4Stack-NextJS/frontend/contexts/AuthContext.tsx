@@ -181,8 +181,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           } else {
             // Backend verification failed, try to use stored user data as fallback
             // Use stored user data if available
-            if (session.user && session.user.id) {
-              sessionUser = session.user
+            const storedUser = (session as any).user
+            if (storedUser && storedUser.id) {
+              sessionUser = storedUser
             } else {
               // No user data available, session is invalid
               localStorage.removeItem('auth_session')
@@ -195,8 +196,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } catch (verifyErr: any) {
           // Backend API call failed, try to use stored user data
           // Use stored user data if available
-          if (session.user && session.user.id) {
-            sessionUser = session.user
+          const storedUser = (session as any).user
+          if (storedUser && storedUser.id) {
+            sessionUser = storedUser
           } else {
             // No user data available, session is invalid
             localStorage.removeItem('auth_session')
@@ -324,9 +326,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           // Calculate expires_at if not provided
           if (!expiresAt) {
-            expiresAt = expiresIn 
+            expiresAt = expiresIn
               ? Date.now() + (parseInt(expiresIn) * 1000)
               : Date.now() + 3600000 // Default 1 hour
+          } else if (expiresAt < 1_000_000_000_000) {
+            // Normalize seconds -> ms (Supabase may return seconds)
+            expiresAt = expiresAt * 1000
           }
           
           // Verify session with backend and get user profile

@@ -64,7 +64,7 @@ const Projects: React.FC = () => {
             const result = await landingApi.getProjects();
             const { data, error } = result;
             if (error) throw error;
-            const rows = data || [];
+            const rows = Array.isArray(data) ? data : [];
             if (rows.length > 0) {
               // For each row, fetch YouTube details and merge with DB values (DB overrides when provided)
               const mappedPromises = rows.map(async (row: any): Promise<ProjectData> => {

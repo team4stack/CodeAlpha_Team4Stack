@@ -19,7 +19,7 @@ const UsersPage: React.FC = () => {
       if (result.error || result.success === false) {
         setError(result.error || 'Failed to load users')
       } else {
-        const sortedData = (result.data || []).sort((a: any, b: any) =>
+        const sortedData = (Array.isArray(result.data) ? result.data : []).sort((a: any, b: any) =>
           new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
         )
         setRows(sortedData)

@@ -1,7 +1,9 @@
+"use client"
+
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useRouter } from 'next/navigation'
 const StackStoreAdminLoginPage: React.FC = () => {
-  const navigate = useNavigate()
+  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -64,7 +66,7 @@ const StackStoreAdminLoginPage: React.FC = () => {
       sessionStorage.setItem('admin_session', JSON.stringify(adminSession))
 
       // Success - navigate to StackStore admin dashboard
-      navigate('/adminstackt4s', { replace: true })
+      router.replace('/adminstackt4s')
     } catch (error: any) {
       setError('An error occurred. Please try again.')
       setLoading(false)
@@ -128,7 +130,7 @@ const StackStoreAdminLoginPage: React.FC = () => {
 
           <div className="mt-6 text-center">
             <button
-              onClick={() => navigate('/adminlandingt4s/login')}
+              onClick={() => router.push('/adminlandingt4s/login')}
               className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
             >
               Landing Page Admin Login →

@@ -1,0 +1,204 @@
+@layer components {
+  /* Responsive main content area - applies to all pages (except admin panels) */
+  .responsive-main {
+    min-height: calc(100vh - 4rem);
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  @media (max-width: 767px) {
+    .responsive-main {
+      padding-left: 0.75rem;
+      padding-right: 0.75rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .responsive-main {
+      padding-left: 0;
+      padding-right: 0;
+    }
+  }
+
+  /* Ensure admin panels are not affected by responsive-main styles */
+  [class*="AdminLayout"] .responsive-main,
+  [class*="admin"] .responsive-main {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  /* Modern Spacing Utilities */
+  .space-y-modern > * + * {
+    margin-top: 1.5rem;
+  }
+
+  .space-y-large > * + * {
+    margin-top: 3rem;
+  }
+
+  .space-y-small > * + * {
+    margin-top: 0.75rem;
+  }
+
+  /* Modern Focus States */
+  .focus-ring {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  }
+
+  .focus-ring:focus {
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+  }
+
+  /* Mobile-specific improvements */
+  @media (max-width: 767px) {
+    /* Reduce padding on mobile */
+    .card {
+      padding: 1.25rem;
+    }
+
+    /* Smaller form inputs on mobile */
+    .form-input {
+      padding: 0.625rem 0.875rem;
+      font-size: 0.875rem;
+    }
+
+    /* Adjust button sizes for mobile */
+    .btn-primary, .btn-secondary, .btn-ghost {
+      padding: 0.75rem 1.5rem;
+      font-size: 0.8125rem;
+    }
+
+    /* Reduce section padding on mobile */
+    .section-padding {
+      padding: 2rem 0;
+    }
+
+    /* Adjust heading sizes for mobile */
+    h1 { font-size: 2rem; }
+    h2 { font-size: 1.75rem; }
+    h3 { font-size: 1.375rem; }
+    h4 { font-size: 1.125rem; }
+
+    /* Ensure images are responsive */
+    img {
+      max-width: 100%;
+      height: auto;
+    }
+
+    /* Improve touch targets */
+    button, a {
+      min-height: 44px;
+      min-width: 44px;
+    }
+
+    /* Adjust navigation for mobile */
+    .nav-link {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.75rem;
+    }
+
+    /* Optimize modals for mobile */
+    .modal-content {
+      margin: 1rem;
+      max-height: calc(100vh - 2rem);
+    }
+
+    /* Improve footer for mobile */
+    footer .container-custom {
+      padding: 0 0.75rem;
+    }
+
+    /* Center team card buttons on mobile */
+    .team-card-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    /* Ensure mobile navigation icons are properly centered */
+    .mobile-menu-button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Optimize WhatsApp buttons for mobile */
+    .whatsapp-button-container {
+      bottom: 1rem;
+      right: 1rem;
+    }
+
+    .whatsapp-button {
+      width: 3rem;
+      height: 3rem;
+      padding: 0.5rem;
+    }
+
+    /* Ensure mobile navigation icons are centered */
+    .mobile-nav-close-button, .mobile-nav-darkmode-button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Mobile navigation panel adjustments */
+    .mobile-nav-panel {
+      width: 80%;
+      max-width: 16rem;
+    }
+  }
+
+  /* Extra small devices (phones, 320px and up) */
+  @media (max-width: 480px) {
+    .container-custom {
+      padding: 0 0.75rem;
+    }
+
+    h1 { font-size: 1.75rem; }
+    h2 { font-size: 1.5rem; }
+    h3 { font-size: 1.25rem; }
+
+    .btn-primary, .btn-secondary, .btn-ghost {
+      padding: 0.625rem 1.25rem;
+      font-size: 0.75rem;
+    }
+
+    .card {
+      padding: 1rem;
+    }
+
+    /* Further optimize footer for very small screens */
+    footer .py-8 {
+      padding-top: 1.5rem;
+      padding-bottom: 1.5rem;
+    }
+
+    footer .mb-5 {
+      margin-bottom: 1rem;
+    }
+
+    footer .mb-6 {
+      margin-bottom: 1.25rem;
+    }
+
+    /* Further optimize WhatsApp buttons for small screens */
+    .whatsapp-button-container {
+      bottom: 0.75rem;
+      right: 0.75rem;
+    }
+
+    .whatsapp-button {
+      width: 2.75rem;
+      height: 2.75rem;
+      padding: 0.4rem;
+    }
+
+    /* Further optimize mobile navigation for small screens */
+    .mobile-nav-panel {
+      width: 85%;
+      max-width: 14rem;
+    }
+  }
+}

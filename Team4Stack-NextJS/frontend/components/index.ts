@@ -1,4 +1,3 @@
-export * as modals from './modals';
 export * as utilities from './utilities';
 
 // Do not export components with JSX through index files

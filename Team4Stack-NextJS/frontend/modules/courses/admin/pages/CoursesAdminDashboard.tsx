@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import StatCard from '../../../../components/admin/shared/StatCard'
+import StatCard from '@/components/admin/shared/StatCard'
 
 const CoursesAdminDashboard: React.FC = () => {
   const router = useRouter()
@@ -31,19 +31,21 @@ const CoursesAdminDashboard: React.FC = () => {
       
       // Fetch courses count via API
       const coursesResult = await coursesApi.getAllCourses();
-      const coursesCount = coursesResult.data?.length || 0;
+      const coursesData = Array.isArray(coursesResult.data) ? coursesResult.data : [];
+      const coursesCount = coursesData.length || 0;
 
       // Fetch videos count via API - get all courses and sum their videos
       let videosCount = 0;
-      const allCourses = coursesResult.data || [];
+      const allCourses = coursesData;
       for (const course of allCourses) {
         const videosResult = await coursesApi.getCourseVideos(parseInt(course.id));
-        videosCount += videosResult.data?.length || 0;
+        const videosData = Array.isArray(videosResult.data) ? videosResult.data : [];
+        videosCount += videosData.length || 0;
       }
 
       // Fetch all progress records via API
       const allProgressResult = await coursesApi.getAllProgress();
-      const allProgress = allProgressResult.data || [];
+      const allProgress = Array.isArray(allProgressResult.data) ? allProgressResult.data : [];
       const progressCount = allProgress.length;
       
       // Get unique students
@@ -54,7 +56,7 @@ const CoursesAdminDashboard: React.FC = () => {
 
       // Fetch admission applications via API
       const allAppsResult = await coursesApi.getAdmissionForms();
-      const allApps = allAppsResult.data || [];
+      const allApps = Array.isArray(allAppsResult.data) ? allAppsResult.data : [];
       const applicationsCount = allApps.length;
       
       // Count pending (approved is null or false)
@@ -70,7 +72,7 @@ const CoursesAdminDashboard: React.FC = () => {
         const allVideosPromises = allCourses.map(async (course: any) => {
           try {
             const videosResult = await coursesApi.getCourseVideos(parseInt(course.id))
-            return videosResult.data || []
+            return Array.isArray(videosResult.data) ? videosResult.data : []
           } catch {
             return []
           }
@@ -87,7 +89,7 @@ const CoursesAdminDashboard: React.FC = () => {
             return 0
           }
         })
-        const quizResults = await Promise.all(quizCheckPromises)
+        const quizResults = await Promise.all(quizCheckPromises) as number[]
         quizzesCount = quizResults.reduce((sum, count) => sum + count, 0)
       } catch (error) {
         console.error('Error calculating quizzes:', error)

@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import courseService from '../services/courseService';
 import { COURSES_ADMIN_ROLES } from '../../../shared/middleware/authMiddleware';
+import userService from '../../../shared/modules/users/services/userService';
 
 function parseNumericId(param: string): number | null {
   const id = parseInt(param, 10);
@@ -162,7 +163,23 @@ export class CourseController {
       if (filters.email) {
         const em = String(filters.email).toLowerCase().trim();
         if (!admin) {
-          if (req.auth?.kind !== 'user' || req.auth.email !== em) {
+          // User JWT: query email must match token email and/or public.users profile (edge cases).
+          // Admin API token: allow only when querying that same email (non–courses-admin tabs).
+          let userOk = req.auth?.kind === 'user' && req.auth.email === em;
+          if (!userOk && req.auth?.kind === 'user' && req.auth.sub) {
+            try {
+              const profile = await userService.getUserById(req.auth.sub);
+              const profileEmail = String(profile?.email || '')
+                .toLowerCase()
+                .trim();
+              if (profileEmail === em) userOk = true;
+            } catch {
+              /* ignore */
+            }
+          }
+          const adminSelfOk =
+            req.auth?.kind === 'admin' && req.auth.email.toLowerCase().trim() === em;
+          if (!userOk && !adminSelfOk) {
             return res.status(403).json({ success: false, error: 'Access denied' });
           }
         }
@@ -292,6 +309,330 @@ export class CourseController {
     }
   };
 
+  listAssignmentsByCourse = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const courseId = parseNumericId(req.params.courseId);
+      if (courseId === null) {
+        return res.status(400).json({ success: false, error: 'Invalid course id' });
+      }
+      const admin = isCoursesAdmin(req);
+      if (admin) {
+        const data = await courseService.listAssignmentsByCourse(courseId);
+        return res.json({ success: true, data });
+      }
+      if (req.auth?.kind !== 'user') {
+        return res.status(401).json({ success: false, error: 'Authentication required' });
+      }
+      await courseService.assertEmailHasApprovedAdmission(req.auth.email);
+      const data = await courseService.getStudentCourseAssignmentsWithSubmissions(req.auth.sub, courseId);
+      return res.json({ success: true, data });
+    } catch (error: any) {
+      return next(error);
+    }
+  };
+
+  listAssignmentsByVideo = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!isCoursesAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Courses admin access required' });
+      }
+      const videoId = parseNumericId(req.params.videoId);
+      if (videoId === null) {
+        return res.status(400).json({ success: false, error: 'Invalid video id' });
+      }
+      const data = await courseService.listAssignmentsByVideo(videoId);
+      return res.json({ success: true, data });
+    } catch (error: any) {
+      return next(error);
+    }
+  };
+
+  createAssignment = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!isCoursesAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Courses admin access required' });
+      }
+      const courseId = parseNumericId(String(req.body?.course_id || ''));
+      const videoId = parseNumericId(String(req.body?.video_id || ''));
+      const title = String(req.body?.title || '').trim();
+      if (courseId === null || videoId === null || !title) {
+        return res.status(400).json({ success: false, error: 'course_id, video_id and title are required' });
+      }
+      const data = await courseService.createAssignment({
+        course_id: courseId,
+        video_id: videoId,
+        title,
+        instructions: typeof req.body?.instructions === 'string' ? req.body.instructions : null,
+        required_format: typeof req.body?.required_format === 'string' ? req.body.required_format : null,
+        max_file_size_mb: parseNumericId(String(req.body?.max_file_size_mb || '')) || 10,
+        total_marks: parseNumericId(String(req.body?.total_marks || '')) || 0,
+        template_file_url: typeof req.body?.template_file_url === 'string' ? req.body.template_file_url : null,
+        template_file_name: typeof req.body?.template_file_name === 'string' ? req.body.template_file_name : null,
+        template_file_type: typeof req.body?.template_file_type === 'string' ? req.body.template_file_type : null
+      });
+      return res.status(201).json({ success: true, data });
+    } catch (error: any) {
+      return next(error);
+    }
+  };
+
+  updateAssignment = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!isCoursesAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Courses admin access required' });
+      }
+      const id = parseNumericId(req.params.id);
+      if (id === null) {
+        return res.status(400).json({ success: false, error: 'Invalid assignment id' });
+      }
+      const data = await courseService.updateAssignment(id, req.body || {});
+      return res.json({ success: true, data });
+    } catch (error: any) {
+      return next(error);
+    }
+  };
+
+  deleteAssignment = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!isCoursesAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Courses admin access required' });
+      }
+      const id = parseNumericId(req.params.id);
+      if (id === null) {
+        return res.status(400).json({ success: false, error: 'Invalid assignment id' });
+      }
+      await courseService.deleteAssignment(id);
+      return res.json({ success: true, message: 'Assignment deleted successfully' });
+    } catch (error: any) {
+      return next(error);
+    }
+  };
+
+  submitAssignment = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (req.auth?.kind !== 'user') {
+        return res.status(401).json({ success: false, error: 'Authentication required' });
+      }
+      await courseService.assertEmailHasApprovedAdmission(req.auth.email);
+      const assignmentId = parseNumericId(req.params.id);
+      if (assignmentId === null) {
+        return res.status(400).json({ success: false, error: 'Invalid assignment id' });
+      }
+      const fileUrl = String(req.body?.file_url || '').trim();
+      const fileName = String(req.body?.file_name || '').trim();
+      if (!fileUrl || !fileName) {
+        return res.status(400).json({ success: false, error: 'file_url and file_name are required' });
+      }
+      let parsed: URL;
+      try {
+        parsed = new URL(fileUrl);
+      } catch {
+        return res.status(400).json({ success: false, error: 'Invalid file_url' });
+      }
+      if (parsed.protocol !== 'https:' || !parsed.hostname.endsWith('res.cloudinary.com')) {
+        return res.status(400).json({ success: false, error: 'Only Cloudinary HTTPS URLs are allowed' });
+      }
+
+      const data = await courseService.submitAssignment({
+        assignmentId,
+        userId: req.auth.sub,
+        fileUrl,
+        fileName,
+        fileType: typeof req.body?.file_type === 'string' ? req.body.file_type : undefined,
+        studentNotes: typeof req.body?.student_notes === 'string' ? req.body.student_notes : undefined
+      });
+      return res.status(201).json({ success: true, data });
+    } catch (error: any) {
+      return next(error);
+    }
+  };
+
+  listAssignmentSubmissionsByVideo = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!isCoursesAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Courses admin access required' });
+      }
+      const videoId = parseNumericId(req.params.videoId);
+      if (videoId === null) {
+        return res.status(400).json({ success: false, error: 'Invalid video id' });
+      }
+      const data = await courseService.listAssignmentSubmissionsByVideo(videoId);
+      return res.json({ success: true, data });
+    } catch (error: any) {
+      return next(error);
+    }
+  };
+
+  listAssignmentSubmissions = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!isCoursesAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Courses admin access required' });
+      }
+      const userId = typeof req.query.userId === 'string' ? req.query.userId.trim() : '';
+      const courseIdRaw = typeof req.query.courseId === 'string' ? req.query.courseId.trim() : '';
+      const videoIdRaw = typeof req.query.videoId === 'string' ? req.query.videoId.trim() : '';
+      const courseId = courseIdRaw ? parseNumericId(courseIdRaw) : undefined;
+      const videoId = videoIdRaw ? parseNumericId(videoIdRaw) : undefined;
+      if (courseIdRaw && courseId === null) {
+        return res.status(400).json({ success: false, error: 'Invalid course id' });
+      }
+      if (videoIdRaw && videoId === null) {
+        return res.status(400).json({ success: false, error: 'Invalid video id' });
+      }
+      const data = await courseService.listAssignmentSubmissions({
+        userId: userId || undefined,
+        courseId: courseId ?? undefined,
+        videoId: videoId ?? undefined
+      });
+      return res.json({ success: true, data });
+    } catch (error: any) {
+      return next(error);
+    }
+  };
+
+  updateAssignmentSubmission = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!isCoursesAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Courses admin access required' });
+      }
+      const id = parseNumericId(req.params.id);
+      if (id === null) {
+        return res.status(400).json({ success: false, error: 'Invalid submission id' });
+      }
+      const data = await courseService.updateAssignmentSubmission(id, {
+        status: typeof req.body?.status === 'string' ? req.body.status : undefined,
+        awarded_marks:
+          typeof req.body?.awarded_marks === 'number' || req.body?.awarded_marks === null
+            ? req.body.awarded_marks
+            : undefined,
+        admin_feedback:
+          typeof req.body?.admin_feedback === 'string' || req.body?.admin_feedback === null
+            ? req.body.admin_feedback
+            : undefined
+      });
+      return res.json({ success: true, data });
+    } catch (error: any) {
+      return next(error);
+    }
+  };
+
+  getCertificateApplications = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const admin = isCoursesAdmin(req);
+      const queryUserId = typeof req.query.userId === 'string' ? req.query.userId.trim() : '';
+      const queryCourseId = parseNumericId(String(req.query.courseId || ''));
+      const queryStatus = typeof req.query.status === 'string' ? req.query.status.trim() : '';
+
+      if (!admin) {
+        if (req.auth?.kind !== 'user') {
+          return res.status(401).json({ success: false, error: 'Authentication required' });
+        }
+        await courseService.assertEmailHasApprovedAdmission(req.auth.email);
+        const data = await courseService.listCertificateApplications({ userId: req.auth.sub });
+        return res.json({ success: true, data });
+      }
+
+      const data = await courseService.listCertificateApplications({
+        userId: queryUserId || undefined,
+        courseId: queryCourseId === null ? undefined : queryCourseId,
+        status: queryStatus || undefined
+      });
+      return res.json({ success: true, data });
+    } catch (error: any) {
+      return next(error);
+    }
+  };
+
+  createCertificateApplication = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (req.auth?.kind !== 'user') {
+        return res.status(401).json({ success: false, error: 'Authentication required' });
+      }
+      await courseService.assertEmailHasApprovedAdmission(req.auth.email);
+
+      const courseId = parseNumericId(String(req.body?.course_id || ''));
+      if (courseId === null) {
+        return res.status(400).json({ success: false, error: 'Invalid course_id' });
+      }
+
+      const fullName = String(req.body?.full_name || '').trim();
+      const cnic = String(req.body?.cnic || '').trim();
+      const email = String(req.body?.email || '').trim().toLowerCase();
+      const phoneNumber = String(req.body?.phone_number || '').trim();
+      const rollNumber = String(req.body?.roll_number || '').trim();
+
+      if (!fullName || !cnic || !email || !phoneNumber || !rollNumber) {
+        return res.status(400).json({ success: false, error: 'All fields are required' });
+      }
+
+      const data = await courseService.createCertificateApplication({
+        userId: req.auth.sub,
+        courseId,
+        fullName,
+        cnic,
+        email,
+        phoneNumber,
+        rollNumber
+      });
+      return res.status(201).json({ success: true, data });
+    } catch (error: any) {
+      return next(error);
+    }
+  };
+
+  updateCertificateApplication = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!isCoursesAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Courses admin access required' });
+      }
+      const id = parseNumericId(req.params.id);
+      if (id === null) {
+        return res.status(400).json({ success: false, error: 'Invalid certificate application id' });
+      }
+      const data = await courseService.updateCertificateApplication(id, {
+        status: typeof req.body?.status === 'string' ? req.body.status : undefined,
+        admin_notes:
+          typeof req.body?.admin_notes === 'string' || req.body?.admin_notes === null
+            ? req.body.admin_notes
+            : undefined,
+        certificate_url:
+          typeof req.body?.certificate_url === 'string' || req.body?.certificate_url === null
+            ? req.body.certificate_url
+            : undefined
+      });
+      return res.json({ success: true, data });
+    } catch (error: any) {
+      return next(error);
+    }
+  };
+
+  // Get single-course report for one student
+  getStudentCourseReport = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const courseId = parseNumericId(req.params.courseId);
+      if (courseId === null) {
+        return res.status(400).json({ success: false, error: 'Invalid course id' });
+      }
+      const userId = String(req.params.userId || '').trim();
+      if (!userId) {
+        return res.status(400).json({ success: false, error: 'Invalid user id' });
+      }
+
+      const admin = isCoursesAdmin(req);
+      if (!admin) {
+        if (req.auth?.kind !== 'user' || req.auth.sub !== userId) {
+          return res.status(403).json({ success: false, error: 'Access denied' });
+        }
+        await courseService.assertEmailHasApprovedAdmission(req.auth.email);
+      }
+
+      const report = await courseService.getStudentCourseReport(userId, courseId);
+      return res.json({ success: true, data: report });
+    } catch (error: any) {
+      return next(error);
+    }
+  };
+
   /** Student: list notifications for their email (same pattern as admissions). */
   getStudentNotifications = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -303,10 +644,13 @@ export class CourseController {
       const admin = isCoursesAdmin(req);
       if (!admin) {
         const u = req.auth;
-        if (u?.kind !== 'user' || u.email !== em) {
+        const userOk = u?.kind === 'user' && u.email === em;
+        const adminSelfOk =
+          u?.kind === 'admin' && u.email.toLowerCase().trim() === em;
+        if (!userOk && !adminSelfOk) {
           return res.status(403).json({ success: false, error: 'Access denied' });
         }
-        await courseService.assertEmailHasApprovedAdmission(u.email);
+        await courseService.assertEmailHasApprovedAdmission(em);
       }
       const data = await courseService.listStudentNotifications(em);
       res.json({ success: true, data });
@@ -330,10 +674,13 @@ export class CourseController {
       const admin = isCoursesAdmin(req);
       if (!admin) {
         const u = req.auth;
-        if (u?.kind !== 'user' || u.email !== em) {
+        const userOk = u?.kind === 'user' && u.email === em;
+        const adminSelfOk =
+          u?.kind === 'admin' && u.email.toLowerCase().trim() === em;
+        if (!userOk && !adminSelfOk) {
           return res.status(403).json({ success: false, error: 'Access denied' });
         }
-        await courseService.assertEmailHasApprovedAdmission(u.email);
+        await courseService.assertEmailHasApprovedAdmission(em);
       }
       const data = await courseService.markStudentNotificationRead(id, em);
       res.json({ success: true, data });

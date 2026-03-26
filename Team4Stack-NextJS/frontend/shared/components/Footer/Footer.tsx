@@ -43,7 +43,7 @@ const Footer: React.FC = () => {
         // Load footer links via API
         const { landingApi } = await import('@/lib/api')
         const linksResult = await landingApi.getSiteSettings(['footer_links_json'])
-        const linksData = linksResult.data?.find((s: any) => s.key === 'footer_links_json')
+        const linksData = (Array.isArray(linksResult.data) ? linksResult.data : []).find((s: any) => s.key === 'footer_links_json')
 
         if (linksData?.value) {
           try {
@@ -60,7 +60,7 @@ const Footer: React.FC = () => {
 
         // Load social links via API
         const socialResult = await landingApi.getSiteSettings(['footer_socials_json', 'footer_about_text'])
-        const socialData = socialResult.data || []
+        const socialData = Array.isArray(socialResult.data) ? socialResult.data : []
 
         if (socialData && Array.isArray(socialData)) {
           socialData.forEach((row: any) => {

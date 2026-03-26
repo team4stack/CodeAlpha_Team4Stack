@@ -8,6 +8,7 @@ type Props = {
   value: string | number
   trend?: string
   icon?: string
+  gradient?: string
   onClick?: () => void
   badges?: Array<{ label: string; value: number; color: 'green' | 'red' | 'blue' | 'yellow' | 'purple' | 'orange' }>
   chartType?: 'line' | 'area' | 'bar' | 'pie'
@@ -99,7 +100,7 @@ const StatCard: React.FC<Props> = ({ title, value, trend, icon, onClick, badges,
                 stroke="#f97316" 
                 strokeWidth={2.5}
                 dot={{ r: 3.5, fill: '#f97316', strokeWidth: 2, stroke: '#fff', fillOpacity: 1 }}
-                activeDot={{ r: 6, fill: '#fff', stroke: '#f97316', strokeWidth: 2.5, shadow: true }}
+                activeDot={{ r: 6, fill: '#fff', stroke: '#f97316', strokeWidth: 2.5 }}
                 animationDuration={1200}
                 animationBegin={0}
                 animationEasing="ease-out"

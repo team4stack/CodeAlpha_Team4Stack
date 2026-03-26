@@ -1,0 +1,207 @@
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  /* Utility: force any popup to be centered to the SCREEN (viewport), not the page container */
+  .fixed-center-screen {
+    position: fixed !important;
+    inset: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 9999 !important;
+    pointer-events: none;
+  }
+
+  /* Allow clicks only on the popup content itself */
+  .fixed-center-screen > * {
+    pointer-events: auto;
+    max-height: calc(100vh - 3rem);
+    max-width: calc(100vw - 3rem);
+    overflow: auto;
+  }
+  /* Custom animation utilities */
+  @keyframes floatY {
+    0% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+    100% { transform: translateY(0); }
+  }
+
+  @keyframes orbit {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  @keyframes shimmerX {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  @keyframes moveDot {
+    0% { left: 0%; }
+    100% { left: 100%; }
+  }
+
+  /* Energy line pulse animation for hero gridlines */
+  @keyframes energyLinePulse {
+    0%, 100% { 
+      opacity: 0.3;
+      transform: scaleX(0.8);
+    }
+    50% { 
+      opacity: 0.7;
+      transform: scaleX(1);
+    }
+  }
+
+  /* Energy line shimmer animation */
+  @keyframes energyLineShimmer {
+    0% {
+      background-position: -200% center;
+    }
+    100% {
+      background-position: 200% center;
+    }
+  }
+
+
+  /* Popup scale-in animation */
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.8);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  .animate-float-y { animation: floatY 5s ease-in-out infinite; }
+  .animate-orbit { animation: orbit 12s linear infinite; }
+  .animate-shimmer-x { animation: shimmerX 2s linear infinite; }
+  .animate-move-dot { animation: moveDot 1.8s linear infinite; }
+  .animate-scale-in { animation: scaleIn 0.3s ease-out forwards; }
+  
+  /* Profile Picture Zoom Animation */
+  @keyframes zoomIn {
+    0% {
+      transform: scale(0.2);
+      opacity: 0;
+    }
+    50% {
+      transform: scale(1.1);
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+  
+  /* Additional animations for Hero component */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.8);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  
+  @keyframes bounceSlow {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+  
+  @keyframes pulseSlow {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+  
+  .animate-fade-in { animation: fadeIn 0.6s ease-out; }
+  .animate-slide-up { animation: slideUp 0.6s ease-out; }
+  .animate-scale-in { animation: scaleIn 0.3s ease-out forwards; }
+  .animate-bounce-slow { animation: bounceSlow 2s ease-in-out infinite; }
+  .animate-pulse-slow { animation: pulseSlow 3s ease-in-out infinite; }
+  
+  /* Star rating styles */
+  .star-rating {
+    color: var(--star-filled, #fbbf24); /* fallback to yellow-400 */
+  }
+  
+  .star-rating .star {
+    font-size: 1.25rem;
+    color: var(--star-filled, #fbbf24); /* fallback to yellow-400 for filled stars */
+    margin-right: 0.25rem;
+  }
+  
+  .star-rating .star.empty {
+    color: var(--star-empty, #9ca3af) !important; /* fallback to gray-400 for empty stars */
+  }
+  
+  /* Additional star rating styles for better visibility */
+  .star-rating {
+    display: flex;
+    align-items: center;
+  }
+  
+  .star-rating .star {
+    display: inline-block;
+    width: 1.25rem;
+    height: 1.25rem;
+    line-height: 1.25rem;
+    text-align: center;
+  }
+  
+  /* Dark mode specific star rating styles */
+  .dark .star-rating .star {
+    color: var(--star-filled, #fbbf24); /* yellow-400 for dark mode */
+  }
+  
+  .dark .star-rating .star.empty {
+    color: var(--star-empty, #4b5563) !important; /* gray-600 for dark mode */
+  }
+  
+  /* Cyberpunk theme specific star rating styles */
+  .cyberpunk .star-rating .star {
+    color: var(--star-filled, #fbbf24); /* yellow-400 for cyberpunk */
+  }
+  
+  .cyberpunk .star-rating .star.empty {
+    color: var(--star-empty, #9ca3af) !important; /* gray-400 for cyberpunk */
+  }
+
+}

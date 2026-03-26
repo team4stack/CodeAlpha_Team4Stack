@@ -47,6 +47,10 @@ const QuizManagementModal: React.FC<Props> = ({ isOpen, onClose, videoId, videoT
   const [editingQuestion, setEditingQuestion] = useState<QuizQuestion | null>(null)
   const [showQuestionForm, setShowQuestionForm] = useState(false)
   const [showQuizForm, setShowQuizForm] = useState(false)
+  const parseIntegerInput = (value: string, fallback: number) => {
+    const parsed = Number.parseInt(value, 10)
+    return Number.isFinite(parsed) ? parsed : fallback
+  }
 
   // Quiz form state
   const [quizForm, setQuizForm] = useState({
@@ -80,14 +84,15 @@ const QuizManagementModal: React.FC<Props> = ({ isOpen, onClose, videoId, videoT
     try {
       setLoading(true)
       const result = await coursesApi.getQuizByVideoId(videoId)
-      if (result.success && result.data) {
-        setQuiz(result.data)
+      const quizData = result.data as Quiz | null | undefined
+      if (result.success && quizData) {
+        setQuiz(quizData)
         setQuizForm({
-          title: result.data.title || `Quiz for ${videoTitle}`,
-          description: result.data.description || 'Please answer all questions. You need 80% to pass.',
-          total_marks: result.data.total_marks || 10,
-          passing_percentage: result.data.passing_percentage || 80,
-          time_limit_minutes: result.data.time_limit_minutes || 10
+          title: quizData.title || `Quiz for ${videoTitle}`,
+          description: quizData.description || 'Please answer all questions. You need 80% to pass.',
+          total_marks: quizData.total_marks || 10,
+          passing_percentage: quizData.passing_percentage || 80,
+          time_limit_minutes: quizData.time_limit_minutes || 10
         })
       } else {
         setQuiz(null)
@@ -101,6 +106,23 @@ const QuizManagementModal: React.FC<Props> = ({ isOpen, onClose, videoId, videoT
 
   const handleCreateOrUpdateQuiz = async () => {
     try {
+      if (!quizForm.title.trim()) {
+        toast.error('Quiz title is required')
+        return
+      }
+      if (quizForm.total_marks < 1) {
+        toast.error('Total marks must be at least 1')
+        return
+      }
+      if (quizForm.passing_percentage < 1 || quizForm.passing_percentage > 100) {
+        toast.error('Passing percentage must be between 1 and 100')
+        return
+      }
+      if (quizForm.time_limit_minutes < 1 || quizForm.time_limit_minutes > 180) {
+        toast.error('Time limit must be between 1 and 180 minutes')
+        return
+      }
+
       setLoading(true)
       
       if (quiz?.id) {
@@ -225,7 +247,8 @@ const QuizManagementModal: React.FC<Props> = ({ isOpen, onClose, videoId, videoT
           marks: questionForm.marks
         })
         if (result.error) throw new Error(result.error)
-        questionId = result.data.id
+        const created = result.data as any
+        questionId = created?.id
       }
 
       // Create options
@@ -291,7 +314,7 @@ const QuizManagementModal: React.FC<Props> = ({ isOpen, onClose, videoId, videoT
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto" style={{ paddingTop: '100px', paddingBottom: '100px' }}>
       <div className={`bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-4xl w-full overflow-hidden flex flex-col ${isDarkMode ? 'border border-gray-700' : 'border border-gray-200'}`} style={{ maxHeight: 'calc(100vh - 200px)' }}>
         {/* Header */}
-        <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-4 flex items-center justify-between">
+        <div className="bg-linear-to-r from-purple-600 to-indigo-600 px-6 py-4 flex items-center justify-between">
           <h2 className="text-xl font-bold text-white">Quiz Management - {videoTitle}</h2>
           <button
             onClick={onClose}
@@ -340,7 +363,14 @@ const QuizManagementModal: React.FC<Props> = ({ isOpen, onClose, videoId, videoT
                   <input
                     type="number"
                     value={quizForm.total_marks}
-                    onChange={(e) => setQuizForm({ ...quizForm, total_marks: parseInt(e.target.value) || 10 })}
+                    min={1}
+                    max={500}
+                    onChange={(e) =>
+                      setQuizForm({
+                        ...quizForm,
+                        total_marks: parseIntegerInput(e.target.value, quizForm.total_marks)
+                      })
+                    }
                     className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
@@ -351,7 +381,14 @@ const QuizManagementModal: React.FC<Props> = ({ isOpen, onClose, videoId, videoT
                   <input
                     type="number"
                     value={quizForm.passing_percentage}
-                    onChange={(e) => setQuizForm({ ...quizForm, passing_percentage: parseInt(e.target.value) || 80 })}
+                    min={1}
+                    max={100}
+                    onChange={(e) =>
+                      setQuizForm({
+                        ...quizForm,
+                        passing_percentage: parseIntegerInput(e.target.value, quizForm.passing_percentage)
+                      })
+                    }
                     className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
@@ -362,7 +399,14 @@ const QuizManagementModal: React.FC<Props> = ({ isOpen, onClose, videoId, videoT
                   <input
                     type="number"
                     value={quizForm.time_limit_minutes}
-                    onChange={(e) => setQuizForm({ ...quizForm, time_limit_minutes: parseInt(e.target.value) || 10 })}
+                    min={1}
+                    max={180}
+                    onChange={(e) =>
+                      setQuizForm({
+                        ...quizForm,
+                        time_limit_minutes: parseIntegerInput(e.target.value, quizForm.time_limit_minutes)
+                      })
+                    }
                     className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
@@ -406,7 +450,12 @@ const QuizManagementModal: React.FC<Props> = ({ isOpen, onClose, videoId, videoT
                   <input
                     type="number"
                     value={questionForm.order_index}
-                    onChange={(e) => setQuestionForm({ ...questionForm, order_index: parseInt(e.target.value) || 0 })}
+                    onChange={(e) =>
+                      setQuestionForm({
+                        ...questionForm,
+                        order_index: Number.parseInt(e.target.value, 10) || 0
+                      })
+                    }
                     className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
@@ -417,7 +466,12 @@ const QuizManagementModal: React.FC<Props> = ({ isOpen, onClose, videoId, videoT
                   <input
                     type="number"
                     value={questionForm.marks}
-                    onChange={(e) => setQuestionForm({ ...questionForm, marks: parseInt(e.target.value) || 1 })}
+                    onChange={(e) =>
+                      setQuestionForm({
+                        ...questionForm,
+                        marks: Number.parseInt(e.target.value, 10) || 1
+                      })
+                    }
                     className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>

@@ -35,9 +35,14 @@ function normalizeExpiresAtMs(value: unknown): number | undefined {
   if (value === undefined || value === null) return undefined;
   const n = typeof value === 'number' ? value : Number(value);
   if (!Number.isFinite(n) || n <= 0) return undefined;
+  let ms = n;
+  // Accept seconds-based timestamps and normalize to ms.
+  if (ms < MIN_EXPIRES_MS && ms < 1_000_000_000_000) {
+    ms = ms * 1000;
+  }
   const hi = maxExpiresMs();
-  if (n < MIN_EXPIRES_MS || n > hi) return undefined;
-  return Math.floor(n);
+  if (ms < MIN_EXPIRES_MS || ms > hi) return undefined;
+  return Math.floor(ms);
 }
 
 export type StoredClientAuthSession = {

@@ -3,8 +3,8 @@
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import AdminSidebar from './LandingAdminSidebar'
-import AdminHeader from '../../../../components/admin/shared/AdminHeader'
-import AdminFooter from '../../../../components/admin/shared/AdminFooter'
+import AdminHeader from '@/components/admin/shared/AdminHeader'
+import AdminFooter from '@/components/admin/shared/AdminFooter'
 interface LandingAdminLayoutProps {
   children: React.ReactNode
 }
@@ -57,6 +57,7 @@ const LandingAdminLayout: React.FC<LandingAdminLayoutProps> = ({ children }) => 
         // Multi-layer security: Both environment variable AND API check must pass
         const { superadminApi } = await import('@/lib/api')
         const adminResult = await superadminApi.checkAdminByEmail(userEmail)
+        const adminRow = adminResult.data as any
 
         if (adminResult.error) {
           // No sensitive info in logs
@@ -69,7 +70,7 @@ const LandingAdminLayout: React.FC<LandingAdminLayoutProps> = ({ children }) => 
         // CRITICAL: If user email is NOT in admin_users table, deny access
         // Normal users ka email admin_users mein nahi hoga
         // Only manually added admins will be in admin_users table
-        if (!adminResult.data || !adminResult.data.email) {
+        if (!adminRow || !adminRow.email) {
           // This is a normal user trying to access admin panel
           // Remove session and redirect to login
           sessionStorage.removeItem('admin_session')
@@ -81,7 +82,7 @@ const LandingAdminLayout: React.FC<LandingAdminLayoutProps> = ({ children }) => 
         // Step 3: ROLE-BASED ACCESS CONTROL
         // Check if user has permission to access landing admin panel
         // Only super_admin, landing_admin, or legacy 'admin' role can access
-        const userRole = (adminResult.data as any)?.role || 'admin'
+        const userRole = adminRow?.role || 'admin'
         const allowedRoles = ['super_admin', 'landing_admin', 'admin']
         if (!allowedRoles.includes(userRole)) {
           // User doesn't have permission for this admin panel

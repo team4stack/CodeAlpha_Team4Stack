@@ -15,20 +15,26 @@ interface MainLayoutProps {
 export default function MainLayout({ children }: MainLayoutProps) {
   const pathname = usePathname();
   
-  // Hide MainNavbar on courses pages (courses navbar is rendered in CoursesPage)
+  // Hide MainNavbar on courses/student pages (courses navbar is rendered in CoursesPage)
   const isCoursesPage = pathname?.startsWith('/courses') || pathname?.startsWith('/student');
+  const isStudentCourseViewPage = Boolean(pathname?.startsWith('/student/courses/'));
+  // Show chatbot only on student dashboard + student courses list + public courses page
+  const showCoursesChatBot =
+    pathname === '/student' ||
+    pathname === '/student/courses' ||
+    pathname === '/courses';
   // Show WhatsApp + Fiverr floating buttons only on landing (home) page
   const isLandingPage = pathname === '/';
 
   return (
     <>
       {!isCoursesPage && <MainNavbar />}
-      <main className="responsive-main">
+      <main className={`responsive-main ${isStudentCourseViewPage ? 'min-h-0!' : ''}`}>
         {children}
       </main>
       <MainFooter />
       {isLandingPage && <WhatsAppButton />}
-      {isCoursesPage && <CoursesChatBot />}
+      {showCoursesChatBot && <CoursesChatBot />}
       <PWAInstallPrompt />
     </>
   );

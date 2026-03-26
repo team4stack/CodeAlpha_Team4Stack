@@ -40,6 +40,8 @@ export interface AdmissionForm {
   course_name_2?: string;
   message?: string;
   gender: string;
+  /** ISO date string (YYYY-MM-DD) from application form */
+  date_of_birth?: string;
   age: number;
   cnic?: string;
   image_attached?: boolean;
@@ -129,4 +131,86 @@ export interface QuizAttemptAnswer {
   selected_option_id: number | string;
   is_correct: boolean;
   created_at?: string;
+}
+
+export interface StudentCourseReportSummary {
+  course: {
+    id: number;
+    title: string;
+    description?: string;
+    thumbnail_url?: string;
+  };
+  lectures: {
+    total: number;
+    completed: number;
+    progress_percentage: number;
+    total_time_seconds: number;
+    watched_time_seconds: number;
+  };
+  quizzes: {
+    total: number;
+    passed: number;
+    total_marks: number;
+    obtained_marks: number;
+  };
+  assignments: {
+    total: number;
+    uploaded: number;
+    unuploaded: number;
+    total_marks: number;
+    obtained_marks: number;
+  };
+  certificate: {
+    eligible: boolean;
+    application_status: 'not_applied' | 'pending' | 'approved' | 'rejected' | 'sent';
+    application_id?: number;
+    certificate_url?: string | null;
+  };
+}
+
+export interface CertificateApplication {
+  id: number;
+  user_id: string;
+  course_id: number;
+  full_name: string;
+  cnic: string;
+  email: string;
+  phone_number: string;
+  roll_number: string;
+  status: 'pending' | 'approved' | 'rejected' | 'sent';
+  admin_notes?: string | null;
+  certificate_url?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface CourseAssignment {
+  id: number;
+  course_id: number;
+  video_id: number;
+  title: string;
+  instructions?: string | null;
+  required_format?: string | null;
+  max_file_size_mb: number;
+  total_marks: number;
+  template_file_url?: string | null;
+  template_file_name?: string | null;
+  template_file_type?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface CourseAssignmentSubmission {
+  id: number;
+  assignment_id: number;
+  user_id: string;
+  file_url: string;
+  file_name: string;
+  file_type?: string | null;
+  student_notes?: string | null;
+  status: 'submitted' | 'reviewed' | 'accepted' | 'rejected';
+  awarded_marks?: number | null;
+  admin_feedback?: string | null;
+  submitted_at?: string;
+  updated_at?: string;
 }

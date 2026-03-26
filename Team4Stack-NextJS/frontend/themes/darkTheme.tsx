@@ -124,6 +124,11 @@ export const DarkTheme: React.FC = () => {
         color: #ffffff !important;
       }
 
+      .dark .student-nav.nav-glass {
+        border-bottom: 0 !important;
+        box-shadow: none !important;
+      }
+
       .dark .nav-link {
         color: #e5e7eb !important;
       }

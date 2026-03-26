@@ -53,8 +53,8 @@ const AdminSidebar: React.FC = () => {
   useEffect(() => {
     const loadUnviewedSupport = async () => {
       try {
-        const result = await landingApi.getSupportRequests({ viewed: false })
-        const unviewed = result.data || []
+        const result = await landingApi.getSupportRequests({ viewed: false, target_area: 'site' })
+        const unviewed = Array.isArray(result.data) ? result.data : []
         setUnviewedSupport(unviewed.length)
       } catch (error) {
         console.error('Failed to load unviewed support:', error)
@@ -144,7 +144,7 @@ const AdminSidebar: React.FC = () => {
         className={`admin-sidebar-panel ${isCollapsed ? 'w-20' : 'w-64'} relative flex h-full flex-col overflow-visible border-r border-cyan-500/20 bg-black/40 shadow-2xl shadow-cyan-500/10 backdrop-blur-2xl`}
       >
         <div
-          className="pointer-events-none absolute inset-0 bg-gradient-to-b from-slate-900/90 via-black/80 to-slate-900/90"
+          className="pointer-events-none absolute inset-0 bg-linear-to-b from-slate-900/90 via-black/80 to-slate-900/90"
           aria-hidden
         />
         <div
@@ -152,7 +152,7 @@ const AdminSidebar: React.FC = () => {
           aria-hidden
         />
         <div
-          className="pointer-events-none absolute right-0 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-cyan-500/50 to-transparent"
+          className="pointer-events-none absolute right-0 top-0 bottom-0 w-px bg-linear-to-b from-transparent via-cyan-500/50 to-transparent"
           aria-hidden
         />
 
@@ -174,11 +174,11 @@ const AdminSidebar: React.FC = () => {
                   <li key={link.to} className="relative">
                     <Link
                       href={link.to}
-                      className={`flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-4'} py-3 rounded-xl text-sm font-medium transition-all duration-[440ms] ease-[cubic-bezier(0.22,1,0.36,1)] relative group overflow-visible ${
+                      className={`flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-4'} py-3 rounded-xl text-sm font-medium transition-all duration-440 ease-[cubic-bezier(0.22,1,0.36,1)] relative group overflow-visible ${
                         isActive
                           ? isCollapsed
-                            ? 'border border-transparent bg-transparent text-cyan-100 shadow-none hover:bg-white/[0.06]'
-                            : 'border border-cyan-400/40 bg-gradient-to-r from-cyan-500/20 to-orange-500/20 text-white shadow-lg shadow-cyan-500/30'
+                            ? 'border border-transparent bg-transparent text-cyan-100 shadow-none hover:bg-white/6'
+                            : 'border border-cyan-400/40 bg-linear-to-r from-cyan-500/20 to-orange-500/20 text-white shadow-lg shadow-cyan-500/30'
                           : 'border border-transparent text-white/70 hover:bg-white/5 hover:text-white'
                         }`}
                       onMouseEnter={(e) => handleLinkMouseEnter(link.to, e)}
@@ -187,8 +187,8 @@ const AdminSidebar: React.FC = () => {
                       {/* Full-row active (expanded sidebar only) */}
                       {isActive && !isCollapsed && (
                         <>
-                          <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-cyan-500/10 to-orange-500/10 opacity-50"></div>
-                          <div className="absolute bottom-0 left-0 top-0 w-1 rounded-l-xl bg-gradient-to-b from-cyan-400 to-orange-400 shadow-[0_0_10px_rgba(6,182,212,0.8)]"></div>
+                          <div className="absolute inset-0 rounded-xl bg-linear-to-r from-cyan-500/10 to-orange-500/10 opacity-50"></div>
+                          <div className="absolute bottom-0 left-0 top-0 w-1 rounded-l-xl bg-linear-to-b from-cyan-400 to-orange-400 shadow-[0_0_10px_rgba(6,182,212,0.8)]"></div>
                         </>
                       )}
 
@@ -196,11 +196,11 @@ const AdminSidebar: React.FC = () => {
                         {isActive && isCollapsed && (
                           <span
                             aria-hidden
-                            className="pointer-events-none absolute left-1/2 top-1/2 z-0 h-10 w-10 -translate-x-1/2 -translate-y-1/2 rounded-xl bg-gradient-to-br from-cyan-500/65 via-cyan-600/45 to-orange-500/50 shadow-[0_0_24px_rgba(34,211,238,0.72),0_0_48px_rgba(6,182,212,0.38),inset_0_1px_0_rgba(255,255,255,0.18)] ring-1 ring-cyan-200/35"
+                            className="pointer-events-none absolute left-1/2 top-1/2 z-0 h-10 w-10 -translate-x-1/2 -translate-y-1/2 rounded-xl bg-linear-to-br from-cyan-500/65 via-cyan-600/45 to-orange-500/50 shadow-[0_0_24px_rgba(34,211,238,0.72),0_0_48px_rgba(6,182,212,0.38),inset_0_1px_0_rgba(255,255,255,0.18)] ring-1 ring-cyan-200/35"
                           />
                         )}
                         <IconComponent
-                          className={`relative z-10 h-5 w-5 transition-all duration-[440ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                          className={`relative z-10 h-5 w-5 transition-all duration-440 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                             isActive
                               ? isCollapsed
                                 ? 'admin-sidebar-collapsed-active-icon scale-110'
@@ -226,7 +226,7 @@ const AdminSidebar: React.FC = () => {
 
                       {/* Hover Glow */}
                       {!isActive && (
-                        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/0 via-orange-500/0 to-cyan-500/0 group-hover:from-cyan-500/5 group-hover:via-orange-500/5 group-hover:to-cyan-500/5 transition-all duration-[440ms] ease-[cubic-bezier(0.22,1,0.36,1)]"></div>
+                        <div className="absolute inset-0 bg-linear-to-r from-cyan-500/0 via-orange-500/0 to-cyan-500/0 group-hover:from-cyan-500/5 group-hover:via-orange-500/5 group-hover:to-cyan-500/5 transition-all duration-440 ease-[cubic-bezier(0.22,1,0.36,1)]"></div>
                       )}
                     </Link>
 
@@ -237,11 +237,11 @@ const AdminSidebar: React.FC = () => {
           </nav>
 
           {/* Logout Button at Bottom (inside scroll area) */}
-          <div className="mt-auto pt-4 pb-4 border-t border-cyan-500/20 flex-shrink-0">
+          <div className="mt-auto pt-4 pb-4 border-t border-cyan-500/20 shrink-0">
             <div className="relative">
               <button
                 onClick={handleLogout}
-                className={`w-full ${isCollapsed ? 'px-2 justify-center' : 'px-4'} py-3 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 backdrop-blur-md text-white border border-red-500/30 hover:border-red-400/50 hover:shadow-[0_0_20px_rgba(239,68,68,0.4)] transition-all duration-[440ms] ease-[cubic-bezier(0.22,1,0.36,1)] relative overflow-hidden group font-medium text-sm flex items-center justify-center gap-2`}
+                className={`w-full ${isCollapsed ? 'px-2 justify-center' : 'px-4'} py-3 rounded-xl bg-linear-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 backdrop-blur-md text-white border border-red-500/30 hover:border-red-400/50 hover:shadow-[0_0_20px_rgba(239,68,68,0.4)] transition-all duration-440 ease-[cubic-bezier(0.22,1,0.36,1)] relative overflow-hidden group font-medium text-sm flex items-center justify-center gap-2`}
                 onMouseEnter={(e) => {
                   if (isCollapsed) {
                     const rect = e.currentTarget.getBoundingClientRect()
@@ -265,7 +265,7 @@ const AdminSidebar: React.FC = () => {
       {/* Tooltip - Fixed Position Outside Sidebar */}
       {isCollapsed && hoveredLink && tooltipPosition && (
         <div
-          className="fixed z-[9999] px-3 py-2 rounded-lg bg-black/90 backdrop-blur-md text-white text-sm font-medium whitespace-nowrap shadow-xl border border-cyan-500/30 pointer-events-auto"
+          className="fixed z-9999 px-3 py-2 rounded-lg bg-black/90 backdrop-blur-md text-white text-sm font-medium whitespace-nowrap shadow-xl border border-cyan-500/30 pointer-events-auto"
           style={{
             left: `${tooltipPosition.left}px`,
             top: `${tooltipPosition.top}px`,

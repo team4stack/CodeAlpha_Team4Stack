@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useTheme } from '@/contexts/ThemeContext';
-import MainLayout from '@/app/(main)/layout';
 import './SectionPage.css';
 
 const PrivacyPolicyPage: React.FC = () => {
@@ -22,43 +21,55 @@ const PrivacyPolicyPage: React.FC = () => {
           <h1>Privacy Policy</h1>
           <div className="section-content">
             <p>Last updated: {lastUpdated || 'Loading...'}</p>
-            
-            <h2>Introduction</h2>
-            <p>At Team4Stack, we are committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your personal information when you visit our website or use our services.</p>
-            
-            <h2>Information We Collect</h2>
-            <p>We may collect the following types of information:</p>
+
+            <p>
+              Team4Stack values user trust. This policy explains what data is collected to run the platform,
+              why it is used, and how we protect it.
+            </p>
+
+            <h2>What We Collect</h2>
             <ul>
-              <li>Personal identification information (Name, email address, phone number, etc.)</li>
-              <li>Usage data (IP address, browser type, pages visited, time spent, etc.)</li>
-              <li>Cookies and tracking technologies</li>
+              <li>Basic account details (for example name, email, username, and profile image if you upload one)</li>
+              <li>Course and application information you submit on the platform</li>
+              <li>Support messages and optional screenshots you upload for issue resolution</li>
+              <li>Technical logs needed for performance, security, and error monitoring</li>
             </ul>
-            
-            <h2>How We Use Your Information</h2>
-            <p>We use the collected information for various purposes:</p>
+
+            <h2>How We Use Data</h2>
             <ul>
-              <li>To provide and maintain our service</li>
-              <li>To notify you about changes to our service</li>
-              <li>To provide customer support</li>
-              <li>To gather analysis or valuable information to improve our service</li>
-              <li>To monitor the usage of our service</li>
-              <li>To detect, prevent, and address technical issues</li>
+              <li>To create and secure your account</li>
+              <li>To process course applications and provide course access</li>
+              <li>To respond to support requests and improve service quality</li>
+              <li>To detect abuse, protect platform security, and maintain reliability</li>
             </ul>
-            
-            <h2>Data Protection</h2>
-            <p>We implement appropriate security measures to protect against unauthorized access, alteration, disclosure, or destruction of your personal information.</p>
-            
-            <h2>Your Rights</h2>
-            <p>You have the right to:</p>
+
+            <h2>How We Protect Data</h2>
+            <p>
+              We apply role-based access controls, backend validations, and secure storage practices.
+              Access to administrative actions is restricted by authorization rules.
+            </p>
+
+            <h2>Data Sharing</h2>
+            <p>
+              We do not share personal data for unrelated marketing. Data is shared only when required to
+              operate the service, comply with legal obligations, or protect platform security.
+            </p>
+
+            <h2>Your Controls</h2>
             <ul>
-              <li>Access your personal data</li>
-              <li>Rectify inaccurate data</li>
-              <li>Request deletion of your data</li>
-              <li>Object to processing of your data</li>
+              <li>You can request updates to incorrect account details</li>
+              <li>You can contact us for data-related questions or deletion requests where applicable</li>
+              <li>You can manage cookie choices from the cookies section</li>
             </ul>
-            
-            <h2>Changes to This Privacy Policy</h2>
-            <p>We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page.</p>
+
+            <h2>Policy Updates</h2>
+            <p>
+              We may update this policy as features evolve. Material changes will be reflected on this page.
+            </p>
+
+            <p className="legal-note">
+              Questions about privacy? Visit <Link href="/contact">Contact Support</Link>.
+            </p>
           </div>
         </div>
     </div>

@@ -1,0 +1,107 @@
+/* Liquid Glass Button Effect (applied to all buttons by default) */
+.btn-primary,
+.btn-secondary,
+.btn-ghost,
+button:not(.btn-plain) {
+  border-radius: 9999px; /* pill look aligns with glass effect */
+  backdrop-filter: blur(8px) saturate(120%);
+  -webkit-backdrop-filter: blur(8px) saturate(120%);
+  overflow: hidden;
+  isolation: isolate;
+  will-change: transform, filter, box-shadow;
+}
+
+/* Ensure pseudo-elements position correctly for buttons that don't already define a positioning mode. */
+.btn-primary,
+.btn-secondary,
+.btn-ghost,
+button:not(.btn-plain):not(.absolute):not(.fixed):not(.sticky) {
+  position: relative;
+}
+
+.btn-primary::after,
+.btn-secondary::after,
+.btn-ghost::after,
+button:not(.btn-plain)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.18) 50%, rgba(255,255,255,0.08) 100%);
+  mix-blend-mode: screen;
+  pointer-events: none;
+  filter: url(#turbulence-displacement);
+  opacity: 0.8;
+  transition: opacity 0.3s ease;
+  z-index: 1;
+}
+
+/* Utility class to disable global glass effect on specific buttons (e.g. navbar Courses menu) */
+.btn-plain {
+  /* Avoid position: static — it overrides Tailwind absolute/fixed (same specificity, CSS order). */
+  isolation: auto;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  overflow: visible;
+}
+
+.btn-plain::after {
+  content: none !important;
+}
+
+/* Explicit wins over any base-layer or order quirks: edge toggles (sidebar pin, etc.) */
+button.btn-plain.absolute {
+  position: absolute;
+}
+
+button.btn-plain.fixed {
+  position: fixed;
+}
+
+button.btn-plain.sticky {
+  position: sticky;
+}
+
+/* Opt-out from the liquid-glass effect without changing positioning/layout. */
+.btn-no-glass {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  overflow: visible !important;
+  isolation: auto !important;
+}
+
+.btn-no-glass::after {
+  content: none !important;
+}
+
+.btn-no-glass:hover::after {
+  content: none !important;
+  filter: none !important;
+}
+
+/* Disable the global liquid-glass ::after overlay only.
+   Useful when we want to keep the element's own Tailwind styling (background/backdrop-blur) */
+.btn-no-liquid::after {
+  content: none !important;
+  filter: none !important;
+  opacity: 0 !important;
+}
+
+.btn-no-liquid:hover::after {
+  content: none !important;
+  filter: none !important;
+}
+
+.btn-primary:hover::after,
+.btn-secondary:hover::after,
+.btn-ghost:hover::after,
+button:not(.btn-plain):hover::after {
+  filter: url(#turbulence-displacement);
+}
+
+.btn-primary:active,
+.btn-secondary:active,
+.btn-ghost:active,
+button:not(.absolute):not(.fixed):not(.sticky):active {
+  transform: translateY(0) scale(0.99);
+}

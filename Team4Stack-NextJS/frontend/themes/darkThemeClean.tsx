@@ -119,6 +119,12 @@ export const DarkThemeClean: React.FC = () => {
         transition: all 0.3s ease !important;
       }
 
+      .dark .student-nav.nav-glass,
+      .dark .student-nav {
+        border-bottom: 0 !important;
+        box-shadow: none !important;
+      }
+
       .dark .nav-link {
         color: #e5e7eb !important;
         transition: all 0.3s ease !important;

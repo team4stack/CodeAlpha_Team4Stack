@@ -81,11 +81,12 @@ export const landingApi = {
   },
 
   // Support Requests
-  getSupportRequests: async (filters?: { user_id?: string; status?: string; viewed?: boolean }) => {
+  getSupportRequests: async (filters?: { user_id?: string; status?: string; viewed?: boolean; target_area?: 'site' | 'course' }) => {
     const params = new URLSearchParams();
     if (filters?.user_id) params.append('user_id', filters.user_id);
     if (filters?.status) params.append('status', filters.status);
     if (filters?.viewed !== undefined) params.append('viewed', String(filters.viewed));
+    if (filters?.target_area) params.append('target_area', filters.target_area);
     
     const query = params.toString();
     return apiClient.get(`/landing/support${query ? `?${query}` : ''}`);
@@ -93,6 +94,13 @@ export const landingApi = {
 
   createSupportRequest: async (request: any) => {
     return apiClient.post('/landing/support', request);
+  },
+
+  uploadSupportScreenshot: async (fileDataUrl: string) => {
+    return apiClient.post('/public/uploads/cloudinary', {
+      fileDataUrl,
+      folder: 'team4stack/support-screenshots'
+    });
   },
 
   updateSupportRequest: async (id: number, request: any) => {

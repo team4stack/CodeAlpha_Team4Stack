@@ -7,7 +7,7 @@ import { coursesApi } from '@/lib/api'
 import toast from 'react-hot-toast'
 
 type Quiz = {
-  id: number
+  id: number | string
   video_id: number
   title: string
   description?: string
@@ -18,7 +18,7 @@ type Quiz = {
 }
 
 type QuizQuestion = {
-  id: number
+  id: number | string
   question_text: string
   order_index: number
   marks: number
@@ -26,14 +26,14 @@ type QuizQuestion = {
 }
 
 type QuizOption = {
-  id: number
+  id: number | string
   option_text: string
   is_correct: boolean
   order_index: number
 }
 
 type QuizAttempt = {
-  id: number
+  id: number | string
   score: number
   total_marks: number
   percentage: number
@@ -56,9 +56,9 @@ const QuizComponent: React.FC<QuizComponentProps> = ({ videoId, courseId, onQuiz
   const [loading, setLoading] = useState(true)
   const [showInstructions, setShowInstructions] = useState(true)
   const [quizStarted, setQuizStarted] = useState(false)
-  const [attemptId, setAttemptId] = useState<number | null>(null)
+  const [attemptId, setAttemptId] = useState<number | string | null>(null)
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
-  const [answers, setAnswers] = useState<Record<number, number>>({})
+  const [answers, setAnswers] = useState<Record<string, string>>({})
   const [timeRemaining, setTimeRemaining] = useState(600)
   const [submitted, setSubmitted] = useState(false)
   const [result, setResult] = useState<QuizAttempt | null>(null)
@@ -78,7 +78,8 @@ const QuizComponent: React.FC<QuizComponentProps> = ({ videoId, courseId, onQuiz
     try {
       const result = await coursesApi.getUserQuizAttempts(videoId, user.id)
       if (result.success && result.data) {
-        setAttemptCount(result.data.length)
+        const attempts = Array.isArray(result.data) ? result.data : []
+        setAttemptCount(attempts.length)
       }
     } catch (err) {
       console.error('Error loading attempt count:', err)
@@ -93,16 +94,19 @@ const QuizComponent: React.FC<QuizComponentProps> = ({ videoId, courseId, onQuiz
       setSubmitted(true)
 
       const answersArray = Object.entries(answers).map(([questionId, optionId]) => ({
-        question_id: questionId, // Keep as string/number - backend will handle conversion
+        question_id: questionId,
         selected_option_id: optionId
       }))
 
       // Submit immediately - don't wait for calculations
       const result = await coursesApi.submitQuizAttempt(attemptId, answersArray)
       if (result.error) throw new Error(result.error)
+      const attempt = result.data as QuizAttempt
 
       // Show result immediately
-      setResult(result.data)
+      if (attempt) {
+        setResult(attempt)
+      }
       
       // Calculate correct answers count in background (non-blocking)
       calculateCorrectAnswers(quiz, answersArray).then(correctCount => {
@@ -111,13 +115,13 @@ const QuizComponent: React.FC<QuizComponentProps> = ({ videoId, courseId, onQuiz
         console.error('Error calculating correct answers:', err)
         // Estimate from score if calculation fails
         const totalQuestions = quiz.questions?.length || 1
-        const estimatedCorrect = Math.round((result.data.score / (quiz.total_marks / totalQuestions)))
+        const estimatedCorrect = Math.round((attempt.score / (quiz.total_marks / totalQuestions)))
         setCorrectAnswersCount(estimatedCorrect)
       })
       
       // Call onQuizComplete but don't close - let user see result first
       // onClose will be called when user clicks button on result screen
-      onQuizComplete(result.data.passed, attemptCount + 1)
+      onQuizComplete(attempt.passed, attemptCount + 1)
     } catch (err: any) {
       toast.error(err.message || 'Failed to submit quiz')
       setSubmitted(false)
@@ -126,13 +130,16 @@ const QuizComponent: React.FC<QuizComponentProps> = ({ videoId, courseId, onQuiz
     }
   }, [submitted, attemptId, quiz, user?.id, answers, onQuizComplete, attemptCount])
 
-  const calculateCorrectAnswers = async (quiz: Quiz, answersArray: Array<{ question_id: number; selected_option_id: number }>): Promise<number> => {
+  const calculateCorrectAnswers = async (
+    quiz: Quiz,
+    answersArray: Array<{ question_id: string | number; selected_option_id: string | number }>
+  ): Promise<number> => {
     let correctCount = 0
     
     for (const answer of answersArray) {
-      const question = quiz.questions?.find(q => q.id === answer.question_id)
+      const question = quiz.questions?.find((q) => String(q.id) === String(answer.question_id))
       if (question) {
-        const option = question.options?.find(opt => opt.id === answer.selected_option_id)
+        const option = question.options?.find((opt) => String(opt.id) === String(answer.selected_option_id))
         if (option && option.is_correct) {
           correctCount++
         }
@@ -164,7 +171,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({ videoId, courseId, onQuiz
       setLoading(true)
       const result = await coursesApi.getQuizByVideoId(videoId)
       if (result.success && result.data) {
-        const quizData = result.data
+        const quizData = result.data as Quiz
         if (!quizData.questions || quizData.questions.length === 0) {
           toast.error('Quiz has no questions. Please contact admin.')
           onClose()
@@ -192,8 +199,9 @@ const QuizComponent: React.FC<QuizComponentProps> = ({ videoId, courseId, onQuiz
       setLoading(true)
       const result = await coursesApi.startQuizAttempt(quiz.id, user.id, videoId)
       if (result.error) throw new Error(result.error)
+      const attempt = result.data as { id: number | string }
       
-      setAttemptId(result.data.id)
+      setAttemptId(attempt.id)
       setQuizStarted(true)
       setShowInstructions(false)
       setTimeRemaining(quiz.time_limit_minutes * 60)
@@ -205,9 +213,9 @@ const QuizComponent: React.FC<QuizComponentProps> = ({ videoId, courseId, onQuiz
     }
   }
 
-  const handleAnswerSelect = (questionId: number, optionId: number) => {
+  const handleAnswerSelect = (questionId: number | string, optionId: number | string) => {
     if (submitted) return
-    setAnswers(prev => ({ ...prev, [questionId]: optionId }))
+    setAnswers((prev) => ({ ...prev, [String(questionId)]: String(optionId) }))
   }
 
   const handleNext = () => {
@@ -239,7 +247,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({ videoId, courseId, onQuiz
       setSubmitted(true)
 
       const answersArray = Object.entries(answers).map(([questionId, optionId]) => ({
-        question_id: questionId, // Keep as string/number - backend will handle conversion
+        question_id: questionId,
         selected_option_id: optionId
       }))
 
@@ -249,9 +257,12 @@ const QuizComponent: React.FC<QuizComponentProps> = ({ videoId, courseId, onQuiz
 
       const result = await coursesApi.submitQuizAttempt(attemptId, answersArray)
       if (result.error) throw new Error(result.error)
+      const attempt = result.data as QuizAttempt
 
-      setResult(result.data)
-      onQuizComplete(result.data.passed, attemptCount + 1)
+      if (attempt) {
+        setResult(attempt)
+        onQuizComplete(attempt.passed, attemptCount + 1)
+      }
     } catch (err: any) {
       toast.error(err.message || 'Failed to submit quiz')
       setSubmitted(false)
@@ -334,7 +345,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({ videoId, courseId, onQuiz
             <button
               onClick={handleStartQuiz}
               disabled={loading}
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg font-semibold hover:from-purple-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50"
+              className="flex-1 px-6 py-3 bg-linear-to-r from-purple-600 to-indigo-600 text-white rounded-lg font-semibold hover:from-purple-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50"
             >
               Start Quiz
             </button>
@@ -431,14 +442,14 @@ const QuizComponent: React.FC<QuizComponentProps> = ({ videoId, courseId, onQuiz
             {passed ? (
               <button
                 onClick={onClose}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg hover:shadow-xl"
+                className="flex-1 px-6 py-3 bg-linear-to-r from-green-600 to-emerald-600 text-white rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg hover:shadow-xl"
               >
                 Continue to Next Lecture
               </button>
             ) : (
               <button
                 onClick={onClose}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-lg font-semibold hover:from-orange-700 hover:to-red-700 transition-all shadow-lg hover:shadow-xl"
+                className="flex-1 px-6 py-3 bg-linear-to-r from-orange-600 to-red-600 text-white rounded-lg font-semibold hover:from-orange-700 hover:to-red-700 transition-all shadow-lg hover:shadow-xl"
               >
                 {attemptCount + 1 === 2 ? 'Watch Video Again' : 'Reattempt Quiz'}
               </button>
@@ -454,7 +465,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({ videoId, courseId, onQuiz
   const currentQuestion = quiz.questions?.[currentQuestionIndex]
   const isLastQuestion = currentQuestionIndex === totalQuestions - 1
   const isFirstQuestion = currentQuestionIndex === 0
-  const selectedOptionId = currentQuestion ? answers[currentQuestion.id] : undefined
+  const selectedOptionId = currentQuestion ? answers[String(currentQuestion.id)] : undefined
 
   return (
     <div className={`h-full overflow-y-auto ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
@@ -485,7 +496,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({ videoId, courseId, onQuiz
         {currentQuestion && (
           <div className={`rounded-xl shadow-lg p-6 mb-4 ${isDarkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
             <div className="flex items-start gap-3 mb-4">
-              <div className="flex-shrink-0 w-10 h-10 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold text-lg">
+              <div className="shrink-0 w-10 h-10 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold text-lg">
                 {currentQuestionIndex + 1}
               </div>
               <div className="flex-1">
@@ -494,7 +505,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({ videoId, courseId, onQuiz
                 </h3>
                 <div className="space-y-3">
                   {currentQuestion.options?.map((option) => {
-                    const isSelected = selectedOptionId === option.id
+                    const isSelected = selectedOptionId === String(option.id)
                     return (
                       <label
                         key={option.id}
@@ -506,7 +517,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({ videoId, courseId, onQuiz
                       >
                         <input
                           type="radio"
-                          name={`question-${currentQuestion.id}`}
+                          name={`question-${String(currentQuestion.id)}`}
                           checked={isSelected}
                           onChange={() => handleAnswerSelect(currentQuestion.id, option.id)}
                           disabled={submitted}
@@ -548,7 +559,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({ videoId, courseId, onQuiz
             <button
               onClick={handleSubmit}
               disabled={submitted || loading}
-              className="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg font-semibold hover:from-purple-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50"
+              className="px-6 py-3 bg-linear-to-r from-purple-600 to-indigo-600 text-white rounded-lg font-semibold hover:from-purple-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50"
             >
               {submitted || loading ? 'Submitting...' : 'Submit Quiz'}
             </button>
@@ -556,7 +567,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({ videoId, courseId, onQuiz
             <button
               onClick={handleNext}
               disabled={submitted || loading}
-              className="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg font-semibold hover:from-purple-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50"
+              className="px-6 py-3 bg-linear-to-r from-purple-600 to-indigo-600 text-white rounded-lg font-semibold hover:from-purple-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50"
             >
               Next →
             </button>

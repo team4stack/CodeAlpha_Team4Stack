@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import AuthModal from '@/lib/auth/components/AuthModal'
+import { userHasApprovedCourseApplication } from '@/lib/courses/admissionApproved'
 
 interface StudentRouteGuardProps {
   children: React.ReactNode
@@ -59,36 +60,9 @@ const StudentRouteGuard: React.FC<StudentRouteGuardProps> = ({ children }) => {
         }
 
         const applications = (Array.isArray(result.data) ? result.data : []) as Record<string, unknown>[];
-        const applicationData = applications.length > 0 ? applications[0] : null;
-
-        // Check if at least one course is approved (portal access if any course is approved)
-        let hasAnyCourseApproved = false
-        
-        if (applicationData) {
-          // Check if new per-course approval system is being used
-          const hasNewApprovals = applicationData.approved_1 !== undefined || applicationData.approved_2 !== undefined
-          
-          if (hasNewApprovals) {
-            // New system: check if at least one selected course is approved
-            const hasCourse1 = Boolean(applicationData.course_name)
-            const hasCourse2 = Boolean(applicationData.course_name_2)
-            
-            // Portal access if ANY course is approved
-            if (hasCourse1 && hasCourse2) {
-              // Both courses selected - at least one must be approved
-              hasAnyCourseApproved = applicationData.approved_1 === true || applicationData.approved_2 === true
-            } else if (hasCourse1) {
-              // Only course 1 selected - must be approved
-              hasAnyCourseApproved = applicationData.approved_1 === true
-            } else {
-              // No courses selected (shouldn't happen, but handle it)
-              hasAnyCourseApproved = false
-            }
-          } else {
-            // Old system: use the approved field directly
-            hasAnyCourseApproved = applicationData.approved === true
-          }
-        }
+        // Allow portal access if ANY application row contains an approved course.
+        // This prevents blocking existing students when they submit a new pending application.
+        const hasAnyCourseApproved = userHasApprovedCourseApplication(applications)
 
         if (isMounted) {
           if (hasAnyCourseApproved) {

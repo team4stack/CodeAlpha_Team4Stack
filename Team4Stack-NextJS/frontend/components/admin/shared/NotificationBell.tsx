@@ -27,6 +27,8 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ onClick }) => {
   const [loading, setLoading] = useState(false)
   const popupRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
+  const loadNotificationsRef = useRef<(loadFullData?: boolean) => Promise<void>>(async () => {})
+  const prevShowPopupRef = useRef(false)
 
   const loadNotifications = async (loadFullData = false) => {
     try {
@@ -35,28 +37,43 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ onClick }) => {
 
       // Load notifications based on admin type
       if (pathname?.startsWith('/admincourset4s')) {
-        // Courses Admin - Pending Applications
-        const { coursesApi } = await import('@/lib/api')
-        const result = await coursesApi.getAdmissionForms()
-        const allApps = result.data || []
+        // Courses Admin — show unseen pending applications + unseen course support requests.
+        const { coursesApi, landingApi } = await import('@/lib/api')
+        const [applicationsResult, supportResult] = await Promise.all([
+          coursesApi.getAdmissionForms(),
+          landingApi.getSupportRequests({ viewed: false, target_area: 'course' })
+        ])
+        const allApps = Array.isArray(applicationsResult.data) ? applicationsResult.data : []
         const pendingApps = allApps.filter((app: any) => app.approved === null || app.approved === false)
-        count = pendingApps.length
-        
+        const unseenPending = pendingApps.filter((app: any) => app.viewed !== true)
+        const unviewedCourseSupport = Array.isArray(supportResult.data) ? supportResult.data : []
+        count = unseenPending.length + unviewedCourseSupport.length
+
         if (loadFullData) {
-          notifs = pendingApps.slice(0, 10).map((app: any) => ({
-            id: app.id,
-            title: 'New Application',
-            message: `${app.name || app.email} applied for ${app.course_name || 'a course'}`,
-            type: 'application' as const,
-            viewed: app.viewed || false,
-            createdAt: app.created_at
-          }))
+          notifs = [
+            ...unseenPending.slice(0, 7).map((app: any) => ({
+              id: app.id,
+              title: 'New Application',
+              message: `${app.name || app.email} applied for ${app.course_name || 'a course'}`,
+              type: 'application' as const,
+              viewed: app.viewed || false,
+              createdAt: app.created_at
+            })),
+            ...unviewedCourseSupport.slice(0, 7).map((req: any) => ({
+              id: `support-${req.id}`,
+              title: 'Course Support',
+              message: req.message?.substring(0, 55) + (req.message?.length > 55 ? '...' : '') || 'New course support request',
+              type: 'support' as const,
+              viewed: req.viewed || false,
+              createdAt: req.created_at
+            }))
+          ].slice(0, 10)
         }
       } else if (pathname?.startsWith('/adminlandingt4s')) {
-        // Landing Admin - Unviewed Support
+        // Landing Admin - Unviewed site support only
         const { landingApi } = await import('@/lib/api')
-        const result = await landingApi.getSupportRequests({ viewed: false })
-        const unviewed = result.data || []
+        const result = await landingApi.getSupportRequests({ viewed: false, target_area: 'site' })
+        const unviewed = Array.isArray(result.data) ? result.data : []
         count = unviewed.length
         
         if (loadFullData) {
@@ -73,7 +90,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ onClick }) => {
         // StackStore Admin - Pending Orders
         const { stackstoreApi } = await import('@/lib/api')
         const result = await stackstoreApi.getOrders({ status: 'pending' })
-        const pending = result.data || []
+        const pending = Array.isArray(result.data) ? result.data : []
         count = pending.length
         
         if (loadFullData) {
@@ -100,15 +117,16 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ onClick }) => {
           stackstoreApi.getOrders({ status: 'pending' }).catch(() => ({ data: [] }))
         ])
         
-        const pendingApps = (apps.data || []).filter((app: any) => app.approved === null || app.approved === false)
-        const unviewedSupport = support.data || []
-        const pendingOrders = orders.data || []
-        
-        count = pendingApps.length + unviewedSupport.length + pendingOrders.length
-        
+        const pendingApps = (Array.isArray(apps.data) ? apps.data : []).filter((app: any) => app.approved === null || app.approved === false)
+        const unseenPendingApps = pendingApps.filter((app: any) => app.viewed !== true)
+        const unviewedSupport = Array.isArray(support.data) ? support.data : []
+        const pendingOrders = Array.isArray(orders.data) ? orders.data : []
+
+        count = unseenPendingApps.length + unviewedSupport.length + pendingOrders.length
+
         if (loadFullData) {
           notifs = [
-            ...pendingApps.slice(0, 5).map((app: any) => ({
+            ...unseenPendingApps.slice(0, 5).map((app: any) => ({
               id: `app-${app.id}`,
               title: 'New Application',
               message: `${app.name || app.email} applied for ${app.course_name || 'a course'}`,
@@ -148,6 +166,16 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ onClick }) => {
       console.error('Failed to load notifications:', error)
     }
   }
+
+  loadNotificationsRef.current = loadNotifications
+
+  // Refresh badge count when popup closes (e.g. after mark-as-read / navigation)
+  useEffect(() => {
+    if (prevShowPopupRef.current && !showPopup) {
+      void loadNotificationsRef.current(false)
+    }
+    prevShowPopupRef.current = showPopup
+  }, [showPopup])
 
   useEffect(() => {
     loadNotifications(false)
@@ -271,14 +299,18 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ onClick }) => {
     if (notification.type === 'application') {
       router.push('/admincourset4s/applications')
     } else if (notification.type === 'support') {
-      router.push('/adminlandingt4s/support')
+      if (pathname?.startsWith('/admincourset4s')) {
+        router.push('/admincourset4s/support')
+      } else {
+        router.push('/adminlandingt4s/support')
+      }
     } else if (notification.type === 'order') {
       router.push('/adminstackt4s/orders')
     }
   }
 
   return (
-    <div className="relative inline-flex flex-shrink-0 overflow-visible" style={{ zIndex: 1000 }}>
+    <div className="relative inline-flex shrink-0 overflow-visible" style={{ zIndex: 1000 }}>
       <button
         ref={buttonRef}
         onClick={handleBellClick}
@@ -290,7 +322,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ onClick }) => {
       {/* Badge: thora aur andar – zyada hissa button ke under */}
       {notificationCount > 0 && (
         <span
-          className="absolute min-w-[20px] h-5 flex items-center justify-center px-1.5 rounded-full bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold shadow-lg shadow-red-500/50 border-2 border-white dark:border-gray-900 animate-pulse pointer-events-none"
+          className="absolute min-w-[20px] h-5 flex items-center justify-center px-1.5 rounded-full bg-linear-to-r from-red-500 to-pink-500 text-white text-xs font-bold shadow-lg shadow-red-500/50 border-2 border-white dark:border-gray-900 animate-pulse pointer-events-none"
           style={{
             top: 0,
             right: 0,
@@ -305,7 +337,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ onClick }) => {
       {showPopup && (
         <div
           ref={popupRef}
-          className="fixed right-6 w-80 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 backdrop-blur-xl rounded-xl shadow-2xl border border-cyan-500/30 overflow-hidden flex flex-col"
+          className="fixed right-6 w-80 bg-linear-to-br from-gray-900 via-gray-800 to-gray-900 backdrop-blur-xl rounded-xl shadow-2xl border border-cyan-500/30 overflow-hidden flex flex-col"
           style={{ 
             top: '90px',
             maxHeight: 'calc(100vh - 120px)',
@@ -314,7 +346,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ onClick }) => {
           }}
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-cyan-500/20 bg-gradient-to-r from-cyan-500/10 to-transparent flex-shrink-0">
+          <div className="flex items-center justify-between p-4 border-b border-cyan-500/20 bg-linear-to-r from-cyan-500/10 to-transparent shrink-0">
             <h3 className="text-white font-bold text-sm">Notifications</h3>
             <button
               onClick={() => setShowPopup(false)}
@@ -346,7 +378,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ onClick }) => {
                   }`}
                 >
                   <div className="flex items-start gap-3">
-                    <div className={`flex-shrink-0 w-2 h-2 rounded-full mt-2 ${
+                    <div className={`shrink-0 w-2 h-2 rounded-full mt-2 ${
                       !notification.viewed ? 'bg-cyan-400 animate-pulse' : 'bg-gray-600'
                     }`}></div>
                     <div className="flex-1 min-w-0">
@@ -355,7 +387,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ onClick }) => {
                           {notification.title}
                         </h4>
                         {!notification.viewed && (
-                          <span className="flex-shrink-0 ml-2 w-2 h-2 bg-cyan-400 rounded-full"></span>
+                          <span className="shrink-0 ml-2 w-2 h-2 bg-cyan-400 rounded-full"></span>
                         )}
                       </div>
                       <p className="text-gray-400 text-xs line-clamp-2 mb-1">
@@ -380,7 +412,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ onClick }) => {
 
           {/* Footer */}
           {notifications.length > 0 && (
-            <div className="p-3 border-t border-gray-700/50 bg-gradient-to-r from-transparent via-cyan-500/5 to-transparent flex-shrink-0">
+            <div className="p-3 border-t border-gray-700/50 bg-linear-to-r from-transparent via-cyan-500/5 to-transparent shrink-0">
               <button
                 onClick={() => {
                   if (pathname?.startsWith('/admincourset4s')) {

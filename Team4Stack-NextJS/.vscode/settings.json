@@ -1,0 +1,13 @@
+{
+  "sonarlint.analysisExcludesStandalone": "**/.env,**/.env.*,**/.env.local,backend/.env,backend/.env.*,frontend/.env.local,Team4Stack-NextJS/backend/.env,Team4Stack-NextJS/**/.env*",
+  "editor.formatOnSave": true,
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact"
+  ],
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  }
+}

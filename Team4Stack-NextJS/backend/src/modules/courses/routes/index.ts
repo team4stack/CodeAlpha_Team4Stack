@@ -10,6 +10,19 @@ router.use(wrapAttachAuth);
 router.get('/progress', courseController.getAllProgress);
 router.get('/progress/:userId', courseController.getUserProgress);
 router.post('/progress', courseController.updateProgress);
+router.get('/reports/:courseId/:userId', courseController.getStudentCourseReport);
+router.get('/assignments/course/:courseId', courseController.listAssignmentsByCourse);
+router.get('/assignments/video/:videoId', courseController.listAssignmentsByVideo);
+router.post('/assignments', courseController.createAssignment);
+router.put('/assignments/:id', courseController.updateAssignment);
+router.delete('/assignments/:id', courseController.deleteAssignment);
+router.post('/assignments/:id/submit', courseController.submitAssignment);
+router.get('/assignments/video/:videoId/submissions', courseController.listAssignmentSubmissionsByVideo);
+router.get('/assignments/submissions', courseController.listAssignmentSubmissions);
+router.patch('/assignments/submissions/:id', courseController.updateAssignmentSubmission);
+router.get('/certificates', courseController.getCertificateApplications);
+router.post('/certificates/apply', courseController.createCertificateApplication);
+router.patch('/certificates/:id', courseController.updateCertificateApplication);
 
 // Admission form routes (must come before /:id)
 router.get('/admissions', courseController.getAdmissionForms);

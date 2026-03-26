@@ -13,6 +13,13 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  /** Faster dev / smaller client bundles: tree-shake heavy icon & chart libs */
+  experimental: {
+    optimizePackageImports: ["react-icons", "framer-motion", "recharts"],
+  },
+  turbopack: {
+    root: __dirname,
+  },
   async headers() {
     const headers = [...securityHeaders];
     if (process.env.NODE_ENV === "production") {

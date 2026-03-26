@@ -44,9 +44,11 @@ export interface SiteSetting {
 export interface SupportRequest {
   id: number;
   reason: string;
+  target_area?: 'site' | 'course';
   email: string;
   subject: string;
   message: string;
+  screenshot_url?: string | null;
   user_id?: string;
   status: 'pending' | 'resolved' | 'closed';
   viewed?: boolean;
