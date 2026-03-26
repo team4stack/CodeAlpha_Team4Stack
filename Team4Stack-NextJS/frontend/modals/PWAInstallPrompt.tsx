@@ -21,6 +21,7 @@ const PWAInstallPrompt: React.FC = () => {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [manualInstallMode, setManualInstallMode] = useState(false);
 
   useEffect(() => {
     // Check if app is already installed
@@ -69,6 +70,15 @@ const PWAInstallPrompt: React.FC = () => {
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
+    // Fallback prompt for browsers where beforeinstallprompt does not fire
+    // (common on iOS Safari and some desktop contexts).
+    const fallbackTimer = window.setTimeout(() => {
+      if (isInstalled) return;
+      if (deferredPrompt) return;
+      setManualInstallMode(true);
+      setShowPrompt(true);
+    }, 12000);
+
     // Check if app gets installed
     window.addEventListener('appinstalled', () => {
       setIsInstalled(true);
@@ -79,8 +89,9 @@ const PWAInstallPrompt: React.FC = () => {
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.clearTimeout(fallbackTimer);
     };
-  }, []);
+  }, [deferredPrompt, isInstalled]);
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) {
@@ -112,7 +123,7 @@ const PWAInstallPrompt: React.FC = () => {
   };
 
   // Don't show if already installed or no prompt available
-  if (isInstalled || !showPrompt || !deferredPrompt) {
+  if (isInstalled || !showPrompt) {
     return null;
   }
 
@@ -141,15 +152,17 @@ const PWAInstallPrompt: React.FC = () => {
             <p className={`text-xs mb-3 ${
               isDarkMode ? 'text-white/70' : 'text-gray-600'
             }`}>
-              Install our app for a better experience. Quick access, offline support, and more!
+              {manualInstallMode
+                ? 'Add this app to your home screen from the browser menu for quick access and a better experience.'
+                : 'Install our app for a better experience. Quick access, offline support, and more!'}
             </p>
             
             <div className="flex gap-2">
               <button
-                onClick={handleInstallClick}
+                onClick={manualInstallMode ? handleDismiss : handleInstallClick}
                 className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-500 via-pink-500 to-indigo-500 hover:from-purple-600 hover:via-pink-600 hover:to-indigo-600 text-white text-sm font-medium rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
               >
-                Install
+                {manualInstallMode ? 'Got it' : 'Install'}
               </button>
               <button
                 onClick={handleDismiss}

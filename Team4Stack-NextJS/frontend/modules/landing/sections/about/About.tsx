@@ -186,7 +186,7 @@ const About: React.FC = () => {
       </script>
 
       {/* MERN Effect Background */}
-      <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none" style={{ zIndex: 0 }}>
+      <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none hidden md:block" style={{ zIndex: 0 }}>
         <CrazyMernEffect isDarkMode={isDarkMode} />
       </div>
 

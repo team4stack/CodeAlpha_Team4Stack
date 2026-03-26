@@ -72,8 +72,63 @@ const Courses: React.FC = () => {
     }
   };
 
+  const courseStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    "name": "Team4Stack Courses",
+    "description": "Physical and online MERN stack training courses offered by Team4Stack.",
+    "itemListElement": (dbCourses.length > 0 ? dbCourses : courses).map((course, index) => ({
+      "@type": "Course",
+      "position": index + 1,
+      "name": course.title,
+      "description": course.description,
+      "provider": {
+        "@type": "Organization",
+        "name": "Team4Stack",
+        "url": "https://www.team4stack.com"
+      }
+    }))
+  };
+
+  const courseFaqStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Does Team4Stack offer physical and online courses?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes, Team4Stack provides both physical training at WE Connect and online MERN stack training."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Are projects included in the MERN course?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes, Team4Stack courses are project-based and include assignments and practical implementation."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How can I apply for a Team4Stack course?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "You can use the Book Now option on the Courses section and continue to the application form."
+        }
+      }
+    ]
+  };
+
   return (
     <section id="courses" className="section-padding bg-gradient-to-b from-black to-gray-900">
+      <script type="application/ld+json">
+        {JSON.stringify(courseStructuredData)}
+      </script>
+      <script type="application/ld+json">
+        {JSON.stringify(courseFaqStructuredData)}
+      </script>
       <div className="container-custom px-4">
         <div className="text-center mb-10 sm:mb-12 md:mb-16">
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4 sm:mb-6">

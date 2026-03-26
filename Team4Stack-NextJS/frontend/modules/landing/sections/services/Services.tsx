@@ -128,18 +128,51 @@ const Services: React.FC = () => {
   // Structured Data for SEO
   const servicesStructuredData = {
     "@context": "https://schema.org",
-    "@type": "Service",
-    "serviceType": "Web Development Services",
-    "provider": {
-      "@type": "Organization",
-      "name": "Team4Stack",
-      "url": "https://team4stack.com/"
-    },
-    "serviceList": services.map(service => ({
+    "@type": "ItemList",
+    "name": "Team4Stack Services",
+    "description": "MERN development services, software solutions, and training programs offered by Team4Stack.",
+    "itemListElement": services.map((service, index) => ({
       "@type": "Service",
+      "position": index + 1,
       "name": service.title,
-      "description": service.description
+      "description": service.description,
+      "provider": {
+        "@type": "Organization",
+        "name": "Team4Stack",
+        "url": "https://www.team4stack.com/"
+      }
     }))
+  };
+
+  const servicesFaqStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "What services does Team4Stack provide?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Team4Stack provides MERN stack website development, online and physical MERN training, portfolio building, and custom business software solutions."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Do you provide both online and physical MERN courses?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes, Team4Stack offers both online and physical MERN training with practical projects, assignments, and mentorship."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How can I contact Team4Stack for a project?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "You can contact Team4Stack through WhatsApp or the website contact section to discuss your project requirements."
+        }
+      }
+    ]
   };
 
   return (
@@ -147,6 +180,9 @@ const Services: React.FC = () => {
       {/* Structured Data */}
       <script type="application/ld+json">
         {JSON.stringify(servicesStructuredData)}
+      </script>
+      <script type="application/ld+json">
+        {JSON.stringify(servicesFaqStructuredData)}
       </script>
       
       <div className="container-custom">
