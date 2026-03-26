@@ -21,12 +21,33 @@ const app: Express = express();
 const PORT = process.env.PORT || 5000;
 const FRONTEND_URL = process.env.FRONTEND_URL || process.env.CORS_ORIGIN || 'http://localhost:3000';
 
+function parseAllowedOrigins(): string[] {
+  // Azure App Settings sometimes use comma-separated lists.
+  const raw =
+    process.env.CORS_ORIGIN?.trim() ||
+    process.env.FRONTEND_URL?.trim() ||
+    'http://localhost:3000';
+  return raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((s) => s.replace(/\/$/, '')); // normalize trailing slash
+}
+
+const ALLOWED_ORIGINS = parseAllowedOrigins();
+
 // Security middleware
 app.use(helmet());
 
 // CORS configuration
 app.use(cors({
-  origin: FRONTEND_URL,
+  origin: (origin, callback) => {
+    // Non-browser clients (curl/postman) might not send Origin.
+    if (!origin) return callback(null, true);
+    const o = origin.replace(/\/$/, '');
+    if (ALLOWED_ORIGINS.includes(o)) return callback(null, true);
+    return callback(new Error('CORS origin not allowed'));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
