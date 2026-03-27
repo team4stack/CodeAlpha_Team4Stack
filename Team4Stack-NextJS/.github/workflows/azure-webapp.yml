@@ -6,6 +6,10 @@ on:
       - main
   workflow_dispatch:
 
+concurrency:
+  group: azure-backend-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   BACKEND_DIR: backend
 
