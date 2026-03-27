@@ -1,4 +1,4 @@
-import { useEffect, type Dispatch, type RefObject, type SetStateAction } from 'react';
+import { useEffect, useRef, type Dispatch, type RefObject, type SetStateAction } from 'react';
 import { logErrorSecurely } from '@/lib/utils/errorHandler';
 import { convertToEmbedUrl, extractYouTubeVideoId } from '../youtubeVideoUrlHelpers';
 import type { Video } from '../types';
@@ -46,10 +46,22 @@ export const useCourseVideoPlaybackTracking = ({
   setVideoWatchedTime,
   setVideoTotalDuration
 }: UseCourseVideoPlaybackTrackingArgs) => {
+  const videoWatchedRef = useRef(videoWatched);
+  const videoWatchedTimeRef = useRef(videoWatchedTime);
+  const videosRef = useRef(videos);
+  const markVideoAsCompletedRef = useRef(markVideoAsCompleted);
+
+  useEffect(() => {
+    videoWatchedRef.current = videoWatched;
+    videoWatchedTimeRef.current = videoWatchedTime;
+    videosRef.current = videos;
+    markVideoAsCompletedRef.current = markVideoAsCompleted;
+  }, [videoWatched, videoWatchedTime, videos, markVideoAsCompleted]);
+
   useEffect(() => {
     if (!selectedVideoId) return;
 
-    const selectedVideo = videos.find((video) => video.id === selectedVideoId);
+    const selectedVideo = videosRef.current.find((video) => video.id === selectedVideoId);
     if (!selectedVideo) return;
 
     if (progressIntervalRef.current) {
@@ -89,13 +101,14 @@ export const useCourseVideoPlaybackTracking = ({
     };
 
     const fallbackYouTubeTracking = (vidId: number, video: Video) => {
+      if (videoWatchedRef.current.has(vidId)) return;
       const videoDuration = video.duration || 600;
-      const existingTime = videoWatchedTime.get(vidId) || 0;
+      const existingTime = videoWatchedTimeRef.current.get(vidId) || 0;
       elapsedTimeRef.current?.set(vidId, existingTime);
 
       if (existingTime >= videoDuration && videoDuration > 0) {
         setVideoProgress((prev) => new Map(prev).set(vidId, 100));
-        markVideoAsCompleted(vidId);
+        markVideoAsCompletedRef.current(vidId);
         return;
       }
 
@@ -106,8 +119,8 @@ export const useCourseVideoPlaybackTracking = ({
         if (videoDuration > 0 && currentElapsed >= videoDuration) {
           setVideoProgress((prev) => new Map(prev).set(vidId, 100));
           setVideoWatchedTime((prev) => new Map(prev).set(vidId, videoDuration));
-          if (!videoWatched.has(vidId)) {
-            markVideoAsCompleted(vidId);
+          if (!videoWatchedRef.current.has(vidId)) {
+            markVideoAsCompletedRef.current(vidId);
           }
           if (progressIntervalRef.current) {
             clearInterval(progressIntervalRef.current);
@@ -115,12 +128,8 @@ export const useCourseVideoPlaybackTracking = ({
         } else if (videoDuration > 0) {
           const progress = Math.min((currentElapsed / videoDuration) * 100, 100);
           setVideoProgress((prev) => new Map(prev).set(vidId, progress));
-          setVideoWatchedTime((prev) => {
-            if (!videoWatched.has(vidId)) {
-              return new Map(prev).set(vidId, currentElapsed);
-            }
-            return prev;
-          });
+          // Update watched time live even if completion already happened.
+          setVideoWatchedTime((prev) => new Map(prev).set(vidId, currentElapsed));
         }
       }, 1000);
     };
@@ -176,7 +185,8 @@ export const useCourseVideoPlaybackTracking = ({
                 onReady: (event: any) => {
                   const duration = event.target.getDuration();
                   if (duration && duration > 0) {
-                    setVideoTotalDuration((prev) => new Map(prev).set(selectedVideoId, duration));
+                    // Do not overwrite API-provided lecture durations here.
+                    // Total course/watch time should remain stable after initial load.
                   }
                 },
                 onStateChange: (event: any) => {
@@ -191,6 +201,10 @@ export const useCourseVideoPlaybackTracking = ({
 
                     progressIntervalRef.current = setInterval(() => {
                       if (youtubePlayerRef.current) {
+                        if (videoWatchedRef.current.has(selectedVideoId)) {
+                          clearInterval(progressIntervalRef.current!);
+                          return;
+                        }
                         try {
                           const currentTime = youtubePlayerRef.current.getCurrentTime();
                           const duration = youtubePlayerRef.current.getDuration();
@@ -208,23 +222,22 @@ export const useCourseVideoPlaybackTracking = ({
                               actualYTWatched = actualYTWatched + Math.min(realTimeDiff, 1);
                             }
 
-                            const safeActualYTWatched = Math.min(actualYTWatched, duration);
+                          const safeActualYTWatched = Math.min(actualYTWatched, duration);
 
-                            lastYTTime = currentTimeSeconds;
-                            lastTrackedTimeRef.current?.set(selectedVideoId, lastYTTime);
-                            actualWatchedTimeRef.current?.set(selectedVideoId, safeActualYTWatched);
-                            elapsedTimeRef.current?.set(selectedVideoId, currentTimeSeconds);
-                            lastYTUpdateTime = Date.now();
+                          lastYTTime = currentTimeSeconds;
+                          lastTrackedTimeRef.current?.set(selectedVideoId, lastYTTime);
+                          actualWatchedTimeRef.current?.set(selectedVideoId, safeActualYTWatched);
+                          elapsedTimeRef.current?.set(selectedVideoId, currentTimeSeconds);
+                          lastYTUpdateTime = Date.now();
 
-                            const progress = Math.min((safeActualYTWatched / duration) * 100, 100);
+                          const progress = Math.min((safeActualYTWatched / duration) * 100, 100);
 
-                            setVideoWatchedTime((prev) => new Map(prev).set(selectedVideoId, safeActualYTWatched));
-                            setVideoProgress((prev) => new Map(prev).set(selectedVideoId, progress));
-                            setVideoTotalDuration((prev) => new Map(prev).set(selectedVideoId, duration));
-                          }
-                        } catch (e) {
-                          console.log('Error getting YouTube player state:', e);
+                          setVideoWatchedTime((prev) => new Map(prev).set(selectedVideoId, safeActualYTWatched));
+                          setVideoProgress((prev) => new Map(prev).set(selectedVideoId, progress));
                         }
+                      } catch (e) {
+                        console.log('Error getting YouTube player state:', e);
+                      }
                       }
                     }, 1000);
                   } else if (event.data === (window as any).YT.PlayerState.ENDED) {
@@ -235,11 +248,11 @@ export const useCourseVideoPlaybackTracking = ({
                         if (duration) {
                           const safeActualWatched = Math.min(actualWatched, duration);
                           const progress = Math.min((safeActualWatched / duration) * 100, 100);
-                          if (progress >= 90) {
-                            setVideoWatchedTime((prev) => new Map(prev).set(selectedVideoId, safeActualWatched));
-                            setVideoProgress((prev) => new Map(prev).set(selectedVideoId, progress));
-                            markVideoAsCompleted(selectedVideoId);
-                          }
+                            if (progress >= 90) {
+                              setVideoWatchedTime((prev) => new Map(prev).set(selectedVideoId, safeActualWatched));
+                              setVideoProgress((prev) => new Map(prev).set(selectedVideoId, progress));
+                              markVideoAsCompletedRef.current(selectedVideoId);
+                            }
                         }
                       } catch (e) {
                         if (process.env.NODE_ENV === 'development') {
@@ -268,7 +281,7 @@ export const useCourseVideoPlaybackTracking = ({
             if (iframeElement && (iframeElement as HTMLElement).style) {
               (iframeElement as HTMLElement).style.display = 'block';
             }
-            if (!videoWatched.has(selectedVideoId)) {
+            if (!videoWatchedRef.current.has(selectedVideoId)) {
               fallbackYouTubeTracking(selectedVideoId, selectedVideo);
             }
           }
@@ -278,7 +291,7 @@ export const useCourseVideoPlaybackTracking = ({
       } else if (
         videoId &&
         youtubeIframeFallbackActive &&
-        !videoWatched.has(selectedVideoId)
+        !videoWatchedRef.current.has(selectedVideoId)
       ) {
         fallbackYouTubeTracking(selectedVideoId, selectedVideo);
       }
@@ -299,15 +312,10 @@ export const useCourseVideoPlaybackTracking = ({
     const videoElement = videoRef.current;
     if (!videoElement || !selectedVideoId) return;
 
-    const handleLoadedMetadata = () => {
-      if (videoElement.duration && videoElement.duration > 0) {
-        const totalSeconds = Math.floor(videoElement.duration);
-        // Local UI only: duration persistence is admin-only (see courseController.updateVideo).
-        setVideoTotalDuration((prev) => new Map(prev).set(selectedVideoId, totalSeconds));
-      }
-    };
+    // No-op: duration should come only from API `durationMap` to keep totals stable.
+    const handleLoadedMetadata = () => {};
 
-    const initialWatchedTime = videoWatchedTime.get(selectedVideoId) || 0;
+    const initialWatchedTime = videoWatchedTimeRef.current.get(selectedVideoId) || 0;
     if (!actualWatchedTimeRef.current?.has(selectedVideoId)) {
       actualWatchedTimeRef.current?.set(selectedVideoId, initialWatchedTime);
     }
@@ -319,6 +327,7 @@ export const useCourseVideoPlaybackTracking = ({
     let lastUpdateTime = Date.now();
 
     const handleTimeUpdate = () => {
+      if (videoWatchedRef.current.has(selectedVideoId)) return;
       if (videoElement.duration && videoElement.duration > 0 && videoElement.paused === false) {
         const currentTime = Math.floor(videoElement.currentTime);
         const totalSeconds = Math.floor(videoElement.duration);
@@ -336,6 +345,11 @@ export const useCourseVideoPlaybackTracking = ({
         }
 
         const safeActualWatched = Math.min(actualWatched, totalSeconds);
+        if (safeActualWatched >= totalSeconds) {
+          setVideoWatchedTime((prev) => new Map(prev).set(selectedVideoId, totalSeconds));
+          setVideoProgress((prev) => new Map(prev).set(selectedVideoId, 100));
+          return;
+        }
 
         lastTrackedTimeRef.current?.set(selectedVideoId, currentTime);
         actualWatchedTimeRef.current?.set(selectedVideoId, safeActualWatched);
@@ -378,7 +392,7 @@ export const useCourseVideoPlaybackTracking = ({
         if (progress >= 90) {
           setVideoProgress((prev) => new Map(prev).set(selectedVideoId, progress));
           setVideoWatchedTime((prev) => new Map(prev).set(selectedVideoId, safeActualWatched));
-          markVideoAsCompleted(selectedVideoId);
+          markVideoAsCompletedRef.current(selectedVideoId);
         } else {
           setVideoProgress((prev) => new Map(prev).set(selectedVideoId, progress));
           setVideoWatchedTime((prev) => new Map(prev).set(selectedVideoId, safeActualWatched));
@@ -405,5 +419,5 @@ export const useCourseVideoPlaybackTracking = ({
       videoElement.removeEventListener('seeked', handleSeeked);
       videoElement.removeEventListener('ended', handleVideoEnd);
     };
-  }, [selectedVideoId, markVideoAsCompleted, videoWatchedTime]);
+  }, [selectedVideoId]);
 };

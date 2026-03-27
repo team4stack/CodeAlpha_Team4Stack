@@ -272,15 +272,18 @@ export class CourseController {
   updateProgress = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const body = req.body || {};
+      if (body.score === undefined && body.watched_seconds !== undefined) {
+        body.score = body.watched_seconds;
+      }
       const uid = typeof body.user_id === 'string' ? body.user_id : String(body.user_id || '');
       if (isCoursesAdmin(req)) {
-        const progress = await courseService.updateProgress(req.body);
+        const progress = await courseService.updateProgress(body);
         res.json({ success: true, data: progress });
         return;
       }
       if (req.auth?.kind === 'user' && uid && req.auth.sub === uid) {
         await courseService.assertEmailHasApprovedAdmission(req.auth.email);
-        const progress = await courseService.updateProgress(req.body);
+        const progress = await courseService.updateProgress(body);
         res.json({ success: true, data: progress });
         return;
       }

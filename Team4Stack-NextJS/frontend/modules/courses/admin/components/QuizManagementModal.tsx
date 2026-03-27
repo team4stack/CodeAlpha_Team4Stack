@@ -38,9 +38,16 @@ type Props = {
   onClose: () => void
   videoId: number
   videoTitle: string
+  variant?: 'modal' | 'page'
 }
 
-const QuizManagementModal: React.FC<Props> = ({ isOpen, onClose, videoId, videoTitle }) => {
+const QuizManagementModal: React.FC<Props> = ({
+  isOpen,
+  onClose,
+  videoId,
+  videoTitle,
+  variant = 'modal'
+}) => {
   const { isDarkMode } = useTheme()
   const [loading, setLoading] = useState(false)
   const [quiz, setQuiz] = useState<Quiz | null>(null)
@@ -308,24 +315,54 @@ const QuizManagementModal: React.FC<Props> = ({ isOpen, onClose, videoId, videoT
     }
   }
 
-  if (!isOpen) return null
+  const isPage = variant === 'page'
+  if (!isOpen && !isPage) return null
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto" style={{ paddingTop: '100px', paddingBottom: '100px' }}>
-      <div className={`bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-4xl w-full overflow-hidden flex flex-col ${isDarkMode ? 'border border-gray-700' : 'border border-gray-200'}`} style={{ maxHeight: 'calc(100vh - 200px)' }}>
-        {/* Header */}
-        <div className="bg-linear-to-r from-purple-600 to-indigo-600 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-white">Quiz Management - {videoTitle}</h2>
+  const content = (
+    <div
+      className={
+        isPage
+          ? 'w-full flex flex-col'
+          : `bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full overflow-hidden flex flex-col ${
+              isDarkMode ? 'border border-gray-700' : 'border border-gray-200'
+            }`
+      }
+      style={isPage ? undefined : { maxHeight: 'calc(100vh - 200px)' }}
+    >
+      {/* Header */}
+      <div
+        className={
+          isPage
+            ? 'mb-6 flex items-start justify-between gap-4 rounded-xl border px-5 py-4 bg-linear-to-r from-purple-600/20 via-indigo-600/10 to-purple-600/20 border-purple-500/30'
+            : 'bg-linear-to-r from-purple-600 to-indigo-600 px-6 py-4 flex items-center justify-between'
+        }
+      >
+        <h2 className={isPage ? `text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}` : 'text-xl font-bold text-white'}>
+          Quiz Management - {videoTitle}
+        </h2>
+        {isPage ? (
+          <button
+            onClick={onClose}
+            className={`px-3 py-1 text-sm font-semibold rounded-lg border transition-colors self-center ${
+              isDarkMode
+                ? 'border-gray-700 text-gray-200 hover:bg-gray-800'
+                : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            ← Back
+          </button>
+        ) : (
           <button
             onClick={onClose}
             className="text-red-300 hover:text-red-200 hover:bg-red-500/30 rounded-full p-1.5 transition-all duration-200"
           >
             ✕
           </button>
-        </div>
+        )}
+      </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+      {/* Content */}
+      <div className={isPage ? 'flex-1 p-6' : 'flex-1 overflow-y-auto p-6'}>
           {loading && !quiz ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
@@ -633,8 +670,18 @@ const QuizManagementModal: React.FC<Props> = ({ isOpen, onClose, videoId, videoT
           )}
         </div>
       </div>
+    );
+
+  return isPage ? (
+    <div className="w-full px-6 py-4">{content}</div>
+  ) : (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto" style={{ paddingTop: '100px', paddingBottom: '100px' }}>
+      <div className="max-w-4xl w-full">{content}</div>
     </div>
   )
 }
 
 export default QuizManagementModal
+
+
+

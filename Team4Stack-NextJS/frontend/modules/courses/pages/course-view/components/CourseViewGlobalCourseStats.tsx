@@ -20,8 +20,8 @@ const CourseViewGlobalCourseStats: React.FC<CourseViewGlobalCourseStatsProps> = 
 }) => {
   if (totalVideos <= 0) return null;
 
-  const totalLabel =
-    totalCourseDuration > 0 ? formatPlaybackTime(totalCourseDuration) : '—';
+  const watchedLabel = formatPlaybackTime(totalWatchedTime);
+  const totalLabel = totalCourseDuration > 0 ? formatPlaybackTime(totalCourseDuration) : '—';
 
   return (
     <div
@@ -32,18 +32,8 @@ const CourseViewGlobalCourseStats: React.FC<CourseViewGlobalCourseStatsProps> = 
       }`}
     >
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-        <span className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-          Course time
-        </span>
-        <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>
-          <span className="font-medium text-purple-500 dark:text-purple-400">Total</span>
-          {': '}
-          {totalLabel}
-        </span>
-        <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>
-          <span className="font-medium text-cyan-600 dark:text-cyan-400">Watched</span>
-          {': '}
-          {formatPlaybackTime(totalWatchedTime)}
+        <span className={`font-bold tabular-nums ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+          {watchedLabel} / {totalLabel}
         </span>
       </div>
     </div>

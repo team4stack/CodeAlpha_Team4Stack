@@ -9,9 +9,12 @@ interface UseCourseViewQuizLifecycleHandlersArgs {
   courseId: string | null;
   quizVideoId: number | null;
   quizPassedMap: Map<number, boolean>;
+  quizAttemptCountMap: Map<number, number>;
   checkQuizStatus: (videoId: number) => Promise<boolean>;
   checkQuizExists: (videoId: number) => Promise<boolean>;
   setLectureQuizPassedStatus: (videoId: number, passed: boolean) => void;
+  setQuizAttemptCountMap: Dispatch<SetStateAction<Map<number, number>>>;
+  setQuizLockedMap: Dispatch<SetStateAction<Map<number, boolean>>>;
   getNextLectureId: (currentVideoId: number) => number | null;
   setShowQuiz: (show: boolean) => void;
   setQuizVideoId: (videoId: number | null) => void;
@@ -30,9 +33,12 @@ export const useCourseViewQuizLifecycleHandlers = ({
   courseId,
   quizVideoId,
   quizPassedMap,
+  quizAttemptCountMap,
   checkQuizStatus,
   checkQuizExists,
   setLectureQuizPassedStatus,
+  setQuizAttemptCountMap,
+  setQuizLockedMap,
   getNextLectureId,
   setShowQuiz,
   setQuizVideoId,
@@ -50,7 +56,7 @@ export const useCourseViewQuizLifecycleHandlers = ({
     setShowQuiz(true);
   }, [setQuizVideoId, setShowQuiz]);
 
-  const handleQuizComplete = useCallback(async (passed: boolean, attemptCount: number) => {
+  const handleQuizComplete = useCallback(async (passed: boolean) => {
     const currentQuizVideoId = quizVideoId;
     if (!currentQuizVideoId || !userId) return;
 
@@ -65,7 +71,28 @@ export const useCourseViewQuizLifecycleHandlers = ({
       logErrorSecurely(err, 'refreshQuizStatus');
     }
 
-    if (!passed && attemptCount === 2) {
+    const previousAttempts = quizAttemptCountMap.get(currentQuizVideoId) || 0;
+    const nextAttempts = passed ? 0 : previousAttempts + 1;
+    setQuizAttemptCountMap((prev) => {
+      const next = new Map(prev);
+      next.set(currentQuizVideoId, nextAttempts);
+      return next;
+    });
+
+    if (passed) {
+      setQuizLockedMap((prev) => {
+        const next = new Map(prev);
+        next.set(currentQuizVideoId, false);
+        return next;
+      });
+    }
+
+    if (!passed && nextAttempts >= 2) {
+      setQuizLockedMap((prev) => {
+        const next = new Map(prev);
+        next.set(currentQuizVideoId, true);
+        return next;
+      });
       try {
         const progressResult = await coursesApi.updateProgress({
           user_id: userId,
@@ -122,6 +149,9 @@ export const useCourseViewQuizLifecycleHandlers = ({
     quizVideoId,
     userId,
     setLectureQuizPassedStatus,
+    quizAttemptCountMap,
+    setQuizAttemptCountMap,
+    setQuizLockedMap,
     checkQuizStatus,
     checkQuizExists,
     courseId,

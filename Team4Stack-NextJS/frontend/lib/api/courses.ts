@@ -60,10 +60,15 @@ export const coursesApi = {
 
   // Assignments
   getAssignmentsByCourse: async (courseId: number) => {
-    return apiClient.get(`/courses/assignments/course/${courseId}`);
+    // Student view must never read admin_session data (prevents mixed submissions).
+    return apiClient.get(`/courses/assignments/course/${courseId}`, { authMode: 'user-only' });
   },
 
   getAssignmentsByVideo: async (videoId: number) => {
+    // Student view must never read admin_session data (prevents mixed submissions).
+    return apiClient.get(`/courses/assignments/video/${videoId}`, { authMode: 'user-only' });
+  },
+  getAssignmentsByVideoAdmin: async (videoId: number) => {
     return apiClient.get(`/courses/assignments/video/${videoId}`);
   },
 
@@ -80,7 +85,7 @@ export const coursesApi = {
   },
 
   submitAssignment: async (assignmentId: number, payload: any) => {
-    return apiClient.post(`/courses/assignments/${assignmentId}/submit`, payload);
+    return apiClient.post(`/courses/assignments/${assignmentId}/submit`, payload, { authMode: 'user-only' });
   },
 
   getAssignmentSubmissionsByVideo: async (videoId: number) => {
@@ -97,7 +102,7 @@ export const coursesApi = {
   },
 
   updateAssignmentSubmission: async (id: number, patch: any) => {
-    return apiClient.patch(`/courses/assignments/submissions/${id}`, patch);
+    return apiClient.patch(`/courses/assignments/submissions/${id}`, patch, { authMode: 'user-only' });
   },
 
   // Get admission forms
@@ -144,7 +149,8 @@ export const coursesApi = {
   // Get user progress
   getUserProgress: async (userId: string, courseId?: number) => {
     const query = courseId ? `?courseId=${courseId}` : '';
-    return apiClient.get(`/courses/progress/${userId}${query}`);
+    // Use user-only so `admin_session` in sessionStorage can't override student auth.
+    return apiClient.get(`/courses/progress/${userId}${query}`, { authMode: 'user-only' });
   },
 
   // Get single-course report for one student
@@ -185,7 +191,8 @@ export const coursesApi = {
 
   // Update progress
   updateProgress: async (progress: any) => {
-    return apiClient.post('/courses/progress', progress);
+    // Student progress updates must be authenticated as user.
+    return apiClient.post('/courses/progress', progress, { authMode: 'user-only' });
   },
 
   // Quiz APIs
@@ -234,22 +241,22 @@ export const coursesApi = {
       quiz_id: quizId,
       user_id: userId,
       video_id: videoId
-    });
+    }, { authMode: 'user-only' });
   },
 
   submitQuizAttempt: async (
     attemptId: number | string,
     answers: Array<{ question_id: number | string; selected_option_id: number | string }>
   ) => {
-    return apiClient.post(`/courses/quizzes/attempts/${attemptId}/submit`, { answers });
+    return apiClient.post(`/courses/quizzes/attempts/${attemptId}/submit`, { answers }, { authMode: 'user-only' });
   },
 
   getUserQuizAttempts: async (videoId: number, userId: string) => {
-    return apiClient.get(`/courses/quizzes/attempts/${videoId}/${userId}`);
+    return apiClient.get(`/courses/quizzes/attempts/${videoId}/${userId}`, { authMode: 'user-only' });
   },
 
   hasUserPassedQuiz: async (videoId: number, userId: string) => {
-    return apiClient.get(`/courses/quizzes/check/${videoId}/${userId}`);
+    return apiClient.get(`/courses/quizzes/check/${videoId}/${userId}`, { authMode: 'user-only' });
   },
 
   getStudentNotifications: async (email: string) => {

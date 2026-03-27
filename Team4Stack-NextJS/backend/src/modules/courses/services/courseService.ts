@@ -139,6 +139,52 @@ function resolveAssignmentTitle(assignment: Record<string, unknown>): string {
 }
 
 export class CourseService {
+  private parseIsoDurationToSeconds(value: string): number {
+    const match = /P(?:\d+Y)?(?:\d+M)?(?:\d+W)?(?:\d+D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/.exec(value);
+    if (!match) return 0;
+    const hours = Number(match[1] || 0);
+    const minutes = Number(match[2] || 0);
+    const seconds = Number(match[3] || 0);
+    if ([hours, minutes, seconds].some((n) => Number.isNaN(n))) return 0;
+    return hours * 3600 + minutes * 60 + seconds;
+  }
+
+  private async fetchYouTubeDurationSeconds(videoUrl?: string): Promise<number> {
+    const videoId = this.extractYouTubeId(videoUrl);
+    if (!videoId) return 0;
+
+    const key = process.env.YOUTUBE_API_KEY?.trim();
+    if (!key) return 0;
+
+    try {
+      const url = new URL('https://www.googleapis.com/youtube/v3/videos');
+      url.searchParams.set('part', 'contentDetails');
+      url.searchParams.set('id', videoId);
+      url.searchParams.set('key', key);
+
+      const refererRaw =
+        process.env.YOUTUBE_API_REFERER?.trim() ||
+        process.env.FRONTEND_URL?.trim() ||
+        process.env.CORS_ORIGIN?.trim() ||
+        '';
+      const referer = refererRaw ? (refererRaw.endsWith('/') ? refererRaw : `${refererRaw}/`) : '';
+
+      const response = await fetch(url.toString(), {
+        headers: referer ? { Referer: referer } : undefined
+      });
+      if (!response.ok) return 0;
+
+      const json = (await response.json()) as {
+        items?: Array<{ contentDetails?: { duration?: string } }>;
+      };
+      const durationIso = json.items?.[0]?.contentDetails?.duration || '';
+      if (!durationIso) return 0;
+      return this.parseIsoDurationToSeconds(durationIso);
+    } catch {
+      return 0;
+    }
+  }
+
   private extractYouTubeId(url?: string): string | null {
     if (!url) return null;
     const input = String(url);
@@ -428,6 +474,12 @@ export class CourseService {
       await this.assertNoDuplicateCourseVideo(courseId, video.video_url);
     }
     const insert = pickAllowedKeys(video, VIDEO_KEYS);
+    if ((!insert.duration || insert.duration <= 0) && insert.video_url) {
+      const fetchedDuration = await this.fetchYouTubeDurationSeconds(insert.video_url);
+      if (fetchedDuration > 0) {
+        insert.duration = fetchedDuration;
+      }
+    }
     const { data, error } = await supabaseAdmin.from('videos').insert(insert).select().single();
 
     if (error) throw error;
@@ -451,6 +503,15 @@ export class CourseService {
     }
 
     const patch = pickAllowedKeys(video, VIDEO_KEYS);
+    if (patch.video_url) {
+      const shouldFetchDuration = !patch.duration || patch.duration <= 0 || shouldResetLearningState;
+      if (shouldFetchDuration) {
+        const fetchedDuration = await this.fetchYouTubeDurationSeconds(patch.video_url);
+        if (fetchedDuration > 0) {
+          patch.duration = fetchedDuration;
+        }
+      }
+    }
     if (shouldResetLearningState && (patch.duration === undefined || patch.duration === null)) {
       // Ensure old duration is not shown after URL changes.
       patch.duration = 0;
@@ -570,46 +631,7 @@ export class CourseService {
     const { data, error } = await query;
     if (error) throw error;
     const rows = (data || []) as ProgressRecord[];
-    if (rows.length === 0) return [];
-
-    const videoIds = [...new Set(rows.map((row) => Number(row.video_id)).filter((id) => Number.isFinite(id) && id > 0))];
-    if (videoIds.length === 0) return rows;
-
-    const { data: videosData, error: videosError } = await supabaseAdmin
-      .from('videos')
-      .select('id, updated_at')
-      .in('id', videoIds);
-    if (videosError) throw videosError;
-
-    const videoUpdatedAtById = new Map<number, number>();
-    ((videosData || []) as Array<{ id: number; updated_at?: string | null }>).forEach((video) => {
-      if (!video.updated_at) return;
-      const t = Date.parse(String(video.updated_at));
-      if (!Number.isNaN(t)) {
-        videoUpdatedAtById.set(Number(video.id), t);
-      }
-    });
-
-    // If lecture was updated after user progress timestamp, treat that lecture progress as stale.
-    return rows.map((row) => {
-      const videoId = Number(row.video_id || 0);
-      const videoUpdatedAt = videoUpdatedAtById.get(videoId);
-      if (!videoUpdatedAt) return row;
-
-      const progressTimestampRaw =
-        (row as unknown as { updated_at?: string | null; created_at?: string | null }).updated_at ||
-        (row as unknown as { created_at?: string | null }).created_at;
-      if (!progressTimestampRaw) return row;
-
-      const progressAt = Date.parse(String(progressTimestampRaw));
-      if (Number.isNaN(progressAt) || progressAt >= videoUpdatedAt) return row;
-
-      return {
-        ...row,
-        completed: false,
-        score: 0
-      };
-    });
+    return rows;
   }
 
   async getAllProgress(filters?: { courseId?: string; userId?: string; completed?: boolean }): Promise<ProgressRecord[]> {
@@ -821,12 +843,6 @@ export class CourseService {
     const videos = await this.getCourseVideos(courseId);
     const videoIds = videos.map((video) => video.id);
 
-    const videoUpdatedAtById = new Map<number, number>();
-    videos.forEach((video) => {
-      const updatedAt = toValidDateMs(video.updated_at || video.created_at || null);
-      if (updatedAt > 0) videoUpdatedAtById.set(video.id, updatedAt);
-    });
-
     let progressRows: ProgressRecord[] = [];
     if (videoIds.length > 0) {
       const { data, error } = await supabaseAdmin
@@ -836,7 +852,7 @@ export class CourseService {
         .eq('course_id', courseId)
         .in('video_id', videoIds);
       if (error) throw error;
-      progressRows = this.normalizeStaleProgressRows((data || []) as ProgressRecord[], videoUpdatedAtById);
+      progressRows = (data || []) as ProgressRecord[];
     }
 
     const completedLectures = progressRows.filter((row) => row.completed === true && row.video_id).length;
@@ -849,7 +865,7 @@ export class CourseService {
     const quizStats = await this.getQuizReportStats({
       userId,
       videoIds,
-      videoUpdatedAtById
+      videoUpdatedAtById: new Map()
     });
 
     const { data: applicationData, error: applicationError } = await supabaseAdmin
@@ -1032,9 +1048,66 @@ export class CourseService {
   async updateProgress(progress: Partial<ProgressRecord>): Promise<ProgressRecord> {
     const progressKeys = ['user_id', 'course_id', 'video_id', 'completed', 'score'] as const;
     const row = pickAllowedKeys(progress, progressKeys);
+
+    const userId = String(row.user_id || '').trim();
+    const courseId = Number(row.course_id || 0);
+    const videoId = Number(row.video_id || 0);
+    if (!userId || !Number.isFinite(courseId) || courseId <= 0 || !Number.isFinite(videoId) || videoId <= 0) {
+      throw badRequestError('user_id, course_id, and video_id are required');
+    }
+
+    const { data: videoRow, error: videoError } = await supabaseAdmin
+      .from('videos')
+      .select('duration')
+      .eq('id', videoId)
+      .maybeSingle();
+    if (videoError) throw videoError;
+
+    const rawDuration = (videoRow as { duration?: number | string } | null)?.duration;
+    let safeDuration = 0;
+    if (typeof rawDuration === 'number') {
+      safeDuration = Number.isFinite(rawDuration) && rawDuration > 0 ? rawDuration : 0;
+    } else if (typeof rawDuration === 'string') {
+      const trimmed = rawDuration.trim();
+      const numeric = Number(trimmed);
+      if (Number.isFinite(numeric) && numeric > 0) {
+        safeDuration = numeric;
+      } else {
+        const parts = trimmed.split(':').map((part) => Number(part));
+        if (!parts.some((part) => Number.isNaN(part))) {
+          if (parts.length === 3) safeDuration = parts[0] * 3600 + parts[1] * 60 + parts[2];
+          if (parts.length === 2) safeDuration = parts[0] * 60 + parts[1];
+        }
+      }
+    }
+
+    const { data: existing, error: existingError } = await supabaseAdmin
+      .from('progress_records')
+      .select('score, completed')
+      .eq('user_id', userId)
+      .eq('course_id', courseId)
+      .eq('video_id', videoId)
+      .maybeSingle();
+    if (existingError) throw existingError;
+
+    const incomingScore = Number(row.score || 0);
+    const safeIncoming = Number.isFinite(incomingScore) && incomingScore > 0 ? incomingScore : 0;
+    const previousScore = Number((existing as { score?: number } | null)?.score || 0);
+    const nextScoreRaw = Math.max(previousScore, safeIncoming);
+    const nextScore = safeDuration > 0 ? Math.min(nextScoreRaw, safeDuration) : nextScoreRaw;
+    const completed = safeDuration > 0 ? nextScore >= safeDuration * 0.9 : false;
+
+    const payload = {
+      user_id: userId,
+      course_id: courseId,
+      video_id: videoId,
+      score: Math.round(nextScore),
+      completed
+    };
+
     const { data, error } = await supabaseAdmin
       .from('progress_records')
-      .upsert(row, { onConflict: 'user_id,course_id,video_id' })
+      .upsert(payload, { onConflict: 'user_id,course_id,video_id' })
       .select()
       .maybeSingle();
 

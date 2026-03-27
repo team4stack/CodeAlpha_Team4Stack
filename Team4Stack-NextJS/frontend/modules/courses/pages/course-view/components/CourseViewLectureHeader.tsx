@@ -12,6 +12,7 @@ interface CourseViewLectureHeaderProps {
   hasNext: boolean;
   quizExists: boolean;
   quizPassed: boolean;
+  quizLocked?: boolean;
   onPrev: () => void;
   onTakeQuiz: () => void;
   onNext: () => void;
@@ -30,6 +31,7 @@ const CourseViewLectureHeader: React.FC<CourseViewLectureHeaderProps> = ({
   hasNext,
   quizExists,
   quizPassed,
+  quizLocked = false,
   onPrev,
   onTakeQuiz,
   onNext,
@@ -85,13 +87,18 @@ const CourseViewLectureHeader: React.FC<CourseViewLectureHeaderProps> = ({
             quizExists && !quizPassed ? (
               <button
                 onClick={onTakeQuiz}
+                disabled={quizLocked}
                 className={`px-4 py-2 text-sm rounded-lg font-semibold transition-all shadow-md ${
-                  isDarkMode
-                    ? 'bg-purple-600 hover:bg-purple-700 text-white'
-                    : 'bg-purple-500 hover:bg-purple-600 text-white'
+                  quizLocked
+                    ? isDarkMode
+                      ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                      : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                    : isDarkMode
+                      ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                      : 'bg-purple-500 hover:bg-purple-600 text-white'
                 }`}
               >
-                Take Quiz
+                {quizLocked ? 'Quiz Locked' : 'Take Quiz'}
               </button>
             ) : hasNext ? (
               <button

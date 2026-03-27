@@ -55,7 +55,7 @@ router.get('/youtube/video', async (req: Request, res: Response, next: NextFunct
     }
 
     const url = new URL('https://www.googleapis.com/youtube/v3/videos');
-    url.searchParams.set('part', 'snippet');
+    url.searchParams.set('part', 'snippet,contentDetails');
     url.searchParams.set('id', videoId);
     url.searchParams.set('key', key);
 

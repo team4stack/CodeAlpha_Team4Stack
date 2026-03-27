@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import type { QuizScore, Video } from '../types';
 import { formatPlaybackTime } from '../utils/formatPlaybackTime';
 import CourseViewLectureAccordionItem from './CourseViewLectureAccordionItem';
@@ -17,11 +17,15 @@ interface CourseViewSidebarContentProps {
   unlockedLectures: Set<number>;
   quizExistsMap: Map<number, boolean>;
   quizScoresMap: Map<number, QuizScore>;
+  quizLockedMap: Map<number, boolean>;
   videoTotalDuration: Map<number, number>;
   videoWatchedTime: Map<number, number>;
   videoProgress: Map<number, number>;
   assignmentCountByVideo: Map<number, number>;
+  assignmentSubmittedByVideo: Map<number, boolean>;
+  assignmentMarksByVideo: Map<number, { awarded: number; total: number }>;
   onSelectVideo: (videoId: number) => void;
+  onOpenAssignmentForVideo: (videoId: number) => void;
   onCloseSidebar: () => void;
 }
 
@@ -34,15 +38,11 @@ const SidebarProgressBar: React.FC<{
   return (
     <>
       <div className="flex justify-between items-center mb-2">
-        <span className={`text-sm font-semibold ${
-          isDarkMode ? 'text-gray-300' : 'text-gray-700'
-        }`}>
-          Course Progress
-        </span>
-        <span className={`text-sm font-bold ${
-          isDarkMode ? 'text-purple-400' : 'text-purple-600'
-        }`}>
+        <span className={`text-sm font-bold tabular-nums ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`}>
           {progressPercentage}%
+        </span>
+        <span className={`text-xs font-semibold tabular-nums ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+          {completedCount}/{totalVideos}
         </span>
       </div>
       <div className={`w-full h-3 rounded-full overflow-hidden ${
@@ -53,11 +53,6 @@ const SidebarProgressBar: React.FC<{
           style={{ width: `${progressPercentage}%` }}
         />
       </div>
-      <p className={`text-xs mt-2 text-center ${
-        isDarkMode ? 'text-gray-400' : 'text-gray-500'
-      }`}>
-        {completedCount} of {totalVideos} lectures completed
-      </p>
     </>
   );
 };
@@ -69,33 +64,22 @@ const SidebarTimeSummary: React.FC<{
   totalWatchedTime: number;
 }> = ({ isDarkMode, totalVideos, totalCourseDuration, totalWatchedTime }) => {
   if (totalVideos <= 0) return null;
+  const totalLabel = totalCourseDuration > 0 ? formatPlaybackTime(totalCourseDuration) : '--';
   return (
     <div className={`mt-3 pt-3 border-t ${
       isDarkMode ? 'border-gray-700' : 'border-gray-200'
     }`}>
-      <div className="flex justify-between items-center gap-2">
-        <span className={`text-xs font-semibold ${
-          isDarkMode ? 'text-gray-300' : 'text-gray-700'
-        }`}>
-          Total course time
-        </span>
-        <span className={`text-xs font-bold tabular-nums ${
-          isDarkMode ? 'text-purple-400' : 'text-purple-600'
-        }`}>
-          {totalCourseDuration > 0 ? formatPlaybackTime(totalCourseDuration) : '—'}
-        </span>
-      </div>
-      <div className="flex justify-between items-center gap-2 mt-1">
-        <span className={`text-xs ${
-          isDarkMode ? 'text-gray-400' : 'text-gray-500'
-        }`}>
-          Watched (all lectures)
-        </span>
-        <span className={`text-xs font-medium tabular-nums ${
-          isDarkMode ? 'text-gray-300' : 'text-gray-600'
-        }`}>
-          {formatPlaybackTime(totalWatchedTime)}
-        </span>
+      <div className={`flex flex-col gap-1 text-xs tabular-nums ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+        <div className="flex items-center justify-between gap-2">
+          <span className={`font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>Total</span>
+          <span className={`font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{totalLabel}</span>
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <span className={`font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>Watched</span>
+          <span className={`font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+            {formatPlaybackTime(totalWatchedTime)}
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -155,13 +139,47 @@ const CourseViewSidebarContent: React.FC<CourseViewSidebarContentProps> = ({
   unlockedLectures,
   quizExistsMap,
   quizScoresMap,
+  quizLockedMap,
   videoTotalDuration,
   videoWatchedTime,
   videoProgress,
   assignmentCountByVideo,
+  assignmentSubmittedByVideo,
+  assignmentMarksByVideo,
   onSelectVideo,
+  onOpenAssignmentForVideo,
   onCloseSidebar
 }) => {
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (selectedVideoId == null) return;
+    const el = document.getElementById(`lecture-row-${selectedVideoId}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [selectedVideoId]);
+
+  const { quizIndexByVideo, assignmentRangeByVideo } = useMemo(() => {
+    let quizCounter = 0;
+    let assignmentCounter = 0;
+    const quizMap = new Map<number, number>();
+    const assignmentMap = new Map<number, { start: number; end: number }>();
+
+    videos.forEach((video) => {
+      if (quizExistsMap.get(video.id)) {
+        quizCounter += 1;
+        quizMap.set(video.id, quizCounter);
+      }
+      const count = assignmentCountByVideo.get(video.id) || 0;
+      if (count > 0) {
+        const start = assignmentCounter + 1;
+        assignmentCounter += count;
+        assignmentMap.set(video.id, { start, end: assignmentCounter });
+      }
+    });
+
+    return { quizIndexByVideo: quizMap, assignmentRangeByVideo: assignmentMap };
+  }, [videos, quizExistsMap, assignmentCountByVideo]);
+
   return (
     <>
       <SidebarHeader
@@ -182,27 +200,38 @@ const CourseViewSidebarContent: React.FC<CourseViewSidebarContentProps> = ({
             const isLocked = !unlockedLectures.has(video.id);
             const quizExists = Boolean(quizExistsMap.get(video.id));
             const quizScore = quizExists ? quizScoresMap.get(video.id) : undefined;
+            const quizLocked = quizLockedMap.get(video.id) || false;
+            const quizIndex = quizIndexByVideo.get(video.id) ?? null;
+            const assignmentRange = assignmentRangeByVideo.get(video.id);
 
             return (
-              <CourseViewLectureAccordionItem
-                key={video.id}
-                isDarkMode={isDarkMode}
-                video={video}
-                index={index}
-                isSelected={isSelected}
-                isLocked={isLocked}
-                isCompleted={isCompleted}
-                quizExists={quizExists}
-                quizScore={quizScore}
-                videoTotalDuration={videoTotalDuration}
-                videoWatchedTime={videoWatchedTime}
-                videoProgress={videoProgress}
-                assignmentCount={assignmentCountByVideo.get(video.id) || 0}
-                onSelect={() => {
-                  onSelectVideo(video.id);
-                  onCloseSidebar();
-                }}
-              />
+              <div key={video.id} id={`lecture-row-${video.id}`}>
+                <CourseViewLectureAccordionItem
+                  isDarkMode={isDarkMode}
+                  video={video}
+                  index={index}
+                  isSelected={isSelected}
+                  isLocked={isLocked}
+                  isCompleted={isCompleted}
+                  quizExists={quizExists}
+                  quizScore={quizScore}
+                  quizIndex={quizIndex}
+                  quizLocked={quizLocked}
+                  videoTotalDuration={videoTotalDuration}
+                  videoWatchedTime={videoWatchedTime}
+                  videoProgress={videoProgress}
+                  assignmentCount={assignmentCountByVideo.get(video.id) || 0}
+                  assignmentSubmitted={assignmentSubmittedByVideo.get(video.id) || false}
+                  assignmentMarks={assignmentMarksByVideo.get(video.id) || null}
+                  assignmentStartIndex={assignmentRange?.start ?? null}
+                  assignmentEndIndex={assignmentRange?.end ?? null}
+                  onSelect={() => {
+                    onSelectVideo(video.id);
+                    onCloseSidebar();
+                  }}
+                  onOpenAssignmentForVideo={onOpenAssignmentForVideo}
+                />
+              </div>
             );
           })
         ) : (

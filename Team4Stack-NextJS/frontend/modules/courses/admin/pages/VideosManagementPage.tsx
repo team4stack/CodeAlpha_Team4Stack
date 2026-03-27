@@ -1,11 +1,10 @@
 'use client'
 
 import React, { useEffect, useState, useCallback } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useTheme } from '@/contexts/ThemeContext'
 import { coursesApi } from '@/lib/api'
 import toast from 'react-hot-toast'
-import QuizManagementModal from '../components/QuizManagementModal'
-import AssignmentManagementModal from '../components/AssignmentManagementModal'
 
 type Video = {
   id: string
@@ -13,6 +12,7 @@ type Video = {
   title: string
   description?: string
   video_url?: string
+  duration?: number
   order: number
   order_index?: number
   created_at?: string
@@ -25,9 +25,40 @@ type Course = {
   video_count?: number
 }
 
+type VideoContentStatus = {
+  hasQuiz: boolean
+  hasAssignment: boolean
+}
+
+const formatPlaybackTime = (totalSeconds?: number) => {
+  const total = Number(totalSeconds || 0)
+  if (!Number.isFinite(total) || total <= 0) return '--'
+  const seconds = Math.floor(total % 60)
+  const minutes = Math.floor((total / 60) % 60)
+  const hours = Math.floor(total / 3600)
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+  }
+  return `${minutes}:${String(seconds).padStart(2, '0')}`
+}
+
+const extractYouTubeId = (url?: string) => {
+  if (!url) return ''
+  const watchMatch = /[?&]v=([a-zA-Z0-9_-]{11})/.exec(url)
+  if (watchMatch) return watchMatch[1]
+  const shortMatch = /youtu\.be\/([a-zA-Z0-9_-]{11})/.exec(url)
+  if (shortMatch) return shortMatch[1]
+  const embedMatch = /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/.exec(url)
+  if (embedMatch) return embedMatch[1]
+  return ''
+}
+
 const VideosManagementPage: React.FC = () => {
   useTheme()
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const [videos, setVideos] = useState<Video[]>([])
+  const [videoContentStatus, setVideoContentStatus] = useState<Record<string, VideoContentStatus>>({})
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -36,13 +67,6 @@ const VideosManagementPage: React.FC = () => {
   const [filterCourse, setFilterCourse] = useState<string>('') // No default, must select course
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingVideo, setEditingVideo] = useState<Video | null>(null)
-  const [showQuizModal, setShowQuizModal] = useState(false)
-  const [selectedVideoForQuiz, setSelectedVideoForQuiz] = useState<{ id: number; title: string } | null>(null)
-  const [selectedVideoForAssignment, setSelectedVideoForAssignment] = useState<{
-    id: number
-    title: string
-    course_id: number
-  } | null>(null)
   const [formData, setFormData] = useState<{
     course_id: string;
     title: string;
@@ -96,6 +120,7 @@ const VideosManagementPage: React.FC = () => {
   const loadVideos = useCallback(async () => {
     if (!filterCourse) {
       setVideos([])
+      setVideoContentStatus({})
       return
     }
 
@@ -119,6 +144,35 @@ const VideosManagementPage: React.FC = () => {
       }
 
       setVideos(videosData)
+
+      const statusEntries = await Promise.all(
+        videosData.map(async (video) => {
+          const videoId = Number.parseInt(String(video.id), 10)
+          let hasQuiz = false
+          let hasAssignment = false
+
+          if (Number.isFinite(videoId)) {
+            try {
+              const quizRes = await coursesApi.getQuizByVideoId(videoId)
+              hasQuiz = Boolean(quizRes?.success && quizRes.data)
+            } catch {
+              hasQuiz = false
+            }
+
+            try {
+              const assignmentRes = await coursesApi.getAssignmentsByVideoAdmin(videoId)
+              const rows = Array.isArray(assignmentRes.data) ? assignmentRes.data : []
+              hasAssignment = rows.length > 0
+            } catch {
+              hasAssignment = false
+            }
+          }
+
+          return [String(video.id), { hasQuiz, hasAssignment }] as const
+        })
+      )
+
+      setVideoContentStatus(Object.fromEntries(statusEntries))
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to load videos'
       setError(errorMessage)
@@ -127,6 +181,13 @@ const VideosManagementPage: React.FC = () => {
       setLoading(false)
     }
   }, [searchQuery, filterCourse])
+
+  useEffect(() => {
+    const courseId = searchParams.get('courseId') || ''
+    if (courseId && courseId !== filterCourse) {
+      setFilterCourse(courseId)
+    }
+  }, [searchParams, filterCourse])
 
   useEffect(() => {
     if (filterCourse) {
@@ -259,13 +320,6 @@ const VideosManagementPage: React.FC = () => {
     }
   }
 
-  const openAssignmentModal = (video: Video) => {
-    setSelectedVideoForAssignment({
-      id: Number.parseInt(video.id, 10),
-      title: video.title,
-      course_id: Number.parseInt(video.course_id, 10)
-    })
-  }
 
   const getCourseName = (courseId: string) => {
     const course = courses.find(c => c.id === courseId);
@@ -276,7 +330,7 @@ const VideosManagementPage: React.FC = () => {
   if (loading) {
     videosTableBody = (
       <tr>
-        <td colSpan={5} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+        <td colSpan={7} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
           <div className="flex items-center justify-center">
             <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500"></div>
           </div>
@@ -286,32 +340,44 @@ const VideosManagementPage: React.FC = () => {
   } else if (videos.length === 0) {
     videosTableBody = (
       <tr>
-        <td colSpan={5} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+        <td colSpan={7} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
           No videos found for {getCourseName(filterCourse)}. Click "Add Video" to add videos to this course.
         </td>
       </tr>
     )
   } else {
-    videosTableBody = videos.map((video) => (
+    videosTableBody = videos.map((video) => {
+      const ytId = extractYouTubeId(video.video_url)
+      const thumbUrl = ytId ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg` : ''
+      const status = videoContentStatus[String(video.id)]
+      const quizMark = status?.hasQuiz ? '✔' : ''
+      const assignmentMark = status?.hasAssignment ? '✔' : ''
+      return (
       <tr key={video.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
         <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-          <div className="h-12 w-16 sm:h-16 sm:w-28 bg-linear-to-br from-orange-500 to-red-500 rounded flex items-center justify-center text-white font-bold text-xs">
-            🎥
-          </div>
+          {thumbUrl ? (
+            <img
+              src={thumbUrl}
+              alt={`${video.title} thumbnail`}
+              className="h-12 w-16 sm:h-16 sm:w-28 rounded object-cover border border-white/10"
+            />
+          ) : (
+            <div className="h-12 w-16 sm:h-16 sm:w-28 bg-linear-to-br from-orange-500 to-red-500 rounded flex items-center justify-center text-white font-bold text-[10px]">
+              No Thumb
+            </div>
+          )}
         </td>
         <td className="px-3 sm:px-6 py-3 sm:py-4 min-w-0">
           <div className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white truncate">{video.title}</div>
-          {video.description && (
-            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2 hidden sm:block">
-              {video.description}
-            </div>
-          )}
           <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 sm:hidden">
             Order: {video.order_index || video.order || 0}
           </div>
         </td>
         <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900 dark:text-white hidden md:table-cell">
           {video.order_index || video.order || 0}
+        </td>
+        <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900 dark:text-white hidden lg:table-cell">
+          {formatPlaybackTime((video as any).duration)}
         </td>
         <td className="px-3 sm:px-6 py-3 sm:py-4 hidden lg:table-cell">
           {video.video_url ? (
@@ -327,22 +393,54 @@ const VideosManagementPage: React.FC = () => {
             <span className="text-xs sm:text-sm text-gray-400">No URL</span>
           )}
         </td>
+        <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900 dark:text-white text-center">
+          <div className="inline-flex items-center gap-2 rounded-full px-2.5 py-1 bg-white/5 border border-white/10">
+            <span
+              className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold ${
+                status?.hasQuiz
+                  ? 'bg-orange-500/20 text-orange-400 border border-orange-400/40'
+                  : 'bg-transparent text-transparent border border-transparent'
+              }`}
+              title={status?.hasQuiz ? 'Quiz added' : 'No quiz'}
+            >
+              {quizMark}
+            </span>
+            <span className="text-gray-400 dark:text-gray-500">|</span>
+            <span
+              className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold ${
+                status?.hasAssignment
+                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-400/40'
+                  : 'bg-transparent text-transparent border border-transparent'
+              }`}
+              title={status?.hasAssignment ? 'Assignment added' : 'No assignment'}
+            >
+              {assignmentMark}
+            </span>
+          </div>
+        </td>
         <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right text-xs sm:text-sm font-medium">
           <div className="flex justify-end gap-1 sm:gap-2 flex-wrap">
             <button
               onClick={() => {
-                setSelectedVideoForQuiz({ id: Number.parseInt(video.id, 10), title: video.title })
-                setShowQuizModal(true)
+                const id = Number.parseInt(video.id, 10)
+                const title = encodeURIComponent(video.title || '')
+                const courseId = encodeURIComponent(filterCourse || video.course_id || '')
+                router.push(`/admincourset4s/videos/quiz?videoId=${id}&title=${title}&courseId=${courseId}`)
               }}
-              className="px-2 sm:px-3 py-1 bg-linear-to-r from-orange-500/90 to-red-500/90 text-white rounded-lg hover:from-orange-600 hover:to-red-600 transition-all text-xs border border-white/20"
+              className="px-3 py-1.5 bg-linear-to-r from-orange-500/90 to-red-500/90 text-white rounded-md hover:from-orange-600 hover:to-red-600 transition-all text-xs font-semibold border border-white/10"
               title="Manage Quiz"
             >
               <span className="hidden sm:inline">Quiz</span>
               <span className="sm:hidden">📝</span>
             </button>
             <button
-              onClick={() => openAssignmentModal(video)}
-              className="px-2 sm:px-3 py-1 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-xs"
+              onClick={() => {
+                const id = Number.parseInt(video.id, 10)
+                const courseId = Number.parseInt(video.course_id, 10)
+                const title = encodeURIComponent(video.title || '')
+                router.push(`/admincourset4s/videos/assignments?videoId=${id}&courseId=${courseId}&title=${title}`)
+              }}
+              className="px-3 py-1.5 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors text-xs font-semibold"
               title="Manage Assignments"
             >
               <span className="hidden sm:inline">Assignment</span>
@@ -350,7 +448,7 @@ const VideosManagementPage: React.FC = () => {
             </button>
             <button
               onClick={() => handleEdit(video)}
-              className="px-2 sm:px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-xs"
+              className="px-3 py-1.5 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-xs font-semibold"
               title="Edit"
             >
               <span className="hidden sm:inline">Edit</span>
@@ -358,7 +456,7 @@ const VideosManagementPage: React.FC = () => {
             </button>
             <button
               onClick={() => handleDelete(video.id, video.title)}
-              className="px-2 sm:px-3 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-xs"
+              className="px-3 py-1.5 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors text-xs font-semibold"
               title="Delete"
             >
               <span className="hidden sm:inline">Delete</span>
@@ -367,7 +465,8 @@ const VideosManagementPage: React.FC = () => {
           </div>
         </td>
       </tr>
-    ))
+    )
+    })
   }
 
   if (loading && !filterCourse && courses.length === 0) {
@@ -643,7 +742,13 @@ const VideosManagementPage: React.FC = () => {
                     Order
                   </th>
                   <th scope="col" className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider hidden lg:table-cell">
+                    Duration
+                  </th>
+                  <th scope="col" className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider hidden lg:table-cell">
                     Video URL
+                  </th>
+                  <th scope="col" className="px-3 sm:px-6 py-2 sm:py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Quiz | Assignment
                   </th>
                   <th scope="col" className="px-3 sm:px-6 py-2 sm:py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Actions
@@ -658,31 +763,10 @@ const VideosManagementPage: React.FC = () => {
         </div>
       )}
 
-      {/* Quiz Management Modal */}
-      {selectedVideoForQuiz && (
-        <QuizManagementModal
-          isOpen={showQuizModal}
-          onClose={() => {
-            setShowQuizModal(false)
-            setSelectedVideoForQuiz(null)
-          }}
-          videoId={selectedVideoForQuiz.id}
-          videoTitle={selectedVideoForQuiz.title}
-        />
-      )}
-
-      {selectedVideoForAssignment && (
-        <AssignmentManagementModal
-          isOpen={Boolean(selectedVideoForAssignment)}
-          onClose={() => setSelectedVideoForAssignment(null)}
-          videoId={selectedVideoForAssignment.id}
-          videoTitle={selectedVideoForAssignment.title}
-          courseId={selectedVideoForAssignment.course_id}
-        />
-      )}
     </div>
   )
 }
 
 export default VideosManagementPage
+
 

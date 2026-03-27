@@ -25,6 +25,7 @@ type Props = {
   videoId: number
   videoTitle: string
   courseId: number
+  variant?: 'modal' | 'page'
 }
 
 const AssignmentManagementModal: React.FC<Props> = ({
@@ -32,7 +33,8 @@ const AssignmentManagementModal: React.FC<Props> = ({
   onClose,
   videoId,
   videoTitle,
-  courseId
+  courseId,
+  variant = 'modal'
 }) => {
   const { isDarkMode } = useTheme()
   const [loading, setLoading] = useState(false)
@@ -83,7 +85,7 @@ const AssignmentManagementModal: React.FC<Props> = ({
   const loadData = async () => {
     try {
       setLoading(true)
-      const assignmentRes = await coursesApi.getAssignmentsByVideo(videoId)
+      const assignmentRes = await coursesApi.getAssignmentsByVideoAdmin(videoId)
       if (assignmentRes.error) throw new Error(assignmentRes.error)
 
       const assignmentRows = Array.isArray(assignmentRes.data) ? (assignmentRes.data as Assignment[]) : []
@@ -186,21 +188,48 @@ const AssignmentManagementModal: React.FC<Props> = ({
     }
   }
 
-  if (!isOpen) return null
+  const isPage = variant === 'page'
+  if (!isOpen && !isPage) return null
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto">
+  const content = (
+    <div
+      className={
+        isPage
+          ? 'w-full flex flex-col'
+          : `bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full overflow-hidden flex flex-col ${
+              isDarkMode ? 'border border-gray-700' : 'border border-gray-200'
+            }`
+      }
+      style={isPage ? undefined : { maxHeight: 'calc(100vh - 80px)' }}
+    >
       <div
-        className={`bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-5xl w-full overflow-hidden flex flex-col ${
-          isDarkMode ? 'border border-gray-700' : 'border border-gray-200'
-        }`}
-        style={{ maxHeight: 'calc(100vh - 80px)' }}
+        className={
+          isPage
+            ? 'mb-6 flex items-start justify-between gap-4 rounded-xl border px-5 py-4 bg-linear-to-r from-emerald-600/20 via-cyan-600/10 to-emerald-600/20 border-emerald-500/30'
+            : 'bg-linear-to-r from-emerald-600 to-cyan-700 px-6 py-4 flex items-center justify-between'
+        }
       >
-        <div className="bg-linear-to-r from-emerald-600 to-cyan-700 px-6 py-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-bold text-white">Assignment Management</h2>
-            <p className="text-emerald-100 text-sm">Video: {videoTitle}</p>
-          </div>
+        <div>
+          <h2 className={isPage ? `text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}` : 'text-xl font-bold text-white'}>
+            Assignment Management
+          </h2>
+          <p className={isPage ? (isDarkMode ? 'text-gray-300 text-sm' : 'text-gray-600 text-sm') : 'text-emerald-100 text-sm'}>
+            Video: {videoTitle}
+          </p>
+        </div>
+        {isPage ? (
+          <button
+            onClick={onClose}
+            className={`px-3 py-1 text-sm font-semibold rounded-lg border transition-colors self-center ${
+              isDarkMode
+                ? 'border-gray-700 text-gray-200 hover:bg-gray-800'
+                : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+            }`}
+            aria-label="Back to videos"
+          >
+            ← Back
+          </button>
+        ) : (
           <button
             onClick={onClose}
             className="text-red-200 hover:text-white hover:bg-red-500/30 rounded-full p-1.5 transition-all"
@@ -208,9 +237,10 @@ const AssignmentManagementModal: React.FC<Props> = ({
           >
             ✕
           </button>
-        </div>
+        )}
+      </div>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className={isPage ? 'flex-1 p-6 space-y-6' : 'flex-1 overflow-y-auto p-6 space-y-6'}>
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500" />
@@ -303,26 +333,60 @@ const AssignmentManagementModal: React.FC<Props> = ({
                     />
                   </div>
                   <div className="md:col-span-2">
-                    <label htmlFor="assignment-template-file" className="block text-sm font-medium mb-1">
-                      Attach template (PDF / DOC / DOCX)
+                    <label className="block text-sm font-medium mb-2">
+                      Attach template (PDF / DOC / DOCX / PNG / ZIP)
                     </label>
-                    <input
-                      id="assignment-template-file"
-                      type="file"
-                      accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                      onChange={(e) => setAssignmentFile(e.target.files?.[0] || null)}
-                      className="w-full text-sm"
-                    />
-                    {assignmentForm.template_file_url ? (
-                      <a
-                        href={assignmentForm.template_file_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex mt-2 text-sm text-cyan-600 hover:underline dark:text-cyan-400"
-                      >
-                        Current template: {assignmentForm.template_file_name || 'Open file'}
-                      </a>
-                    ) : null}
+                    <div
+                      className={`grid gap-3 rounded-lg border px-4 py-3 ${
+                        isDarkMode ? 'border-gray-700 bg-gray-900/30' : 'border-gray-200 bg-gray-50'
+                      }`}
+                    >
+                      <input
+                        id="assignment-template-file"
+                        type="file"
+                        accept=".pdf,.doc,.docx,.png,.zip,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,application/zip"
+                        onChange={(e) => setAssignmentFile(e.target.files?.[0] || null)}
+                        className="hidden"
+                      />
+                      <div className="flex flex-wrap items-center gap-3">
+                        <label
+                          htmlFor="assignment-template-file"
+                          className={`inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold cursor-pointer border transition-colors ${
+                            isDarkMode
+                              ? 'border-gray-600 bg-gray-800 text-gray-100 hover:bg-gray-700'
+                              : 'border-gray-300 bg-white text-gray-800 hover:bg-gray-100'
+                          }`}
+                        >
+                          Choose File
+                        </label>
+                        <span className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                          {assignmentFile ? assignmentFile.name : 'No file selected'}
+                        </span>
+                        <span className={`text-[11px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                          Replaces the current template when saved
+                        </span>
+                      </div>
+                      {assignmentForm.template_file_url ? (
+                        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
+                          <div>
+                            <p className={`text-xs uppercase tracking-wide ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                              Current template
+                            </p>
+                            <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                              {assignmentForm.template_file_name || 'Open file'}
+                            </p>
+                          </div>
+                          <a
+                            href={assignmentForm.template_file_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs font-semibold text-cyan-600 hover:underline dark:text-cyan-400"
+                          >
+                            View template
+                          </a>
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                   <div className="md:col-span-2 flex gap-2">
                     <button
@@ -348,31 +412,69 @@ const AssignmentManagementModal: React.FC<Props> = ({
               <section className="space-y-3">
                 <h3 className={`text-base font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Existing Assignments</h3>
                 {assignments.length === 0 ? (
-                  <div className={`rounded-lg border p-3 text-sm ${isDarkMode ? 'border-gray-700 text-gray-300 bg-gray-900/20' : 'border-gray-200 text-gray-600 bg-gray-50'}`}>
+                  <div
+                    className={`rounded-lg border p-3 text-sm ${
+                      isDarkMode ? 'border-gray-700 text-gray-300 bg-gray-900/20' : 'border-gray-200 text-gray-600 bg-gray-50'
+                    }`}
+                  >
                     No assignments have been created for this lecture yet.
                   </div>
                 ) : (
                   assignments.map((assignment) => (
-                    <article key={assignment.id} className="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
-                      <div className="flex flex-wrap items-start justify-between gap-2">
-                        <div>
-                          <p className="font-semibold text-gray-900 dark:text-white">{assignment.title}</p>
-                          <p className="text-xs text-gray-600 dark:text-gray-400">
-                            Max {assignment.max_file_size_mb}MB | Total marks: {assignment.total_marks}
-                          </p>
+                    <article
+                      key={assignment.id}
+                      className={`rounded-lg border p-4 ${
+                        isDarkMode ? 'border-gray-700 bg-gray-900/30' : 'border-gray-200 bg-white'
+                      }`}
+                    >
+                      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                        <div className="space-y-2 md:flex-1">
+                          <div>
+                            <p className="font-semibold text-gray-900 dark:text-white">{assignment.title}</p>
+                            {assignment.instructions ? (
+                              <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2">{assignment.instructions}</p>
+                            ) : null}
+                          </div>
+                          <div className="flex flex-wrap gap-2 text-xs">
+                            <span className={`rounded-full px-3 py-1 ${isDarkMode ? 'bg-gray-800 text-gray-200' : 'bg-gray-100 text-gray-700'}`}>
+                              Max {assignment.max_file_size_mb}MB
+                            </span>
+                            <span className={`rounded-full px-3 py-1 ${isDarkMode ? 'bg-gray-800 text-gray-200' : 'bg-gray-100 text-gray-700'}`}>
+                              Marks {assignment.total_marks}
+                            </span>
+                            {assignment.required_format ? (
+                              <span
+                                className={`rounded-full px-3 py-1 ${
+                                  isDarkMode ? 'bg-gray-800 text-gray-200' : 'bg-gray-100 text-gray-700'
+                                }`}
+                              >
+                                Format {assignment.required_format}
+                              </span>
+                            ) : null}
+                          </div>
+                          {assignment.template_file_url ? (
+                            <a
+                              href={assignment.template_file_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex text-xs font-semibold text-cyan-600 hover:underline dark:text-cyan-400"
+                            >
+                              Template: {assignment.template_file_name || 'Open file'}
+                            </a>
+                          ) : null}
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex w-full justify-center gap-3 md:w-auto md:justify-center md:self-center md:ml-6">
                           <button
                             type="button"
                             onClick={() => startEdit(assignment)}
-                            className="px-3 py-1 rounded bg-blue-500 text-white text-xs hover:bg-blue-600"
+                            className="px-4 py-2 rounded-md bg-blue-500 text-white text-sm font-semibold hover:bg-blue-600"
                           >
                             Edit
                           </button>
                           <button
                             type="button"
                             onClick={() => void removeAssignment(assignment.id)}
-                            className="px-3 py-1 rounded bg-red-500 text-white text-xs hover:bg-red-600"
+                            className="px-4 py-2 rounded-md bg-red-500 text-white text-sm font-semibold hover:bg-red-600"
                           >
                             Delete
                           </button>
@@ -383,24 +485,23 @@ const AssignmentManagementModal: React.FC<Props> = ({
                 )}
               </section>
 
-              <section className="space-y-3">
-                <h3 className={`text-base font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                  Review Uploaded Work
-                </h3>
-                <div
-                  className={`rounded-lg border p-3 text-sm ${
-                    isDarkMode ? 'border-gray-700 text-gray-300 bg-gray-900/20' : 'border-gray-200 text-gray-600 bg-gray-50'
-                  }`}
-                >
-                  Student uploads are shown in the Student Progress page for centralized review and download.
-                </div>
-              </section>
             </>
           )}
         </div>
-      </div>
+    </div>
+  );
+
+  return isPage ? (
+    <div className="w-full px-6 py-4">{content}</div>
+  ) : (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto">
+      <div className="max-w-5xl w-full">{content}</div>
     </div>
   )
 }
 
 export default AssignmentManagementModal
+
+
+
+
