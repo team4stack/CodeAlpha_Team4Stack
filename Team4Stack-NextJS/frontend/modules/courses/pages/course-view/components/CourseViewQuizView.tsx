@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import QuizComponent from '../../components/QuizComponent';
+import QuizComponent from '../../../components/QuizComponent';
 
 type CourseViewQuizViewProps = {
   quizVideoId: number;
