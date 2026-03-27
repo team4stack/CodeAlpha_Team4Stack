@@ -17,7 +17,6 @@ import CourseViewEmptyLecturesState from './course-view/components/CourseViewEmp
 import CourseViewLectureHeader from './course-view/components/CourseViewLectureHeader';
 import CourseViewLectureListPanels from './course-view/components/CourseViewLectureListPanels';
 import CourseViewAssignmentsPanel from './course-view/components/CourseViewAssignmentsPanel';
-import CourseViewGlobalCourseStats from './course-view/components/CourseViewGlobalCourseStats';
 import MobileLectureToggleButton from './course-view/components/MobileLectureToggleButton';
 import type { Course, ProgressRecord, Video } from './course-view/types';
 import { useCourseLectureProgressSummary } from './course-view/hooks/useCourseLectureProgressSummary';
@@ -132,6 +131,15 @@ async function fetchCourseViewData(args: {
   assignmentSubmittedByVideo: Map<number, boolean>;
   assignmentMarksByVideo: Map<number, { awarded: number; total: number }>;
 }> {
+  type AssignmentRow = {
+    video_id?: number | string;
+    total_marks?: number | string;
+    submission?: {
+      awarded_marks?: number | string | null;
+      status?: string | null;
+      file_url?: string | null;
+    } | null;
+  };
   const courseResult = await coursesApi.getCourseById(args.courseId);
   if (courseResult.error) throw new Error(String(courseResult.error));
   const course = (courseResult.data as Course) || null;
@@ -155,7 +163,7 @@ async function fetchCourseViewData(args: {
   const assignmentMarksByVideo = new Map<number, { awarded: number; total: number }>();
   try {
     const assignmentsResult = await coursesApi.getAssignmentsByCourse(args.courseId);
-    const list = assignmentsResult.error ? [] : ((assignmentsResult.data as any[]) || []);
+    const list = assignmentsResult.error ? [] : ((assignmentsResult.data as AssignmentRow[]) || []);
     for (const a of list) {
       const vidRaw = a?.video_id;
       const vid = typeof vidRaw === 'number' ? vidRaw : Number(vidRaw);
@@ -236,6 +244,10 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId: courseIdProp 
     getPlayerState?: () => number;
     playVideo?: () => void;
     pauseVideo?: () => void;
+  };
+  const getYouTubePlayingState = () => {
+    const yt = (window as unknown as { YT?: { PlayerState?: { PLAYING?: number } } }).YT;
+    return yt?.PlayerState?.PLAYING;
   };
   const youtubePlayerRef = useRef<YoutubePlayer | null>(null); // YouTube IFrame API player instance
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -635,7 +647,8 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId: courseIdProp 
         const player = youtubePlayerRef.current;
         if (!player || typeof player.getPlayerState !== 'function') return;
         const state = player.getPlayerState();
-        setIsPlaying(state === (window as any).YT?.PlayerState?.PLAYING);
+        const playingState = getYouTubePlayingState();
+        setIsPlaying(playingState != null && state === playingState);
       } catch {
         /* ignore */
       }
@@ -649,7 +662,8 @@ const CourseViewPage: React.FC<CourseViewPageProps> = ({ courseId: courseIdProp 
       const player = youtubePlayerRef.current;
       if (player && typeof player.getPlayerState === 'function') {
         const state = player.getPlayerState();
-        if (state === (window as any).YT?.PlayerState?.PLAYING) {
+        const playingState = getYouTubePlayingState();
+        if (playingState != null && state === playingState) {
           player.pauseVideo?.();
           setIsPlaying(false);
         } else {
