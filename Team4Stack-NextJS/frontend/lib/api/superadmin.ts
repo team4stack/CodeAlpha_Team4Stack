@@ -1,8 +1,13 @@
 // SuperAdmin API endpoints
 import apiClient from './client';
 
+type ApiResponse<T = unknown> = { success: boolean; data?: T; error?: string };
+type AdminPayload = Record<string, unknown>;
+type AuditLogPayload = Record<string, unknown>;
+type UserUpdatePayload = Record<string, unknown>;
+
 const ADMIN_CHECK_TTL_MS = 30_000;
-const adminCheckCache = new Map<string, { ts: number; promise: Promise<any> }>();
+const adminCheckCache = new Map<string, { ts: number; promise: Promise<ApiResponse> }>();
 
 export const superadminApi = {
   // Admin Users
@@ -27,11 +32,11 @@ export const superadminApi = {
     }
   },
 
-  createAdminUser: async (admin: any) => {
+  createAdminUser: async (admin: AdminPayload) => {
     return apiClient.post('/superadmin/admins', admin);
   },
 
-  updateAdminUser: async (id: number, admin: any) => {
+  updateAdminUser: async (id: number, admin: AdminPayload) => {
     return apiClient.put(`/superadmin/admins/${id}`, admin);
   },
 
@@ -54,7 +59,7 @@ export const superadminApi = {
     return apiClient.get(`/superadmin/audit${query ? `?${query}` : ''}`);
   },
 
-  createAuditLog: async (log: any) => {
+  createAuditLog: async (log: AuditLogPayload) => {
     return apiClient.post('/superadmin/audit', log);
   },
 
@@ -71,7 +76,7 @@ export const superadminApi = {
     return apiClient.get(`/superadmin/users/${id}`);
   },
 
-  updateUser: async (id: string, user: any) => {
+  updateUser: async (id: string, user: UserUpdatePayload) => {
     return apiClient.put(`/superadmin/users/${id}`, user);
   },
 
