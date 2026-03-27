@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState, useCallback } from 'react'
-import StudentDetailsModal from './student-progress/components/StudentDetailsModal'
+import { useRouter } from 'next/navigation'
 import StudentProgressTable from './student-progress/components/StudentProgressTable'
 import { loadStudentProgressData } from './student-progress/loadStudentProgressData'
 import type {
@@ -22,20 +22,22 @@ const StudentProgressPage: React.FC = () => {
   const [filterProgress, setFilterProgress] = useState<ProgressFilter>('all')
   const [studentProgress, setStudentProgress] = useState<StudentProgress[]>([])
   const [studentList, setStudentList] = useState<StudentListItem[]>([])
-  const [selectedStudent, setSelectedStudent] = useState<StudentProgress | null>(null)
-  const [showStudentModal, setShowStudentModal] = useState(false)
+  const [newSubmissionCount, setNewSubmissionCount] = useState(0)
+  const router = useRouter()
 
   const loadData = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
 
-      const { courses, progressRecords, studentProgress, studentList } = await loadStudentProgressData(filterCourse)
+      const { courses, progressRecords, studentProgress, studentList, newSubmissionCount } =
+        await loadStudentProgressData(filterCourse)
 
       setCourses(courses)
       setProgressRecords(progressRecords)
       setStudentProgress(studentProgress)
       setStudentList(studentList)
+      setNewSubmissionCount(newSubmissionCount)
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown error'
       setError(`Failed to load progress data: ${message}`)
@@ -121,6 +123,17 @@ const StudentProgressPage: React.FC = () => {
               <option value="medium" className="bg-gray-800">Medium (50-79%)</option>
               <option value="low" className="bg-gray-800">Low (&lt;50%)</option>
             </select>
+
+            <div className="flex items-center gap-2 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs font-semibold text-white/90">
+              <span className="text-white/70">New Submissions</span>
+              <span
+                className={`inline-flex items-center justify-center min-w-[24px] rounded-full px-2 py-0.5 text-xs font-black ${
+                  newSubmissionCount > 0 ? 'bg-rose-500/80 text-white' : 'bg-white/20 text-white/70'
+                }`}
+              >
+                {newSubmissionCount}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -133,17 +146,8 @@ const StudentProgressPage: React.FC = () => {
           studentList={studentList}
           studentProgress={studentProgress}
           onViewDetails={(student) => {
-            setSelectedStudent(student)
-            setShowStudentModal(true)
-          }}
-        />
-
-        <StudentDetailsModal
-          selectedStudent={selectedStudent}
-          isOpen={showStudentModal}
-          onClose={() => {
-            setShowStudentModal(false)
-            setSelectedStudent(null)
+            if (!student?.userId) return
+            router.push(`/admincourset4s/progress/student?userId=${student.userId}`)
           }}
         />
       </div>

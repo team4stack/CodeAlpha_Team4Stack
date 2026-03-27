@@ -17,6 +17,53 @@ const StudentEnrolledCoursesSection: React.FC<StudentEnrolledCoursesSectionProps
   onOpenReport,
   onBrowseCourses
 }) => {
+  const normalizeImageUrl = (value?: string): string => {
+    const raw = (value || '').trim();
+    if (!raw) return '';
+    if (raw.includes('github.com') && raw.includes('/blob/')) {
+      return raw
+        .replace('https://github.com/', 'https://raw.githubusercontent.com/')
+        .replace('http://github.com/', 'https://raw.githubusercontent.com/')
+        .replace('/blob/', '/');
+    }
+    if (raw.includes('drive.google.com/file/d/')) {
+      const match = /drive\.google\.com\/file\/d\/([^/]+)/.exec(raw);
+      if (match?.[1]) {
+        return `https://drive.google.com/uc?export=view&id=${match[1]}`;
+      }
+    }
+    if (
+      raw.startsWith('http://') ||
+      raw.startsWith('https://') ||
+      raw.startsWith('data:') ||
+      raw.startsWith('blob:') ||
+      raw.startsWith('/')
+    ) {
+      return raw;
+    }
+    if (raw.startsWith('//')) return `https:${raw}`;
+    if (raw.startsWith('res.cloudinary.com') || raw.startsWith('images.') || raw.startsWith('cdn.')) {
+      return `https://${raw}`;
+    }
+    if (raw.startsWith('drive.google.com')) return `https://${raw}`;
+    return raw;
+  };
+
+  const resolveCourseImage = (course: StudentCourse): string => {
+    const courseAny = course as StudentCourse & Record<string, unknown>;
+    const candidates = [
+      course.thumbnail_url,
+      course.image_url,
+      typeof courseAny.thumbnailUrl === 'string' ? courseAny.thumbnailUrl : '',
+      typeof courseAny.imageUrl === 'string' ? courseAny.imageUrl : '',
+      typeof courseAny.thumbnail === 'string' ? courseAny.thumbnail : '',
+      typeof courseAny.image === 'string' ? courseAny.image : '',
+      typeof courseAny.banner_image_url === 'string' ? courseAny.banner_image_url : ''
+    ];
+    const found = candidates.find((value) => typeof value === 'string' && value.trim().length > 0);
+    return normalizeImageUrl(found as string | undefined);
+  };
+
   return (
     <div className={`py-12 ${isDarkMode ? 'bg-linear-to-b from-gray-900 to-black' : 'bg-linear-to-b from-gray-50 to-white'}`}>
       <div className="container-custom">
@@ -38,6 +85,8 @@ const StudentEnrolledCoursesSection: React.FC<StudentEnrolledCoursesSectionProps
                 ? Math.round((course.progress.completed / course.progress.total) * 100)
                 : 0;
 
+              const courseImage = resolveCourseImage(course);
+
               return (
                 <div
                   key={course.id}
@@ -48,10 +97,10 @@ const StudentEnrolledCoursesSection: React.FC<StudentEnrolledCoursesSectionProps
                       : 'bg-white border border-gray-200 hover:border-purple-300'
                   }`}
                 >
-                  {course.thumbnail_url ? (
+                  {courseImage ? (
                     <div className="relative h-48 overflow-hidden">
                       <img
-                        src={course.thumbnail_url}
+                        src={courseImage}
                         alt={course.name}
                         className="w-full h-full object-cover transition-transform duration-300 hover:scale-110"
                       />

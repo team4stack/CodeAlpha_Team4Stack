@@ -137,7 +137,8 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
     setHeroSettingsOpen(false)
   }, [table])
 
-  const landingFormModalOpen = (isRecordEditorPage && editorOpen) || (isHero && heroSettingsOpen)
+  const useModalEditor = isRecordEditorPage && !isCourses
+  const landingFormModalOpen = (useModalEditor && editorOpen) || (isHero && heroSettingsOpen)
 
   useEffect(() => {
     if (!landingFormModalOpen) return
@@ -560,6 +561,8 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
       setForm({
         title: (r as any).title || '',
         description: (r as any).description || '',
+        thumbnail_url: (r as any).thumbnail_url || (r as any).image_url || '',
+        image_url: (r as any).image_url || '',
         level: (r as any).level || '',
         duration: (r as any).duration || '',
         price: (r as any).price || '',
@@ -677,7 +680,9 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
           <div
             className={
               isRecordEditorPage && editorOpen
-                ? 'relative z-1 my-auto w-full max-w-4xl rounded-2xl border border-cyan-500/20 bg-slate-950/95 p-4 shadow-2xl backdrop-blur-md sm:p-5'
+                ? useModalEditor
+                  ? 'relative z-1 my-auto w-full max-w-4xl rounded-2xl border border-cyan-500/20 bg-slate-950/95 p-4 shadow-2xl backdrop-blur-md sm:p-5'
+                  : 'relative z-1 w-full rounded-2xl border border-white/10 bg-slate-900/70 p-4 shadow-lg backdrop-blur-md sm:p-5'
                 : isHero && heroSettingsOpen
                   ? 'landing-admin-plain-ui relative z-1 my-auto flex w-full max-h-[min(90dvh,calc(100dvh-1.25rem))] min-h-0 max-w-2xl flex-col rounded-lg border border-slate-700 bg-slate-950/95 p-3 shadow-none backdrop-blur-md sm:p-4'
                   : 'rounded-xl border border-cyan-500/20 bg-slate-900/50 p-4 shadow-lg'
@@ -762,6 +767,12 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
             )}
             {isCourses && (
               <>
+                <input
+                  className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300 hover:border-orange-300 dark:hover:border-orange-600 md:col-span-2"
+                  placeholder="Thumbnail Image URL (GitHub/Google)"
+                  value={form.thumbnail_url || ''}
+                  onChange={(e) => setForm(s => ({ ...s, thumbnail_url: e.target.value }))}
+                />
                 <input className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300 hover:border-orange-300 dark:hover:border-orange-600" placeholder="Level (Physical/Online)" value={form.level || ''} onChange={(e) => setForm(s => ({ ...s, level: e.target.value }))} />
                 <input className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300 hover:border-orange-300 dark:hover:border-orange-600" placeholder="Duration (e.g., 3 months)" value={form.duration || ''} onChange={(e) => setForm(s => ({ ...s, duration: e.target.value }))} />
                 <input className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300 hover:border-orange-300 dark:hover:border-orange-600" placeholder="Price (e.g., Rs 10,000)" value={form.price || ''} onChange={(e) => setForm(s => ({ ...s, price: e.target.value }))} />
@@ -1718,17 +1729,26 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
                     <button className="px-4 py-2 rounded-lg bg-linear-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-semibold shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-300" onClick={() => del(r.id)}>Delete</button>
                   </div>
                 </>
-              ) : (
-                <>
-                  <div 
-                    className={`font-semibold text-gray-900 dark:text-white ${isServices ? 'cursor-pointer hover:text-purple-500 dark:hover:text-purple-400 transition-colors' : ''}`}
-                    onClick={isServices ? () => setSelectedService(r) : undefined}
-                  >
-                    {r.title}
-                  </div>
-                  {r.description && (
-                    <div className="text-sm text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">{r.description}</div>
-                  )}
+                ) : (
+                  <>
+                    <div 
+                      className={`font-semibold text-gray-900 dark:text-white ${isServices ? 'cursor-pointer hover:text-purple-500 dark:hover:text-purple-400 transition-colors' : ''}`}
+                      onClick={isServices ? () => setSelectedService(r) : undefined}
+                    >
+                      {r.title}
+                    </div>
+                    {isCourses && ((r as any).thumbnail_url || (r as any).image_url) && (
+                      <div className="mt-2">
+                        <img
+                          src={sanitizeImageUrl((r as any).thumbnail_url || (r as any).image_url)}
+                          alt={r.title || 'Course'}
+                          className="h-20 w-full rounded-lg object-cover border border-gray-200 dark:border-gray-700"
+                        />
+                      </div>
+                    )}
+                    {r.description && (
+                      <div className="text-sm text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">{r.description}</div>
+                    )}
                   {isCourses && (
                     <div className="mt-2 text-xs text-gray-600 dark:text-gray-300">
                       {(r as any).level ? <span className="mr-2">Level: {(r as any).level}</span> : null}

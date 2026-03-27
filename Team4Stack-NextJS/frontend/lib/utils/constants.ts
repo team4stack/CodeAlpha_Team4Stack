@@ -14,6 +14,12 @@ export const CONTACT_PHONE_NUMBERS = {
 
 export const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL || 'team4stack@gmail.com';
 
+// Payment Info (shown on admission form)
+export const PAYMENT_INFO = {
+  method: process.env.NEXT_PUBLIC_PAYMENT_METHOD || 'JazzCash',
+  number: process.env.NEXT_PUBLIC_PAYMENT_NUMBER || '+92 308 3266634'
+} as const;
+
 // reCAPTCHA
 export const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '6Lc2F-8pAAAAA'; // Replace with your actual site key from Google reCAPTCHA admin console
 

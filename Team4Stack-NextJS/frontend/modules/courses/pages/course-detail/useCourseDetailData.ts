@@ -41,6 +41,9 @@ const normalizeCourse = (value: unknown): CourseDetailCourse | null => {
     price: typeof course.price === 'string' ? course.price : undefined,
     note: typeof course.note === 'string' ? course.note : undefined,
     level: typeof course.level === 'string' ? course.level : undefined,
+    thumbnail_url:
+      typeof course.thumbnail_url === 'string' ? course.thumbnail_url : undefined,
+    image_url: typeof course.image_url === 'string' ? course.image_url : undefined,
     features: Array.isArray(course.features)
       ? course.features.filter(
           (feature): feature is string => typeof feature === 'string'

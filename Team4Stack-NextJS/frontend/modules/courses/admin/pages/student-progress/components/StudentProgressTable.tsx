@@ -80,9 +80,6 @@ const StudentProgressTable: React.FC<StudentProgressTableProps> = ({
                 Student Name
               </th>
               <th scope="col" className="px-4 py-3 text-left text-xs font-black text-white/80 uppercase tracking-wider">
-                CNIC
-              </th>
-              <th scope="col" className="px-4 py-3 text-left text-xs font-black text-white/80 uppercase tracking-wider">
                 Email
               </th>
               <th scope="col" className="px-4 py-3 text-left text-xs font-black text-white/80 uppercase tracking-wider">
@@ -90,6 +87,12 @@ const StudentProgressTable: React.FC<StudentProgressTableProps> = ({
               </th>
               <th scope="col" className="px-4 py-3 text-left text-xs font-black text-white/80 uppercase tracking-wider">
                 Videos Completed
+              </th>
+              <th scope="col" className="px-4 py-3 text-left text-xs font-black text-white/80 uppercase tracking-wider">
+                Quiz Marks
+              </th>
+              <th scope="col" className="px-4 py-3 text-left text-xs font-black text-white/80 uppercase tracking-wider">
+                Assignment Marks
               </th>
               <th scope="col" className="px-4 py-3 text-left text-xs font-black text-white/80 uppercase tracking-wider">
                 Overall Progress
@@ -102,13 +105,16 @@ const StudentProgressTable: React.FC<StudentProgressTableProps> = ({
           <tbody className="bg-white/5 divide-y divide-white/10">
             {visibleStudents.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-12 text-center text-white/60 font-semibold">
+                <td colSpan={9} className="px-4 py-12 text-center text-white/60 font-semibold">
                   {loading ? 'Loading students...' : 'No students found'}
                 </td>
               </tr>
             ) : (
               visibleStudents.map((student) => {
                 const fullProgress = studentProgress.find((progress) => progress.userId === student.userId)
+                const hasNewSubmissions = (student.newSubmissions || 0) > 0
+                const quizMarks = `${student.quizMarksObtained ?? 0}/${student.quizMarksTotal ?? 0}`
+                const assignmentMarks = `${student.assignmentMarksObtained ?? 0}/${student.assignmentMarksTotal ?? 0}`
                 return (
                   <tr key={student.userId} className="hover:bg-white/10 transition-colors">
                     <td className="px-4 py-3 whitespace-nowrap">
@@ -116,14 +122,31 @@ const StudentProgressTable: React.FC<StudentProgressTableProps> = ({
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center text-xs font-black text-white">
-                          {student.userName.charAt(0).toUpperCase()}
+                        <div className="relative">
+                          {student.avatarUrl ? (
+                            <img
+                              src={student.avatarUrl}
+                              alt={student.userName}
+                              className="w-8 h-8 rounded-lg object-cover border border-white/20"
+                            />
+                          ) : (
+                            <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center text-xs font-black text-white">
+                              {student.userName.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          {hasNewSubmissions ? (
+                            <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-rose-500 shadow-sm shadow-rose-500/60" />
+                          ) : null}
                         </div>
-                        <span className="text-sm font-bold text-white">{student.userName}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-white">{student.userName}</span>
+                          {hasNewSubmissions ? (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-rose-400/40 bg-rose-500/15 px-2 py-0.5 text-[10px] font-bold text-rose-200">
+                              NEW <span className="text-white">{student.newSubmissions}</span>
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className="text-sm font-bold text-purple-300">{student.cnic || '-'}</span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className="text-sm text-white/70">{student.userEmail}</span>
@@ -133,6 +156,12 @@ const StudentProgressTable: React.FC<StudentProgressTableProps> = ({
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className="text-sm font-bold text-green-400">{student.totalVideosCompleted}</span>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className="text-sm font-bold text-cyan-300">{quizMarks}</span>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className="text-sm font-bold text-emerald-300">{assignmentMarks}</span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="flex items-center gap-2">

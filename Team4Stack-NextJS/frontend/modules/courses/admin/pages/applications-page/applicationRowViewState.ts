@@ -22,7 +22,7 @@ export const getApplicationRowBackgroundClass = (application: ApplicationRow) =>
 export const getApplicationStatusBadge = (application: ApplicationRow): ApplicationStatusBadge => {
   if (application.is_blocked) {
     return {
-      label: '🚫 Blocked',
+      label: 'Blocked',
       className: 'bg-orange-600 text-white'
     }
   }
@@ -61,7 +61,7 @@ export const getCourseApprovalVisualState = (
 ): CourseApprovalVisualState => {
   if (approvalStatus === true) {
     return {
-      badgeLabel: '✓ Approved',
+      badgeLabel: 'Approved',
       badgeClassName: 'bg-green-500 text-white',
       containerClassName: 'bg-green-50 dark:bg-green-900/20 border-green-500'
     }
@@ -69,14 +69,14 @@ export const getCourseApprovalVisualState = (
 
   if (approvalStatus === false) {
     return {
-      badgeLabel: '✗ Rejected',
+      badgeLabel: 'Rejected',
       badgeClassName: 'bg-red-500 text-white',
       containerClassName: 'bg-red-50 dark:bg-red-900/20 border-red-500'
     }
   }
 
   return {
-    badgeLabel: '⏳ Pending',
+    badgeLabel: 'Pending',
     badgeClassName: 'bg-yellow-500 text-white',
     containerClassName: 'bg-gray-50 dark:bg-gray-700/50 border-gray-300 dark:border-gray-600'
   }

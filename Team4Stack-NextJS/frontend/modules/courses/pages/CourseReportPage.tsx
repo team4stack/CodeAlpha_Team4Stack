@@ -244,10 +244,10 @@ const CourseReportPage: React.FC<CourseReportPageProps> = ({ courseId: courseIdP
         <div className="container-custom">
           <div
             className={`rounded-2xl border p-5 sm:p-6 ${
-              isDarkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'
+              isDarkMode ? 'border-gray-700 bg-gray-800/90' : 'border-gray-200 bg-white'
             }`}
           >
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
                 <h1 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                   Course Report
@@ -255,21 +255,26 @@ const CourseReportPage: React.FC<CourseReportPageProps> = ({ courseId: courseIdP
                 <p className={`mt-1 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                   {report.course.title}
                 </p>
+                <p className={`mt-1 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                  Track lectures, quizzes, and assignment performance at a glance.
+                </p>
               </div>
-              <button
-                type="button"
-                onClick={() => router.push(`/student/courses/view/${report.course.id}`)}
-                className="rounded-lg bg-linear-to-r from-blue-600 to-purple-600 px-4 py-2 text-sm font-semibold text-white"
-              >
-                Open Course
-              </button>
-              <button
-                type="button"
-                onClick={handleDownloadReportPdf}
-                className="rounded-lg border border-cyan-500/70 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-300 hover:bg-cyan-500/20"
-              >
-                Download PDF
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => router.push(`/student/courses/view/${report.course.id}`)}
+                  className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10"
+                >
+                  Open Course
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDownloadReportPdf}
+                  className="rounded-lg bg-linear-to-r from-cyan-500 to-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-cyan-500/20"
+                >
+                  Download PDF
+                </button>
+              </div>
             </div>
           </div>
 
@@ -315,39 +320,50 @@ const CourseReportPage: React.FC<CourseReportPageProps> = ({ courseId: courseIdP
             </div>
           </div>
 
-          <div className={`mt-6 rounded-2xl border p-5 sm:p-6 ${isDarkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'}`}>
+          <div className={`mt-6 rounded-2xl border p-5 sm:p-6 ${isDarkMode ? 'border-gray-700 bg-gray-800/90' : 'border-gray-200 bg-white'}`}>
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Certificate Section</h2>
-              <span
-                className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                  report.certificate.application_status === 'sent'
-                    ? 'bg-emerald-500/20 text-emerald-300'
-                    : report.certificate.application_status === 'pending'
-                      ? 'bg-amber-500/20 text-amber-300'
-                      : report.certificate.application_status === 'approved'
-                        ? 'bg-cyan-500/20 text-cyan-300'
-                        : report.certificate.application_status === 'rejected'
-                          ? 'bg-rose-500/20 text-rose-300'
-                          : isDarkMode
-                            ? 'bg-gray-700 text-gray-300'
-                            : 'bg-gray-100 text-gray-700'
-                }`}
-              >
-                {certificateStatusLabel}
-              </span>
+              <div>
+                <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Certificate</h2>
+                <p className={`mt-1 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                  Complete all lectures and required quizzes to unlock.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                    report.certificate.application_status === 'sent'
+                      ? 'bg-emerald-500/20 text-emerald-300'
+                      : report.certificate.application_status === 'pending'
+                        ? 'bg-amber-500/20 text-amber-300'
+                        : report.certificate.application_status === 'approved'
+                          ? 'bg-cyan-500/20 text-cyan-300'
+                          : report.certificate.application_status === 'rejected'
+                            ? 'bg-rose-500/20 text-rose-300'
+                            : isDarkMode
+                              ? 'bg-gray-700 text-gray-300'
+                              : 'bg-gray-100 text-gray-700'
+                  }`}
+                >
+                  {certificateStatusLabel}
+                </span>
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                    report.certificate.eligible ? 'bg-emerald-500/15 text-emerald-300' : isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
+                  }`}
+                >
+                  {report.certificate.eligible ? 'Eligible' : 'Locked'}
+                </span>
+              </div>
             </div>
-            <p className={`mt-2 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-              Only students with completed course status can apply. Complete status requires all lectures + required quizzes.
-            </p>
 
             {report.certificate.certificate_url ? (
               <a
                 href={report.certificate.certificate_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-3 inline-block text-sm font-semibold text-cyan-400 hover:underline"
+                className="mt-3 inline-flex items-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-300 hover:bg-cyan-500/20"
               >
-                Open issued certificate
+                View issued certificate
               </a>
             ) : null}
 

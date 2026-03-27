@@ -11,6 +11,8 @@ export interface CourseDetailCourse {
   note?: string;
   level?: string;
   features?: string[];
+  thumbnail_url?: string;
+  image_url?: string;
 }
 
 export type ListMarker = 'dot-cyan' | 'check-cyan' | 'dot-emerald' | 'check-amber';

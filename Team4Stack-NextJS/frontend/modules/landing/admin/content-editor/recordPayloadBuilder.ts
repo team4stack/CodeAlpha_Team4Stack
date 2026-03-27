@@ -48,6 +48,8 @@ export const buildContentRecordPayload = ({
     return {
       title: form.title,
       description: form.description,
+      thumbnail_url: form.thumbnail_url || null,
+      image_url: form.image_url || null,
       level: form.level || null,
       duration: form.duration || null,
       price: form.price || null,

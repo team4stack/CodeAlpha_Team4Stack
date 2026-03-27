@@ -104,6 +104,9 @@ export const coursesApi = {
   updateAssignmentSubmission: async (id: number, patch: any) => {
     return apiClient.patch(`/courses/assignments/submissions/${id}`, patch, { authMode: 'user-only' });
   },
+  updateAssignmentSubmissionAdmin: async (id: number, patch: any) => {
+    return apiClient.patch(`/courses/assignments/submissions/${id}`, patch);
+  },
 
   // Get admission forms
   getAdmissionForms: async (filters?: { email?: string; approved?: boolean; course_name?: string }) => {
@@ -277,5 +280,9 @@ export const coursesApi = {
     emails?: string[];
   }) => {
     return apiClient.post('/courses/student-notifications', payload);
+  },
+
+  updateAdminPassword: async (payload: { current_password: string; new_password: string }) => {
+    return apiClient.post('/courses/admin/password', payload);
   },
 };

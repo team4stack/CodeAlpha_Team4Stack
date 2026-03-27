@@ -3,6 +3,7 @@ export interface Course {
   name: string;
   description?: string;
   thumbnail_url?: string;
+  image_url?: string;
 }
 
 export interface Progress {

@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '../../../config/supabase';
+import bcrypt from 'bcryptjs';
 import {
   pickAllowedKeys,
   updateByIdWithTimestampRetry,
@@ -61,6 +62,7 @@ const ADMISSION_KEYS = [
   'age',
   'cnic',
   'image_attached',
+  'payment_screenshot_url',
   'viewed',
   'approved',
   'approved_1',
@@ -85,7 +87,8 @@ export const ADMISSION_APPLICANT_KEYS = [
   'date_of_birth',
   'age',
   'cnic',
-  'image_attached'
+  'image_attached',
+  'payment_screenshot_url'
 ] as const;
 
 /** Owner may update these only (email frozen — use admin to change). */
@@ -101,7 +104,8 @@ export const ADMISSION_OWNER_PATCH_KEYS = [
   'date_of_birth',
   'age',
   'cnic',
-  'image_attached'
+  'image_attached',
+  'payment_screenshot_url'
 ] as const;
 
 export function isAdmissionFormApproved(app: AdmissionForm | Record<string, unknown>): boolean {
@@ -457,6 +461,60 @@ export class CourseService {
     if (error) throw error;
   }
 
+  async updateAdminPassword(args: {
+    email: string;
+    currentPassword: string;
+    newPassword: string;
+  }): Promise<{ updated: boolean }> {
+    const email = args.email.toLowerCase().trim();
+    if (!email) {
+      const err: Error & { status?: number } = new Error('Admin email is required');
+      err.status = 400;
+      throw err;
+    }
+    if (!args.currentPassword || !args.newPassword) {
+      const err: Error & { status?: number } = new Error('Current and new password are required');
+      err.status = 400;
+      throw err;
+    }
+    if (args.newPassword.length < 6) {
+      const err: Error & { status?: number } = new Error('Password must be at least 6 characters');
+      err.status = 400;
+      throw err;
+    }
+
+    const { data: verifyData, error: verifyError } = await supabaseAdmin.rpc(
+      'verify_admin_password',
+      {
+        p_email: email,
+        p_password: args.currentPassword
+      }
+    );
+    if (verifyError) {
+      const err: Error & { status?: number } = new Error(
+        verifyError.message || 'Failed to verify current password'
+      );
+      err.status = 400;
+      throw err;
+    }
+    if (!verifyData || (verifyData as any).valid !== true) {
+      const err: Error & { status?: number } = new Error(
+        (verifyData as any)?.error || 'Invalid current password'
+      );
+      err.status = 400;
+      throw err;
+    }
+
+    const passwordHash = await bcrypt.hash(args.newPassword, 10);
+    const { error: updateError } = await supabaseAdmin
+      .from('admin_users')
+      .update({ password_hash: passwordHash, updated_at: new Date().toISOString() })
+      .eq('email', email);
+    if (updateError) throw updateError;
+
+    return { updated: true };
+  }
+
   async getCourseVideos(courseId: number): Promise<Video[]> {
     const { data, error } = await supabaseAdmin
       .from('videos')
@@ -579,6 +637,24 @@ export class CourseService {
     }
     if (insert.age === undefined || insert.age === null) {
       throw badRequestError('Valid date of birth (or age) is required');
+    }
+
+    const email = String(insert.email || '').toLowerCase().trim();
+    if (email) {
+      const { data: existing, error } = await supabaseAdmin
+        .from('admission_form')
+        .select('id')
+        .eq('email', email)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      if (existing?.id) {
+        const row = await updateByIdWithTimestampRetry('admission_form', Number(existing.id), insert, {
+          notFoundMessage: 'Admission form not found'
+        });
+        return row as unknown as AdmissionForm;
+      }
     }
 
     return this.insertAdmissionFormWithDateFallback(insert);
@@ -790,8 +866,21 @@ export class CourseService {
 
   async updateAssignmentSubmission(
     id: number,
-    patch: Partial<Pick<CourseAssignmentSubmission, 'status' | 'awarded_marks' | 'admin_feedback'>>
-  ): Promise<CourseAssignmentSubmission> {
+    patch: Partial<Pick<CourseAssignmentSubmission, 'status' | 'awarded_marks' | 'admin_feedback'>> & {
+      allowResubmit?: boolean;
+    }
+  ): Promise<CourseAssignmentSubmission | { deleted: true }> {
+    const existingResult = await supabaseAdmin
+      .from('course_assignment_submissions')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (existingResult.error) throw existingResult.error;
+    const existing = existingResult.data as CourseAssignmentSubmission | null;
+    if (!existing) {
+      throw notFoundError('Assignment submission not found');
+    }
+
     const safePatch: Record<string, unknown> = {};
     const allowedStatuses = new Set(['submitted', 'reviewed', 'accepted', 'rejected']);
     if (typeof patch.status === 'string' && allowedStatuses.has(patch.status)) {
@@ -803,10 +892,79 @@ export class CourseService {
     if (typeof patch.admin_feedback === 'string' || patch.admin_feedback === null) {
       safePatch.admin_feedback = patch.admin_feedback || null;
     }
+    const shouldReject = safePatch.status === 'rejected';
+    if (shouldReject && existing.file_url) {
+      try {
+        await this.tryDeleteCloudinaryFile(existing.file_url);
+      } catch {
+        /* ignore delete errors */
+      }
+    }
+
+    if (shouldReject && patch.allowResubmit) {
+      await supabaseAdmin.from('course_assignment_submissions').delete().eq('id', id);
+      return { deleted: true };
+    }
+
     const row = await updateByIdWithTimestampRetry('course_assignment_submissions', id, safePatch, {
       notFoundMessage: 'Assignment submission not found'
     });
     return row as unknown as CourseAssignmentSubmission;
+  }
+
+  private parseCloudinaryPublicId(fileUrl: string): { publicId: string; resourceType: 'raw' | 'image' } | null {
+    try {
+      const parsed = new URL(fileUrl);
+      const path = decodeURIComponent(parsed.pathname || '');
+      const rawIndex = path.indexOf('/raw/upload/');
+      const imageIndex = path.indexOf('/image/upload/');
+      let start = rawIndex >= 0 ? rawIndex + '/raw/upload/'.length : -1;
+      let resourceType: 'raw' | 'image' = 'raw';
+      if (start < 0 && imageIndex >= 0) {
+        start = imageIndex + '/image/upload/'.length;
+        resourceType = 'image';
+      }
+      if (start < 0) return null;
+      const remainder = path.slice(start).replace(/^\/+/, '');
+      if (!remainder) return null;
+      const segments = remainder.split('/').filter(Boolean);
+      if (segments.length === 0) return null;
+      if (/^v\d+$/.test(segments[0])) {
+        segments.shift();
+      }
+      if (segments.length === 0) return null;
+      const last = segments.pop() as string;
+      const lastNoExt = last.includes('.') ? last.slice(0, last.lastIndexOf('.')) : last;
+      const publicId = [...segments, lastNoExt].join('/');
+      if (!publicId) return null;
+      return { publicId, resourceType };
+    } catch {
+      return null;
+    }
+  }
+
+  private async tryDeleteCloudinaryFile(fileUrl: string): Promise<void> {
+    const cloudinaryUrl = process.env.CLOUDINARY_URL?.trim() || '';
+    if (!cloudinaryUrl.startsWith('cloudinary://')) return;
+    const parsed = new URL(cloudinaryUrl);
+    const apiKey = parsed.username;
+    const apiSecret = parsed.password;
+    const cloudName = parsed.hostname;
+    if (!apiKey || !apiSecret || !cloudName) return;
+    const parsedId = this.parseCloudinaryPublicId(fileUrl);
+    if (!parsedId) return;
+
+    const auth = Buffer.from(`${apiKey}:${apiSecret}`).toString('base64');
+    const url = `https://api.cloudinary.com/v1_1/${cloudName}/resources/${parsedId.resourceType}/upload`;
+    const body = new URLSearchParams({ 'public_ids[]': parsedId.publicId }).toString();
+    await fetch(url, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Basic ${auth}`,
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body
+    }).catch(() => {});
   }
 
   async getStudentCourseAssignmentsWithSubmissions(

@@ -94,7 +94,13 @@ export const buildStudentList = (studentProgress: StudentProgress[]): StudentLis
       cnic: student.cnic,
       totalCourses: student.totalCourses,
       totalVideosCompleted: student.totalVideosCompleted,
-      overallProgress
+      overallProgress,
+      quizMarksObtained: student.quizMarksObtained,
+      quizMarksTotal: student.quizMarksTotal,
+      assignmentMarksObtained: student.assignmentMarksObtained,
+      assignmentMarksTotal: student.assignmentMarksTotal,
+      avatarUrl: student.avatarUrl,
+      newSubmissions: student.newSubmissions
     }
   })
 

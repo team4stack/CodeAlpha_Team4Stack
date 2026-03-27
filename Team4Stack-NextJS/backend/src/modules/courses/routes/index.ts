@@ -35,6 +35,9 @@ router.get('/student-notifications', courseController.getStudentNotifications);
 router.patch('/student-notifications/:id/read', courseController.markStudentNotificationRead);
 router.post('/student-notifications', courseController.createStudentNotifications);
 
+// Admin self-service (courses admin): update own password
+router.post('/admin/password', courseController.updateAdminPassword);
+
 // Quiz routes (must come before /:id to avoid route conflicts)
 router.get('/quizzes/video/:videoId', quizController.getQuizByVideoId);
 router.post('/quizzes', quizController.createQuiz);

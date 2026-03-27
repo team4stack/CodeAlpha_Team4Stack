@@ -45,6 +45,7 @@ export interface AdmissionForm {
   age: number;
   cnic?: string;
   image_attached?: boolean;
+  payment_screenshot_url?: string | null;
   viewed?: boolean;
   approved?: boolean;
   approved_1?: boolean;

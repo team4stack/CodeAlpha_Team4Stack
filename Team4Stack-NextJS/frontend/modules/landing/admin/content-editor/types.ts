@@ -4,6 +4,7 @@ export type ContentEditorRow = {
   description?: string;
   role_text?: string;
   image_url?: string;
+  thumbnail_url?: string;
   is_head?: boolean;
   profile_image_url?: string;
   banner_image_url?: string;
@@ -28,6 +29,7 @@ export const createEmptyContentEditorRow = (): ContentEditorRow => ({
   description: '',
   role_text: '',
   image_url: '',
+  thumbnail_url: '',
   is_head: false,
   profile_image_url: '',
   banner_image_url: '',

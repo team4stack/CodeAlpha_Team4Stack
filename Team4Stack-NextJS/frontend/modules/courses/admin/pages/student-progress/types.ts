@@ -19,6 +19,7 @@ export type User = {
   id: string
   email: string | null
   name: string | null
+  avatar_url?: string | null
 }
 
 export type StudentEnrolledCourseProgress = {
@@ -38,6 +39,12 @@ export type StudentProgress = {
   enrolledCourses: StudentEnrolledCourseProgress[]
   totalCourses: number
   totalVideosCompleted: number
+  quizMarksObtained?: number
+  quizMarksTotal?: number
+  assignmentMarksObtained?: number
+  assignmentMarksTotal?: number
+  avatarUrl?: string | null
+  newSubmissions?: number
 }
 
 export type StudentListItem = {
@@ -49,6 +56,12 @@ export type StudentListItem = {
   totalCourses: number
   totalVideosCompleted: number
   overallProgress: number
+  quizMarksObtained?: number
+  quizMarksTotal?: number
+  assignmentMarksObtained?: number
+  assignmentMarksTotal?: number
+  avatarUrl?: string | null
+  newSubmissions?: number
 }
 
 export type ProgressSummary = {

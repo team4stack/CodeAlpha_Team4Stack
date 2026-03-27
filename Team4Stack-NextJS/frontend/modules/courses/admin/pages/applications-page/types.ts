@@ -11,6 +11,7 @@ export type ApplicationRow = {
   gender: string
   age: number
   image_attached: boolean
+  payment_screenshot_url?: string | null
   viewed: boolean
   approved: boolean | null
   approved_1: boolean | null

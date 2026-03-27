@@ -227,6 +227,8 @@ export const useStudentDashboardData = ({
       courses.map((course) => ({
         ...course,
         name: course.name || (course as any).title || 'Untitled Course',
+        thumbnail_url: course.thumbnail_url || (course as any).image_url || undefined,
+        image_url: course.image_url || (course as any).image_url || undefined,
         progress: progressMap[String(course.id)] || { completed: 0, total: 0 },
         canAccess: accessByCourseId[String(course.id)]?.canAccess ?? false,
         admissionStatus: accessByCourseId[String(course.id)]?.admissionStatus ?? 'pending'

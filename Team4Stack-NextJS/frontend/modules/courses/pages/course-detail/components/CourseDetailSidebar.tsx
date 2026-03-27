@@ -11,7 +11,7 @@ const CourseDetailSidebar: React.FC<CourseDetailSidebarProps> = ({
   onApply,
 }) => {
   return (
-    <div className="sticky top-24 space-y-6">
+    <div className="space-y-6 lg:sticky lg:top-24">
       {Array.isArray(course.features) && course.features.length > 0 && (
         <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-6">
           <h3 className="text-xl font-bold text-white mb-4">Course Features</h3>

@@ -1,7 +1,6 @@
-'use client'
+﻿'use client'
 
 import React, { useEffect, useState } from 'react'
-import { useTheme } from '@/contexts/ThemeContext'
 
 type CourseSetting = {
   key: string
@@ -10,28 +9,52 @@ type CourseSetting = {
 }
 
 const CoursesSettingsPage: React.FC = () => {
-  const { isDarkMode } = useTheme()
   const [settings, setSettings] = useState<CourseSetting[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [editingKey, setEditingKey] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
+  const [adminEmail, setAdminEmail] = useState('')
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordLoading, setPasswordLoading] = useState(false)
 
-  // Default course settings
   const defaultSettings: CourseSetting[] = [
-    { key: 'default_course_duration', value: '30', description: 'Default course duration in days' },
-    { key: 'max_videos_per_course', value: '50', description: 'Maximum number of videos allowed per course' },
-    { key: 'enable_certificates', value: 'true', description: 'Enable certificate generation for completed courses' },
-    { key: 'certificate_min_score', value: '70', description: 'Minimum score required for certificate (percentage)' },
-    { key: 'enable_progress_tracking', value: 'true', description: 'Enable student progress tracking' },
-    { key: 'auto_enroll_enabled', value: 'false', description: 'Allow automatic enrollment in courses' },
-    { key: 'video_player_theme', value: 'light', description: 'Default video player theme (light/dark)' },
-    { key: 'enable_discussions', value: 'true', description: 'Enable course discussions and comments' },
+    {
+      key: 'enable_progress_tracking',
+      value: 'true',
+      description: 'Track student progress and watch time'
+    },
+    {
+      key: 'enable_certificates',
+      value: 'true',
+      description: 'Allow certificate applications after completion'
+    },
+    {
+      key: 'certificate_min_score',
+      value: '70',
+      description: 'Minimum quiz score percentage for certificate'
+    },
+    {
+      key: 'max_videos_per_course',
+      value: '50',
+      description: 'Maximum videos allowed in one course'
+    }
   ]
 
   useEffect(() => {
     loadSettings()
+    try {
+      const raw = sessionStorage.getItem('admin_session')
+      if (raw) {
+        const parsed = JSON.parse(raw) as { email?: string }
+        if (parsed?.email) setAdminEmail(parsed.email)
+      }
+    } catch {
+      /* ignore */
+    }
   }, [])
 
   const loadSettings = async () => {
@@ -78,7 +101,6 @@ const CoursesSettingsPage: React.FC = () => {
       setError(null)
       setSuccess(null)
 
-      // Save to site_settings table with course_ prefix
       const settingKey = `course_${key}`
 
       const { landingApi } = await import('@/lib/api')
@@ -126,6 +148,39 @@ const CoursesSettingsPage: React.FC = () => {
     }
   }
 
+  const handlePasswordUpdate = async () => {
+    try {
+      setError(null)
+      setSuccess(null)
+      if (!currentPassword || !newPassword) {
+        setError('Current and new password are required')
+        return
+      }
+      if (newPassword !== confirmPassword) {
+        setError('New password and confirm password do not match')
+        return
+      }
+      setPasswordLoading(true)
+      const { coursesApi } = await import('@/lib/api')
+      const res = await coursesApi.updateAdminPassword({
+        current_password: currentPassword,
+        new_password: newPassword
+      })
+      if (!res.success || res.error) {
+        throw new Error(res.error || 'Failed to update password')
+      }
+      setSuccess('Password updated successfully')
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+      setTimeout(() => setSuccess(null), 3000)
+    } catch (err: any) {
+      setError('Failed to update password: ' + err.message)
+    } finally {
+      setPasswordLoading(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="h-96 flex items-center justify-center">
@@ -136,16 +191,14 @@ const CoursesSettingsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-xl rounded-xl p-5 text-white shadow-xl relative overflow-hidden border border-white/20">
         <div className="absolute inset-0 bg-black/5"></div>
         <div className="relative z-10">
-          <h1 className="text-2xl font-bold mb-1">⚙️ Courses Settings</h1>
-          <p className="text-white/90 text-sm">Configure course management settings and preferences</p>
+          <h1 className="text-2xl font-bold mb-1">Courses Settings</h1>
+          <p className="text-white/90 text-sm">Update core course options and admin password</p>
         </div>
       </div>
 
-      {/* Messages */}
       {error && (
         <div className="bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl p-4">
           {error}
@@ -157,7 +210,6 @@ const CoursesSettingsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Settings List */}
       <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Course Settings</h2>
@@ -177,7 +229,7 @@ const CoursesSettingsPage: React.FC = () => {
             >
               <div className="flex-1">
                 <div className="font-semibold text-gray-800 dark:text-white mb-1">
-                  {setting.key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  {setting.key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
                 </div>
                 {setting.description && (
                   <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">{setting.description}</div>
@@ -233,27 +285,70 @@ const CoursesSettingsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Info Section */}
-      <div className="bg-gradient-to-r from-orange-50/50 to-red-50/50 dark:from-orange-900/20 dark:to-red-900/20 backdrop-blur-sm rounded-xl p-5 border border-orange-200/50 dark:border-orange-800/50">
-        <h3 className="text-base font-bold mb-2 text-gray-800 dark:text-white">ℹ️ About Course Settings</h3>
-        <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
-          These settings control various aspects of course management, including enrollment, certificates, and progress tracking.
-          Changes take effect immediately and apply to all courses.
-        </p>
-        <ul className="list-disc list-inside space-y-2 text-sm text-gray-600 dark:text-gray-400">
-          <li><strong>Default Course Duration:</strong> Number of days students have to complete a course</li>
-          <li><strong>Max Videos Per Course:</strong> Maximum number of videos allowed in a single course</li>
-          <li><strong>Enable Certificates:</strong> Allow certificate generation for completed courses</li>
-          <li><strong>Certificate Min Score:</strong> Minimum percentage score required to receive a certificate</li>
-          <li><strong>Enable Progress Tracking:</strong> Track and store student progress data</li>
-          <li><strong>Auto Enroll Enabled:</strong> Automatically enroll students in courses</li>
-          <li><strong>Video Player Theme:</strong> Default theme for the video player interface</li>
-          <li><strong>Enable Discussions:</strong> Allow students to post comments and discussions</li>
-        </ul>
+      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Admin Account</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Only super admin can change email. You can update your password here.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Email</label>
+            <input
+              type="email"
+              value={adminEmail || ''}
+              readOnly
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+            />
+          </div>
+          <div></div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Current Password</label>
+            <input
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              placeholder="Enter current password"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">New Password</label>
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              placeholder="Enter new password"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Confirm Password</label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              placeholder="Confirm new password"
+            />
+          </div>
+          <div className="flex items-end">
+            <button
+              onClick={handlePasswordUpdate}
+              disabled={passwordLoading}
+              className="px-5 py-2 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition disabled:opacity-60"
+            >
+              {passwordLoading ? 'Updating...' : 'Update Password'}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   )
 }
 
 export default CoursesSettingsPage
-

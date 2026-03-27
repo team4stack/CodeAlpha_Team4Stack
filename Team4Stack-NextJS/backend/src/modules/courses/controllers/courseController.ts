@@ -511,9 +511,11 @@ export class CourseController {
         admin_feedback:
           typeof req.body?.admin_feedback === 'string' || req.body?.admin_feedback === null
             ? req.body.admin_feedback
-            : undefined
+            : undefined,
+        allowResubmit: typeof req.body?.allow_resubmit === 'boolean' ? req.body.allow_resubmit : undefined
       });
-      return res.json({ success: true, data });
+      const deleted = Boolean((data as { deleted?: boolean } | null)?.deleted);
+      return res.json({ success: true, data, deleted });
     } catch (error: any) {
       return next(error);
     }
@@ -731,6 +733,32 @@ export class CourseController {
       });
 
       res.json({ success: true, data: { sent, recipientCount: recipients.length } });
+    } catch (error: any) {
+      next(error);
+    }
+  };
+
+  updateAdminPassword = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!isCoursesAdmin(req) || req.auth?.kind !== 'admin') {
+        return res.status(403).json({ success: false, error: 'Courses admin access required' });
+      }
+      const currentPassword = String(req.body?.current_password || '').trim();
+      const newPassword = String(req.body?.new_password || '').trim();
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({
+          success: false,
+          error: 'current_password and new_password are required'
+        });
+      }
+
+      const result = await courseService.updateAdminPassword({
+        email: req.auth.email,
+        currentPassword,
+        newPassword
+      });
+
+      return res.json({ success: true, data: result });
     } catch (error: any) {
       next(error);
     }
