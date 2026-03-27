@@ -1,6 +1,9 @@
 // SuperAdmin API endpoints
 import apiClient from './client';
 
+const ADMIN_CHECK_TTL_MS = 30_000;
+const adminCheckCache = new Map<string, { ts: number; promise: Promise<any> }>();
+
 export const superadminApi = {
   // Admin Users
   getAdminUsers: async () => {
@@ -8,7 +11,20 @@ export const superadminApi = {
   },
 
   checkAdminByEmail: async (email: string) => {
-    return apiClient.get(`/superadmin/admins/check/${encodeURIComponent(email)}`);
+    const key = String(email || '').trim().toLowerCase();
+    const now = Date.now();
+    const cached = adminCheckCache.get(key);
+    if (cached && now - cached.ts < ADMIN_CHECK_TTL_MS) {
+      return cached.promise;
+    }
+    const promise = apiClient.get(`/superadmin/admins/check/${encodeURIComponent(key)}`);
+    adminCheckCache.set(key, { ts: now, promise });
+    try {
+      return await promise;
+    } catch (err) {
+      adminCheckCache.delete(key);
+      throw err;
+    }
   },
 
   createAdminUser: async (admin: any) => {
