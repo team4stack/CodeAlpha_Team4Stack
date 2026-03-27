@@ -1,6 +1,6 @@
 # Team4Stack Next.js Migration
 
-## 🎉 Migration Complete!
+## 🎉 Migration Complete!!
 
 This is the Next.js version of Team4Stack, migrated from Vite + React Router to Next.js 16 App Router.
 
