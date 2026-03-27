@@ -37,7 +37,7 @@ export const getCourseViewDerivedState = ({
   getPrevLectureId
 }: CourseViewDerivedArgs) => {
   const selectedVideo = selectedVideoId
-    ? videos.find((video) => video.id === selectedVideoId && unlockedLectures.has(video.id))
+    ? (videos.find((video) => video.id === selectedVideoId && unlockedLectures.has(video.id)) ?? null)
     : null;
   const selectedVideoIsYouTube = isEmbeddableYouTubeUrl(selectedVideo?.video_url);
   const courseTitle = course?.title || course?.name || 'Course';

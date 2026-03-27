@@ -242,7 +242,7 @@ type BuildRightPanelPropsArgs = {
   showDesktopLectureListFab: boolean;
   lectureViewProps: LectureViewProps;
   onAssignmentsBack: () => void;
-  onQuizComplete: () => void;
+  onQuizComplete: (passed: boolean, attemptCount: number) => void | Promise<void>;
   onQuizClose: () => void;
 };
 

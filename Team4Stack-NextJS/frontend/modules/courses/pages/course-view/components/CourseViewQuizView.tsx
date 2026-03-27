@@ -7,7 +7,7 @@ type CourseViewQuizViewProps = {
   quizVideoId: number;
   parsedCourseId: number;
   showDesktopLectureListFab: boolean;
-  onQuizComplete: () => void;
+  onQuizComplete: (passed: boolean, attemptCount: number) => void | Promise<void>;
   onClose: () => void;
 };
 

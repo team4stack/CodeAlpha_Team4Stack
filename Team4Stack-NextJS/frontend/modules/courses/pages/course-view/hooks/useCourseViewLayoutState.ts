@@ -57,7 +57,7 @@ type CourseViewLayoutArgs = {
   openQuizForVideo: (videoId: number) => void;
   handleSelectVideo: (videoId: number) => void;
   onAssignmentsBack: () => void;
-  onQuizComplete: () => void;
+  onQuizComplete: (passed: boolean, attemptCount: number) => void | Promise<void>;
   onQuizClose: () => void;
   setIframeError: (value: boolean) => void;
   setIsSidebarOpen: Dispatch<SetStateAction<boolean>>;

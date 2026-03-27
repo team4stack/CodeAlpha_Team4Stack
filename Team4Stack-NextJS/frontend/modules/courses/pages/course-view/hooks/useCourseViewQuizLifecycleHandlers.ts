@@ -56,7 +56,7 @@ export const useCourseViewQuizLifecycleHandlers = ({
     setShowQuiz(true);
   }, [setQuizVideoId, setShowQuiz]);
 
-  const handleQuizComplete = useCallback(async (passed: boolean) => {
+  const handleQuizComplete = useCallback(async (passed: boolean, _attemptCount: number) => {
     const currentQuizVideoId = quizVideoId;
     if (!currentQuizVideoId || !userId) return;
 

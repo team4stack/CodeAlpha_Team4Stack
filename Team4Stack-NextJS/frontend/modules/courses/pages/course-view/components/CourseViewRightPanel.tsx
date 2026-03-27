@@ -48,7 +48,7 @@ type CourseViewRightPanelProps = {
     isPlaying: boolean;
   };
   onAssignmentsBack: () => void;
-  onQuizComplete: () => void;
+  onQuizComplete: (passed: boolean, attemptCount: number) => void | Promise<void>;
   onQuizClose: () => void;
 };
 

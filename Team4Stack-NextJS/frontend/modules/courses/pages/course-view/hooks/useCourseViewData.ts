@@ -112,6 +112,7 @@ export const useCourseViewData = ({ userId, parsedCourseId }: CourseViewDataArgs
     setVideoWatched,
     setVideoProgress,
     setVideoWatchedTime,
+    setVideoTotalDuration,
     setProgressRecords
   };
 };
