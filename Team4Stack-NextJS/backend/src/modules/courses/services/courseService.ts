@@ -532,8 +532,10 @@ export class CourseService {
       await this.assertNoDuplicateCourseVideo(courseId, video.video_url);
     }
     const insert = pickAllowedKeys(video, VIDEO_KEYS);
-    if ((!insert.duration || insert.duration <= 0) && insert.video_url) {
-      const fetchedDuration = await this.fetchYouTubeDurationSeconds(insert.video_url);
+    const insertDuration = typeof insert.duration === 'number' ? insert.duration : undefined;
+    const insertVideoUrl = typeof insert.video_url === 'string' ? insert.video_url : undefined;
+    if ((!insertDuration || insertDuration <= 0) && insertVideoUrl) {
+      const fetchedDuration = await this.fetchYouTubeDurationSeconds(insertVideoUrl);
       if (fetchedDuration > 0) {
         insert.duration = fetchedDuration;
       }
@@ -561,10 +563,12 @@ export class CourseService {
     }
 
     const patch = pickAllowedKeys(video, VIDEO_KEYS);
-    if (patch.video_url) {
-      const shouldFetchDuration = !patch.duration || patch.duration <= 0 || shouldResetLearningState;
+    const patchVideoUrl = typeof patch.video_url === 'string' ? patch.video_url : undefined;
+    const patchDuration = typeof patch.duration === 'number' ? patch.duration : undefined;
+    if (patchVideoUrl) {
+      const shouldFetchDuration = !patchDuration || patchDuration <= 0 || shouldResetLearningState;
       if (shouldFetchDuration) {
-        const fetchedDuration = await this.fetchYouTubeDurationSeconds(patch.video_url);
+        const fetchedDuration = await this.fetchYouTubeDurationSeconds(patchVideoUrl);
         if (fetchedDuration > 0) {
           patch.duration = fetchedDuration;
         }
