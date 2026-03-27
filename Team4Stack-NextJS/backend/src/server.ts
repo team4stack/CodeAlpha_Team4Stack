@@ -53,10 +53,14 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Rate limiting - More lenient in development, skip for localhost
+// Rate limiting - More lenient in development, configurable in production
+const rateLimitWindowMs = Number(process.env.RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000);
+const rateLimitMax =
+  Number(process.env.RATE_LIMIT_MAX) ||
+  (process.env.NODE_ENV === 'development' ? 10000 : 500);
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'development' ? 10000 : 100, // Very high limit in dev, normal in production
+  windowMs: rateLimitWindowMs, // 15 minutes default
+  max: rateLimitMax, // configurable via env
   message: 'Too many requests from this IP, please wait a moment and try again.',
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
