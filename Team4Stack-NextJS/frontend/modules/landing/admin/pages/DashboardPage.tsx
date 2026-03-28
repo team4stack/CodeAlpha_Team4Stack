@@ -4,11 +4,11 @@ import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import StatCard from '@/components/admin/shared/StatCard'
 import QuickActions from '@/components/admin/shared/QuickActions'
-import { landingApi, coursesApi, superadminApi } from '@/lib/api'
+import { landingApi, coursesApi } from '@/lib/api'
 
 type Activity = {
   id: string
-  type: 'project' | 'service' | 'review' | 'course' | 'contact' | 'user' | 'support'
+  type: 'project' | 'service' | 'review' | 'course' | 'contact' | 'support'
   title: string
   timestamp: string
   action: string
@@ -22,7 +22,6 @@ const DashboardPage: React.FC = () => {
     reviews: 0,
     courses: 0,
     contacts: 0,
-    users: 0,
     activeServices: 0,
     inactiveServices: 0,
     approvedReviews: 0,
@@ -31,8 +30,6 @@ const DashboardPage: React.FC = () => {
     pendingSupport: 0,
     viewedSupport: 0,
     unviewedSupport: 0,
-    blockedUsers: 0,
-    regularUsers: 0,
     viewedForms: 0,
     unviewedForms: 0
   })
@@ -44,13 +41,12 @@ const DashboardPage: React.FC = () => {
     const loadStats = async () => {
       try {
         // Fetch all data via API and count on client side
-        const [projectsResult, servicesResult, reviewsResult, coursesResult, admissionFormsResult, usersResult, supportRequestsResult] = await Promise.all([
+        const [projectsResult, servicesResult, reviewsResult, coursesResult, admissionFormsResult, supportRequestsResult] = await Promise.all([
           landingApi.getProjects().catch(() => ({ data: [] as any[] })),
           landingApi.getServices().catch(() => ({ data: [] as any[] })),
           landingApi.getReviews().catch(() => ({ data: [] as any[] })),
           coursesApi.getAllCourses().catch(() => ({ data: [] as any[] })),
           coursesApi.getAdmissionForms().catch(() => ({ data: [] as any[] })),
-          superadminApi.getUsers().catch(() => ({ data: [] as any[] })),
           landingApi.getSupportRequests().catch(() => ({ data: [] as any[] }))
         ])
 
@@ -76,11 +72,6 @@ const DashboardPage: React.FC = () => {
         const contacts = allAdmissionForms.length
         const viewedForms = allAdmissionForms.filter((f: any) => f.viewed === true).length
 
-        // Count users
-        const allUsers = Array.isArray(usersResult.data) ? usersResult.data : []
-        const users = allUsers.length
-        const blockedUsers = allUsers.filter((u: any) => u.is_blocked === true).length
-
         // Count support requests
         const allSupportRequests = Array.isArray(supportRequestsResult.data) ? supportRequestsResult.data : []
         const supportRequests = allSupportRequests.length
@@ -91,8 +82,6 @@ const DashboardPage: React.FC = () => {
         const unapprovedReviews = reviews - approvedReviews
         // Calculate unviewed support requests (total - viewed)
         const unviewedSupport = supportRequests - viewedSupport
-        // Calculate regular users (total - blocked)
-        const regularUsers = users - blockedUsers
         // Calculate unviewed forms (total - viewed)
         const unviewedForms = contacts - viewedForms
 
@@ -102,7 +91,6 @@ const DashboardPage: React.FC = () => {
           reviews,
           courses,
           contacts,
-          users,
           activeServices,
           inactiveServices,
           approvedReviews,
@@ -111,8 +99,6 @@ const DashboardPage: React.FC = () => {
           pendingSupport,
           viewedSupport,
           unviewedSupport,
-          blockedUsers,
-          regularUsers,
           viewedForms,
           unviewedForms
         })
@@ -290,7 +276,6 @@ const DashboardPage: React.FC = () => {
       case 'review': return '⭐'
       case 'course': return '🎓'
       case 'contact': return '📧'
-      case 'user': return '👤'
       case 'support': return '💬'
       default: return '📝'
     }
@@ -374,16 +359,6 @@ const DashboardPage: React.FC = () => {
               ]}
             />
             <StatCard 
-              title="Total Users" 
-              value={stats.users} 
-              icon="👤"
-              onClick={() => router.push('/adminlandingt4s/users')}
-              badges={[
-                { label: 'Regular', value: stats.regularUsers, color: 'blue' },
-                { label: 'Blocked', value: stats.blockedUsers, color: 'red' }
-              ]}
-            />
-            <StatCard 
               title="Support Requests" 
               value={stats.supportRequests} 
               icon="💬" 
@@ -396,20 +371,20 @@ const DashboardPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-2 rounded-xl p-4 sm:p-5 bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl border-2 border-white/30 dark:border-white/20 shadow-lg">
-              <div className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-4">Recent Activity</div>
+            <div className="lg:col-span-2 rounded-xl p-4 sm:p-5 bg-slate-900/90 backdrop-blur-xl border border-white/10 shadow-lg">
+              <div className="text-xs sm:text-sm font-semibold text-white mb-4">Recent Activity</div>
               {activityLoading ? (
                 <div className="flex items-center justify-center py-4">
                   <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-orange-500"></div>
                 </div>
               ) : recentActivity.length === 0 ? (
-                <div className="text-sm text-gray-500 dark:text-gray-400">No recent activity yet.</div>
+                <div className="text-sm text-white/60">No recent activity yet.</div>
               ) : (
                 <div className="space-y-2">
                   {recentActivity.map((activity, index) => (
                     <div 
                       key={`${activity.type}-${activity.id}-${index}`} 
-                      className="flex items-start gap-3 p-3 rounded-xl bg-gradient-to-r from-white/50 to-transparent dark:from-gray-700/30 dark:to-transparent hover:from-orange-50 hover:to-red-50 dark:hover:from-orange-900/20 dark:hover:to-red-900/20 border border-white/20 dark:border-white/10 hover:border-orange-300/50 dark:hover:border-orange-600/50 transition-all duration-300 cursor-pointer hover:scale-[1.02] hover:shadow-md group"
+                      className="flex items-start gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-orange-500/40 transition-all duration-300 cursor-pointer hover:scale-[1.02] hover:shadow-md group"
                       onClick={() => {
                         const routes: Partial<Record<Activity['type'], string>> = {
                           project: '/adminlandingt4s/projects',
@@ -417,7 +392,6 @@ const DashboardPage: React.FC = () => {
                           review: '/adminlandingt4s/reviews',
                           course: '/admincourset4s/manage',
                           contact: '/adminlandingt4s/contact',
-                          user: '/adminlandingt4s/users',
                           support: '/adminlandingt4s/support'
                         }
                         router.push(routes[activity.type] || '/adminlandingt4s')
@@ -425,8 +399,8 @@ const DashboardPage: React.FC = () => {
                     >
                       <div className="text-2xl flex-shrink-0 group-hover:scale-110 transition-transform duration-300">{getActivityIcon(activity.type)}</div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm text-gray-900 dark:text-white font-semibold truncate group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">{activity.title}</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                        <div className="text-sm text-white font-semibold truncate group-hover:text-orange-400 transition-colors">{activity.title}</div>
+                        <div className="text-xs text-white/60 mt-0.5">
                           {activity.action} • {formatTime(activity.timestamp)}
                         </div>
                       </div>
@@ -450,5 +424,6 @@ const DashboardPage: React.FC = () => {
 }
 
 export default DashboardPage
+
 
 

@@ -1,6 +1,7 @@
 import { getCookieConsent } from '@/lib/cookies/consent';
 
 const SS_PREFIX = 't4s_perf_v1_';
+const LS_PREFIX = 't4s_perf_v1_ls_';
 const MAX_SESSION_STORAGE_ENTRY = 120_000;
 
 type CachedEnvelope<T> = { exp: number; payload: T };
@@ -11,12 +12,20 @@ function storageKey(cacheKey: string): string {
   return `${SS_PREFIX}${cacheKey}`;
 }
 
+function localStorageKey(cacheKey: string): string {
+  return `${LS_PREFIX}${cacheKey}`;
+}
+
 function canUsePublicPerfCache(): boolean {
   // Cache landing/public GET responses after user has made a cookie choice.
   // This avoids repeated network work on navigation/remounts for both:
   // - essential ("Necessary only")
   // - functional ("Accept all")
   return getCookieConsent() === 'essential' || getCookieConsent() === 'functional';
+}
+
+function usePersistentCache(): boolean {
+  return getCookieConsent() === 'functional';
 }
 
 /** Drop all functional perf cache (memory + our sessionStorage keys). Call when user chooses necessary/reject. */
@@ -30,6 +39,16 @@ export function clearFunctionalPublicCaches(): void {
       if (k?.startsWith(SS_PREFIX)) keys.push(k);
     }
     keys.forEach((k) => sessionStorage.removeItem(k));
+  } catch {
+    // ignore
+  }
+  try {
+    const keys: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k?.startsWith(LS_PREFIX)) keys.push(k);
+    }
+    keys.forEach((k) => localStorage.removeItem(k));
   } catch {
     // ignore
   }
@@ -55,7 +74,9 @@ export async function cachedPublicGet<T extends { success?: boolean }>(
   }
 
   try {
-    const raw = sessionStorage.getItem(storageKey(cacheKey));
+    const persistent = usePersistentCache();
+    const storage = persistent ? localStorage : sessionStorage;
+    const raw = storage.getItem(persistent ? localStorageKey(cacheKey) : storageKey(cacheKey));
     if (raw) {
       const parsed = JSON.parse(raw) as CachedEnvelope<T>;
       if (parsed.exp > now && parsed.payload) {
@@ -80,7 +101,9 @@ export async function cachedPublicGet<T extends { success?: boolean }>(
   try {
     const serialized = JSON.stringify(env);
     if (serialized.length <= MAX_SESSION_STORAGE_ENTRY) {
-      sessionStorage.setItem(storageKey(cacheKey), serialized);
+      const persistent = usePersistentCache();
+      const storage = persistent ? localStorage : sessionStorage;
+      storage.setItem(persistent ? localStorageKey(cacheKey) : storageKey(cacheKey), serialized);
     }
   } catch {
     // quota / private mode
@@ -98,6 +121,11 @@ export function clearCachedPublicGet(cacheKey: string): void {
   if (typeof window === 'undefined') return;
   try {
     sessionStorage.removeItem(storageKey(cacheKey));
+  } catch {
+    // ignore
+  }
+  try {
+    localStorage.removeItem(localStorageKey(cacheKey));
   } catch {
     // ignore
   }

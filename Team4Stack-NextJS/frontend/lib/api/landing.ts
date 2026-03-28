@@ -46,15 +46,21 @@ export const landingApi = {
   },
 
   createProject: async (project: any) => {
-    return apiClient.post('/landing/projects', project);
+    const res = await apiClient.post('/landing/projects', project);
+    clearCachedPublicGet('landing:projects');
+    return res;
   },
 
   updateProject: async (id: number, project: any) => {
-    return apiClient.put(`/landing/projects/${id}`, project);
+    const res = await apiClient.put(`/landing/projects/${id}`, project);
+    clearCachedPublicGet('landing:projects');
+    return res;
   },
 
   deleteProject: async (id: number) => {
-    return apiClient.delete(`/landing/projects/${id}`);
+    const res = await apiClient.delete(`/landing/projects/${id}`);
+    clearCachedPublicGet('landing:projects');
+    return res;
   },
 
   // Services
@@ -63,15 +69,21 @@ export const landingApi = {
   },
 
   createService: async (service: any) => {
-    return apiClient.post('/landing/services', service);
+    const res = await apiClient.post('/landing/services', service);
+    clearCachedPublicGet('landing:services');
+    return res;
   },
 
   updateService: async (id: number, service: any) => {
-    return apiClient.put(`/landing/services/${id}`, service);
+    const res = await apiClient.put(`/landing/services/${id}`, service);
+    clearCachedPublicGet('landing:services');
+    return res;
   },
 
   deleteService: async (id: number) => {
-    return apiClient.delete(`/landing/services/${id}`);
+    const res = await apiClient.delete(`/landing/services/${id}`);
+    clearCachedPublicGet('landing:services');
+    return res;
   },
 
   // Site Settings
@@ -84,15 +96,23 @@ export const landingApi = {
   },
 
   upsertSiteSetting: async (key: string, value: string) => {
-    return apiClient.post('/landing/settings', { key, value });
+    const res = await apiClient.post('/landing/settings', { key, value });
+    clearCachedPublicGet('landing:settings:all');
+    clearCachedPublicGet(`landing:settings:${key}`);
+    return res;
   },
 
   upsertSiteSettings: async (entries: Array<{ key: string; value: string }>) => {
-    return apiClient.post('/landing/settings/bulk', { entries });
+    const res = await apiClient.post('/landing/settings/bulk', { entries });
+    clearCachedPublicGet('landing:settings:all');
+    return res;
   },
 
   deleteSiteSettings: async (keys: string[]) => {
-    return apiClient.delete(`/landing/settings?keys=${keys.join(',')}`);
+    const res = await apiClient.delete(`/landing/settings?keys=${keys.join(',')}`);
+    clearCachedPublicGet('landing:settings:all');
+    keys.forEach((k) => clearCachedPublicGet(`landing:settings:${k}`));
+    return res;
   },
 
   // Support Requests

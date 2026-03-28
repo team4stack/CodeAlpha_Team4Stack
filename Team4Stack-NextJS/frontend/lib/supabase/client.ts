@@ -1,8 +1,8 @@
 /**
  * Browser Supabase client (optional).
  *
- * Main app auth uses the backend (`/api/auth/*`) + tokens in `auth_session` — you do **not**
- * need NEXT_PUBLIC_SUPABASE_* for login or student portal.
+ * Email/password auth uses the backend (`/api/auth/*`) + tokens in `auth_session`.
+ * OAuth uses the browser Supabase client (PKCE), which requires NEXT_PUBLIC_SUPABASE_*.
  *
  * Keep this only for legacy scripts/tools that still import `supabase` directly.
  */
@@ -40,6 +40,7 @@ if (!isSupabaseConfigured()) {
       persistSession: false,
       autoRefreshToken: false,
       detectSessionInUrl: false,
+      flowType: 'pkce',
     },
     realtime: {
       params: {
@@ -57,6 +58,7 @@ if (!isSupabaseConfigured()) {
       persistSession: true, // ✅ Session localStorage mein save hogi - auto login enable
       autoRefreshToken: true, // ✅ Token automatically refresh hoga (expire hone se pehle)
       detectSessionInUrl: true, // ✅ URL se session detect hogi (OAuth ke liye)
+      flowType: 'pkce', // ✅ Use Authorization Code Flow with PKCE (secure)
       // Note: Supabase automatically uses localStorage with key: sb-<project-ref>-auth-token
       // Session automatically save/load hoti hai - user ko next time auto login ho jayega
     }

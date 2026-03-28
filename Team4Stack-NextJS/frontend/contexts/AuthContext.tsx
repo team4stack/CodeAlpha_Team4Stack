@@ -9,6 +9,7 @@ import {
   setAuthSessionCookieIfAllowed
 } from '@/lib/cookies/authSessionCookie'
 import { isValidAuthTokenString, parseStoredClientAuthSession } from '@/lib/security/clientAuthSession'
+import { isSupabaseConfigured, supabase } from '@/lib/supabase/client'
 
 export type AppUser = {
   id: string
@@ -154,17 +155,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         // Check if session is expired (only check if expires_at exists and is valid)
-        if (session.expires_at) {
-          const expiresAt = session.expires_at
-          if (!isNaN(expiresAt) && Date.now() > expiresAt) {
-            // Session expired, remove it
-            localStorage.removeItem('auth_session')
-            clearSessionCookie()
-            setUser(null)
-            setLoading(false)
-            return
-          }
-        }
+        const isExpired = !!(session.expires_at && !isNaN(session.expires_at) && Date.now() > session.expires_at)
 
         // Verify session with backend API (backend will verify with Supabase)
         const { authApi } = await import('@/lib/api')
@@ -178,8 +169,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const sessionData = verifyResult.data as any
             sessionUser = sessionData.user
             userProfile = sessionData.user?.profile || null
+
+            // Persist refreshed tokens if backend returned a new session
+            if (sessionData.session?.access_token && sessionData.session?.refresh_token) {
+              let expiresAt = sessionData.session.expires_at
+              if (!expiresAt && sessionData.session.expires_in) {
+                expiresAt = Date.now() + sessionData.session.expires_in * 1000
+              } else if (expiresAt && expiresAt < 1_000_000_000_000) {
+                expiresAt = expiresAt * 1000
+              }
+              if (isValidAuthTokenString(sessionData.session.access_token) && isValidAuthTokenString(sessionData.session.refresh_token)) {
+                localStorage.setItem('auth_session', JSON.stringify({
+                  access_token: sessionData.session.access_token,
+                  refresh_token: sessionData.session.refresh_token,
+                  expires_at: expiresAt,
+                  user: sessionUser
+                }))
+                setAuthSessionCookieIfAllowed({
+                  access_token: sessionData.session.access_token,
+                  refresh_token: sessionData.session.refresh_token,
+                  expires_at: expiresAt
+                })
+              }
+            }
           } else {
-            // Backend verification failed, try to use stored user data as fallback
+            // Backend verification failed
+            if (isExpired) {
+              localStorage.removeItem('auth_session')
+              clearSessionCookie()
+              setUser(null)
+              setLoading(false)
+              return
+            }
             // Use stored user data if available
             const storedUser = (session as any).user
             if (storedUser && storedUser.id) {
@@ -196,6 +217,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } catch (verifyErr: any) {
           // Backend API call failed, try to use stored user data
           // Use stored user data if available
+          if (isExpired) {
+            localStorage.removeItem('auth_session')
+            clearSessionCookie()
+            setUser(null)
+            setLoading(false)
+            return
+          }
           const storedUser = (session as any).user
           if (storedUser && storedUser.id) {
             sessionUser = storedUser
@@ -283,9 +311,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     loadSession()
     
-    // Handle OAuth callback from URL hash or query params (when user returns from Google/GitHub)
+    // Handle OAuth callback from URL code/hash/query params (when user returns from Google/GitHub)
     const handleOAuthCallback = async () => {
-      // Check if URL has OAuth tokens in hash (direct Supabase redirect) or query params (backend redirect)
+      // Check if URL has OAuth code (PKCE) or tokens in hash/query params (legacy/backends)
       const hash = window.location.hash
       const queryParams = new URLSearchParams(window.location.search)
       
@@ -296,7 +324,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let expiresIn: string | null = null
       let expiresAt: number | null = null
       
-      if (hash && hash.includes('access_token')) {
+      const code = queryParams.get('code')
+      if (code) {
+        if (!isSupabaseConfigured()) {
+          window.history.replaceState(null, '', window.location.pathname)
+          return
+        }
+
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+        if (error || !data?.session) {
+          window.history.replaceState(null, '', window.location.pathname)
+          return
+        }
+
+        accessToken = data.session.access_token
+        refreshToken = data.session.refresh_token
+        expiresAt = data.session.expires_at ?? null
+        if (expiresAt && expiresAt < 1_000_000_000_000) {
+          expiresAt = expiresAt * 1000
+        }
+      } else if (hash && hash.includes('access_token')) {
         // Parse hash parameters (handle multiple # separators)
         let hashString = hash.substring(1)
         if (hashString.includes('#')) {
@@ -394,8 +441,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Check for OAuth callback on mount
     handleOAuthCallback()
     
-    // OAuth + email/password auth: tokens come from backend (/auth/oauth, /auth/signin).
-    // No browser Supabase client subscription — avoids exposing NEXT_PUBLIC_SUPABASE_* on the client.
+    // OAuth uses Supabase PKCE exchange in the browser, then we persist tokens in auth_session.
+    // Email/password auth tokens still come from backend (/auth/signin).
     
     // Listen for storage changes (when session is updated in another tab)
     const handleStorageChange = (e: StorageEvent) => {

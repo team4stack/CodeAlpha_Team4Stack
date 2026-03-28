@@ -1,5 +1,5 @@
-import { UsersPage } from '@/modules/landing/admin/pages';
+import { redirect } from 'next/navigation';
 
 export default function UsersPageRoute() {
-  return <UsersPage />;
+  redirect('/supadmin/users');
 }

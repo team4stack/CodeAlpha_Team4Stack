@@ -6,7 +6,6 @@ import { usePathname } from 'next/navigation'
 import { landingApi } from '@/lib/api'
 import {
   FiLayout,
-  FiUser,
   FiZap,
   FiTool,
   FiBriefcase,
@@ -16,7 +15,6 @@ import {
   FiPhone,
   FiNavigation,
   FiMessageCircle,
-  FiGrid,
   FiSettings,
   FiLogOut
 } from 'react-icons/fi'
@@ -35,7 +33,7 @@ const AdminSidebar: React.FC = () => {
     const load = async () => {
       try {
         const result = await landingApi.getSiteSettings([
-          'tab_label_hero', 'tab_label_dashboard', 'tab_label_projects', 'tab_label_services', 'tab_label_reviews', 'tab_label_courses', 'tab_label_team', 'tab_label_mentor', 'tab_label_contact', 'tab_label_footer', 'tab_label_support', 'tab_label_stackstore', 'tab_label_settings'
+          'tab_label_hero', 'tab_label_dashboard', 'tab_label_projects', 'tab_label_services', 'tab_label_reviews', 'tab_label_courses', 'tab_label_team', 'tab_label_mentor', 'tab_label_contact', 'tab_label_footer', 'tab_label_support', 'tab_label_settings'
         ])
         if (result.data && Array.isArray(result.data)) {
           const map: Record<string, string> = {}
@@ -99,7 +97,6 @@ const AdminSidebar: React.FC = () => {
 
   const links = [
     { to: '/adminlandingt4s', label: labels.tab_label_dashboard || 'Dashboard', icon: FiLayout },
-    { to: '/adminlandingt4s/users', label: 'Users', icon: FiUser },
     { to: '/adminlandingt4s/hero', label: labels.tab_label_hero || 'Hero Section', icon: FiZap },
     { to: '/adminlandingt4s/projects', label: labels.tab_label_projects || 'Projects', icon: FiTool },
     { to: '/adminlandingt4s/services', label: labels.tab_label_services || 'Services', icon: FiBriefcase },
@@ -109,7 +106,6 @@ const AdminSidebar: React.FC = () => {
     { to: '/adminlandingt4s/contact', label: labels.tab_label_contact || 'Contact', icon: FiPhone },
     { to: '/adminlandingt4s/footer', label: labels.tab_label_footer || 'Footer', icon: FiNavigation },
     { to: '/adminlandingt4s/support', label: labels.tab_label_support || 'Support', icon: FiMessageCircle },
-    { to: '/adminstackt4s', label: labels.tab_label_stackstore || 'StackStore', icon: FiGrid },
     { to: '/adminlandingt4s/settings', label: labels.tab_label_settings || 'Settings', icon: FiSettings }
   ]
 

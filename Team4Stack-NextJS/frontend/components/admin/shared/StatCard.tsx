@@ -18,12 +18,12 @@ type Props = {
 const StatCard: React.FC<Props> = ({ title, value, trend, icon, onClick, badges, chartType, chartData }) => {
   const getBadgeColor = (color: string) => {
     const colors = {
-      green: 'bg-green-500/20 text-green-700 dark:text-green-400 border-green-500/30',
-      red: 'bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30',
-      blue: 'bg-blue-500/20 text-blue-700 dark:text-blue-400 border-blue-500/30',
-      yellow: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/30',
-      purple: 'bg-purple-500/20 text-purple-700 dark:text-purple-400 border-purple-500/30',
-      orange: 'bg-orange-500/20 text-orange-700 dark:text-orange-400 border-orange-500/30'
+      green: 'bg-green-500/20 text-green-200 border-green-500/30',
+      red: 'bg-red-500/20 text-red-200 border-red-500/30',
+      blue: 'bg-blue-500/20 text-blue-200 border-blue-500/30',
+      yellow: 'bg-yellow-500/20 text-yellow-200 border-yellow-500/30',
+      purple: 'bg-purple-500/20 text-purple-200 border-purple-500/30',
+      orange: 'bg-orange-500/20 text-orange-200 border-orange-500/30'
     }
     return colors[color as keyof typeof colors] || colors.blue
   }
@@ -209,7 +209,7 @@ const StatCard: React.FC<Props> = ({ title, value, trend, icon, onClick, badges,
 
   return (
     <div 
-      className={`relative rounded-xl p-3 sm:p-4 bg-gradient-to-br from-white via-white to-gray-50 dark:from-gray-800 dark:via-gray-800 dark:to-gray-900 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 shadow-lg hover:shadow-2xl overflow-hidden group transition-all duration-300 ${onClick ? 'cursor-pointer hover:scale-[1.02] hover:border-orange-400/50 dark:hover:border-orange-500/50' : ''}`}
+      className={`relative rounded-xl p-3 sm:p-4 bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 backdrop-blur-xl border border-white/10 shadow-lg hover:shadow-2xl overflow-hidden group transition-all duration-300 ${onClick ? 'cursor-pointer hover:scale-[1.02] hover:border-orange-500/50' : ''}`}
       onClick={onClick}
     >
       {/* Enhanced Decorative Shapes Background */}

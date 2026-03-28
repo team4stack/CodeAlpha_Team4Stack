@@ -24,6 +24,12 @@ const SettingsPage: React.FC = () => {
   const [seeding, setSeeding] = useState(false)
   const [migrating, setMigrating] = useState(false)
   const [migratingMentor, setMigratingMentor] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordSaving, setPasswordSaving] = useState(false)
+  const [passwordMsg, setPasswordMsg] = useState<string | null>(null)
+  const [showPasswords, setShowPasswords] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -80,6 +86,44 @@ const SettingsPage: React.FC = () => {
     setMigratingMentor(false)
   }
 
+  const changePassword = async () => {
+    setPasswordMsg(null)
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setPasswordMsg('Please fill in all password fields.')
+      return
+    }
+    if (newPassword.length < 8) {
+      setPasswordMsg('New password must be at least 8 characters.')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordMsg('New password and confirm password do not match.')
+      return
+    }
+    if (newPassword === currentPassword) {
+      setPasswordMsg('New password must be different from the current password.')
+      return
+    }
+
+    setPasswordSaving(true)
+    try {
+      const { superadminApi } = await import('@/lib/api')
+      const result = await superadminApi.changeAdminPassword(currentPassword, newPassword)
+      if (result.error || result.success === false) {
+        setPasswordMsg(result.error || 'Unable to update password.')
+      } else {
+        setPasswordMsg('Password updated successfully.')
+        setCurrentPassword('')
+        setNewPassword('')
+        setConfirmPassword('')
+      }
+    } catch (error: any) {
+      setPasswordMsg(error?.message || 'Unable to update password.')
+    } finally {
+      setPasswordSaving(false)
+    }
+  }
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -90,16 +134,17 @@ const SettingsPage: React.FC = () => {
           <p className="text-white/90 text-sm mt-1">Configure landing page settings and preferences</p>
         </div>
       </div>
-      <div className="rounded-xl p-4 bg-white/80 dark:bg-gray-800/70 backdrop-blur border border-white/20 dark:border-white/10 shadow">
+
+      <div className="rounded-xl p-4 bg-slate-900/80 backdrop-blur border border-white/10 shadow">
         {loading ? (
-          <div className="text-sm text-gray-500 dark:text-gray-400">Loading…</div>
+          <div className="text-sm text-white/60">Loading...</div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {DEFAULT_KEYS.map(item => (
               <div key={item.key} className="space-y-1">
-                <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">{item.label}</label>
+                <label className="text-xs font-semibold text-white/80">{item.label}</label>
                 <input
-                  className="w-full px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-600"
+                  className="w-full px-4 py-3 rounded-lg bg-slate-900/70 border border-white/10 text-sm text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:border-white/20"
                   placeholder={item.placeholder}
                   value={rows[item.key] || ''}
                   onChange={(e) => setRows(s => ({ ...s, [item.key]: e.target.value }))}
@@ -108,9 +153,9 @@ const SettingsPage: React.FC = () => {
             ))}
             {/* Single control to rename any admin tab */}
             <div className="space-y-1 md:col-span-2">
-              <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Rename Admin Tab</label>
+              <label className="text-xs font-semibold text-white/80">Rename Admin Tab</label>
               <div className="flex gap-2">
-                <select className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-600" value={tabKey} onChange={(e) => setTabKey(e.target.value)}>
+                <select className="px-4 py-3 rounded-lg bg-slate-900/70 border border-white/10 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:border-white/20" value={tabKey} onChange={(e) => setTabKey(e.target.value)}>
                   <option value="hero">Hero Section</option>
                   <option value="dashboard">Dashboard</option>
                   <option value="projects">Projects</option>
@@ -121,10 +166,9 @@ const SettingsPage: React.FC = () => {
                   <option value="mentor">Mentor</option>
                   <option value="contact">Contact</option>
                   <option value="footer">Footer</option>
-                  <option value="stackstore">StackStore</option>
                   <option value="settings">Settings</option>
                 </select>
-                <input className="flex-1 px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-600" placeholder="New tab label (e.g., Portfolio)" value={tabLabel} onChange={(e) => setTabLabel(e.target.value)} />
+                <input className="flex-1 px-4 py-3 rounded-lg bg-slate-900/70 border border-white/10 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:border-white/20" placeholder="New tab label (e.g., Portfolio)" value={tabLabel} onChange={(e) => setTabLabel(e.target.value)} />
                 <button type="button" className="px-6 py-3 rounded-xl bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-sm text-white font-semibold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 border border-white/20" onClick={async () => {
                   const key = `tab_label_${tabKey}`
                   const payload = [{ key, value: tabLabel }]
@@ -132,23 +176,87 @@ const SettingsPage: React.FC = () => {
                   const { landingApi } = await import('@/lib/api')
                   const result = await retryWithBackoff(async () => await landingApi.upsertSiteSettings(payload)) as { error?: string }
                   setSaving(false)
-                  setMsg(result.error ? result.error : `Renamed ${tabKey} → ${tabLabel}`)
+                  setMsg(result.error ? result.error : `Renamed ${tabKey} -> ${tabLabel}`)
                 }}>Apply</button>
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Pick one tab, type a new name, click Apply. Sidebar updates on refresh.</p>
+              <p className="text-xs text-white/50">Pick one tab, type a new name, click Apply. Sidebar updates on refresh.</p>
             </div>
           </div>
         )}
         <div className="mt-4 flex gap-2">
-          <button disabled={saving} onClick={save} className="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white font-semibold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100">{saving ? 'Saving…' : 'Save Settings'}</button>
+          <button disabled={saving} onClick={save} className="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white font-semibold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100">{saving ? 'Saving...' : 'Save Settings'}</button>
           {/* Removed migrate/seed buttons per request */}
-          {msg && <div className="text-sm text-gray-600 dark:text-gray-300">{msg}</div>}
+          {msg && <div className="text-sm text-white/70">{msg}</div>}
+        </div>
+      </div>
+
+      <div className="rounded-xl p-4 bg-slate-900/80 backdrop-blur border border-white/10 shadow">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-white">Change Password</h2>
+            <p className="text-xs text-white/50">Use at least 8 characters. This updates your admin login password.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowPasswords(v => !v)}
+            className="self-start sm:self-auto px-4 py-2 rounded-lg border border-white/10 text-white/80 text-xs font-semibold hover:text-white hover:border-white/20 transition-all"
+          >
+            {showPasswords ? 'Hide Passwords' : 'Show Passwords'}
+          </button>
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-white/80">Current Password</label>
+            <input
+              type={showPasswords ? 'text' : 'password'}
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              className="w-full px-4 py-3 rounded-lg bg-slate-900/70 border border-white/10 text-sm text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300 hover:border-white/20"
+              placeholder="Current password"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-white/80">New Password</label>
+            <input
+              type={showPasswords ? 'text' : 'password'}
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="w-full px-4 py-3 rounded-lg bg-slate-900/70 border border-white/10 text-sm text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300 hover:border-white/20"
+              placeholder="New password"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-white/80">Confirm Password</label>
+            <input
+              type={showPasswords ? 'text' : 'password'}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full px-4 py-3 rounded-lg bg-slate-900/70 border border-white/10 text-sm text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300 hover:border-white/20"
+              placeholder="Confirm password"
+            />
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={changePassword}
+            disabled={passwordSaving}
+            className="px-6 py-3 rounded-xl bg-gradient-to-r from-orange-500/90 to-red-500/90 text-white font-semibold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
+          >
+            {passwordSaving ? 'Updating...' : 'Update Password'}
+          </button>
+          {passwordMsg && <div className="text-sm text-white/70">{passwordMsg}</div>}
         </div>
       </div>
     </div>
   )
 }
-
 export default SettingsPage
+
+
+
+
 
 

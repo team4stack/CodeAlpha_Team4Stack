@@ -48,6 +48,10 @@ export const superadminApi = {
     return apiClient.post('/superadmin/admins/verify-password', { email, password });
   },
 
+  changeAdminPassword: async (currentPassword: string, newPassword: string) => {
+    return apiClient.post('/superadmin/admins/change-password', { currentPassword, newPassword });
+  },
+
   // Audit Logs
   getAuditLogs: async (filters?: { user_id?: string; action?: string; table_name?: string }) => {
     const params = new URLSearchParams();

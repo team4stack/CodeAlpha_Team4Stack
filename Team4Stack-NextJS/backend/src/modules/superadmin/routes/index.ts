@@ -16,6 +16,7 @@ router.post('/admins/verify-password', superadminController.verifyAdminPassword)
 // Super admin API (HMAC admin token, role super_admin)
 router.use(wrapAttachAuth);
 router.use(requireAdminApiToken);
+router.post('/admins/change-password', superadminController.changeAdminPassword);
 router.use(requireAdminRoles(SUPERADMIN_ONLY_ROLES));
 
 router.get('/admins', superadminController.getAdminUsers);

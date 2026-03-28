@@ -235,88 +235,46 @@ export class AuthController {
   };
 
   // OAuth redirect endpoint - masks Supabase URL by redirecting through backend
-  // Frontend calls this endpoint, backend redirects to Supabase OAuth URL
-  // This way user sees backend URL instead of Supabase URL in browser
+  // Deprecated: implicit-style redirects are disabled. Use PKCE in the browser client.
   oauthRedirect = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const provider = req.query.provider as string;
-      const redirectTo = req.query.redirect_to as string || 
-        process.env.FRONTEND_URL || 
-        process.env.CORS_ORIGIN || 
-        'http://localhost:3000';
+    const redirectTo = req.query.redirect_to as string || 
+      process.env.FRONTEND_URL || 
+      process.env.CORS_ORIGIN || 
+      'http://localhost:3000';
 
-      if (!provider || (provider !== 'google' && provider !== 'github')) {
-        return res.status(400).send(`
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <title>Authentication Error</title>
-            <meta http-equiv="refresh" content="3;url=${redirectTo}">
-          </head>
-          <body>
-            <p>Invalid OAuth provider. Redirecting...</p>
-            <script>setTimeout(() => window.location.href = '${redirectTo}', 3000);</script>
-          </body>
-          </html>
-        `);
-      }
-
-      // Get OAuth URL from Supabase
-      const result = await authService.initiateOAuth(provider as 'google' | 'github', redirectTo);
-
-      if (result.error) {
-        return res.status(400).send(`
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <title>Authentication Error</title>
-            <meta http-equiv="refresh" content="3;url=${redirectTo}">
-          </head>
-          <body>
-            <p>Failed to initiate authentication. Redirecting...</p>
-            <script>setTimeout(() => window.location.href = '${redirectTo}', 3000);</script>
-          </body>
-          </html>
-        `);
-      }
-
-      // Redirect to Supabase OAuth URL (user will see backend URL briefly, then Supabase)
-      // To fully hide Supabase URL, we could use a loading page, but OAuth requires direct redirect
-      res.redirect(result.url);
-    } catch (error: any) {
-      const redirectTo = req.query.redirect_to as string || 
-        process.env.FRONTEND_URL || 
-        process.env.CORS_ORIGIN || 
-        'http://localhost:3000';
-      return res.status(500).send(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>Authentication Error</title>
-          <meta http-equiv="refresh" content="3;url=${redirectTo}">
-        </head>
-        <body>
-          <p>An error occurred during authentication. Redirecting...</p>
-          <script>setTimeout(() => window.location.href = '${redirectTo}', 3000);</script>
-        </body>
-        </html>
-      `);
-    }
+    return res.status(410).send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Authentication Deprecated</title>
+        <meta http-equiv="refresh" content="3;url=${redirectTo}">
+      </head>
+      <body>
+        <p>This OAuth redirect endpoint is deprecated. Please use the PKCE flow in the browser client.</p>
+        <script>setTimeout(() => window.location.href = '${redirectTo}', 3000);</script>
+      </body>
+      </html>
+    `);
   };
 
   // Note: This callback endpoint is kept for potential future use
   // Currently, Supabase redirects directly to frontend with tokens in hash
   // Frontend then calls /auth/session to verify tokens through backend
   oauthCallback = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      // This endpoint is not currently used since Supabase redirects to frontend
-      // But kept for potential server-side OAuth callback handling in future
-      const redirectTo = req.query.redirect_to as string || 'http://localhost:3000';
-      return res.redirect(`${redirectTo}?error=oauth_callback_not_implemented`);
-    } catch (error: any) {
-      const redirectTo = req.query.redirect_to as string || 'http://localhost:3000';
-      return res.redirect(`${redirectTo}?error=oauth_callback_error`);
-    }
+    const redirectTo = req.query.redirect_to as string || 'http://localhost:3000';
+    return res.status(410).send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Authentication Deprecated</title>
+        <meta http-equiv="refresh" content="3;url=${redirectTo}">
+      </head>
+      <body>
+        <p>This OAuth callback endpoint is deprecated. Please use the PKCE flow in the browser client.</p>
+        <script>setTimeout(() => window.location.href = '${redirectTo}', 3000);</script>
+      </body>
+      </html>
+    `);
   };
 }
 

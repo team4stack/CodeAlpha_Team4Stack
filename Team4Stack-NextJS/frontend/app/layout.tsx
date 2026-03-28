@@ -45,6 +45,7 @@ export const metadata: Metadata = {
     shortcut: ["/Team4StackLogo.svg"],
     apple: ["/Team4StackLogo.svg"],
   },
+  manifest: "/manifest.json",
   openGraph: {
     type: "website",
     url: "https://www.team4stack.com",

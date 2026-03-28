@@ -75,6 +75,30 @@ export class SuperAdminService {
     }
   }
 
+  async updateAdminPasswordByEmail(email: string, passwordHash: string): Promise<AdminUser> {
+    const normalized = email.toLowerCase().trim();
+    const stamp = new Date().toISOString();
+    let { data, error } = await supabaseAdmin
+      .from('admin_users')
+      .update({ password_hash: passwordHash, updated_at: stamp })
+      .eq('email', normalized)
+      .select()
+      .maybeSingle();
+
+    if (error && shouldRetryUpdateWithoutUpdatedAt(error)) {
+      ({ data, error } = await supabaseAdmin
+        .from('admin_users')
+        .update({ password_hash: passwordHash })
+        .eq('email', normalized)
+        .select()
+        .maybeSingle());
+    }
+
+    if (error) throw error;
+    if (!data) throw notFoundError('Admin user not found');
+    return data as AdminUser;
+  }
+
   // Audit Logs
   async getAuditLogs(filters?: {
     user_id?: string;

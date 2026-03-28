@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import { canUseFunctionalCookies, readSavedSignInIdentity } from '@/lib/cookies/consent'
-import { buildBackendOAuthRedirectUrl, type OAuthProvider } from '@/lib/auth/components/auth-modal/oauthRedirect'
+import { type OAuthProvider } from '@/lib/auth/components/auth-modal/oauthRedirect'
+import { isSupabaseConfigured, supabase } from '@/lib/supabase/client'
 import AuthModalView from '@/lib/auth/components/auth-modal/AuthModalView'
 import { useAuthModalPasswordResetCallback } from '@/lib/auth/components/auth-modal/useAuthModalPasswordResetCallback'
 import { useAuthModalRecaptcha } from '@/lib/auth/components/auth-modal/useAuthModalRecaptcha'
@@ -81,7 +82,37 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
     setError(null)
     setLoading(true)
     try {
-      globalThis.window.location.href = buildBackendOAuthRedirectUrl(provider)
+      if (!isSupabaseConfigured()) {
+        setError('OAuth is not configured. Please contact support.')
+        return
+      }
+
+      const redirectUrl = process.env.NEXT_PUBLIC_SITE_URL || globalThis.window.location.origin
+      const currentPath = globalThis.window.location.pathname
+      const finalRedirectTo = `${redirectUrl}${currentPath}`
+
+      const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: finalRedirectTo,
+          queryParams: provider === 'google'
+            ? { access_type: 'offline', prompt: 'consent' }
+            : undefined,
+          skipBrowserRedirect: true,
+        }
+      })
+
+      if (oauthError) {
+        setError(oauthError.message || 'Failed to initiate OAuth login. Please try again.')
+        return
+      }
+
+      if (!data?.url) {
+        setError('Failed to initiate OAuth login. Please try again.')
+        return
+      }
+
+      globalThis.window.location.assign(data.url)
     } catch (err: unknown) {
       // Sanitize error message
       try {
@@ -91,6 +122,7 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, initialError }) => {
       } catch {
         setError('Failed to initiate OAuth login. Please try again.')
       }
+    } finally {
       setLoading(false)
     }
   }

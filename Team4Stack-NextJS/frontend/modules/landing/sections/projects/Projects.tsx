@@ -206,14 +206,14 @@ const Projects: React.FC = () => {
   };
 
   return (
-    <section
-      id="projects"
-      className={`section-padding relative overflow-hidden ${
-        isDarkMode
-          ? 'bg-gradient-to-b from-black via-gray-900 to-black'
-          : 'bg-gradient-to-b from-gray-50 via-white to-gray-50'
-      }`}
-    >
+      <section
+        id="projects"
+        className={`section-padding relative ${showAll ? 'overflow-visible' : 'overflow-hidden'} ${
+          isDarkMode
+            ? 'bg-gradient-to-b from-black via-gray-900 to-black'
+            : 'bg-gradient-to-b from-gray-50 via-white to-gray-50'
+        }`}
+      >
       {/* Structured Data */}
       <script type="application/ld+json">
         {JSON.stringify(projectsStructuredData)}
@@ -499,7 +499,7 @@ const Projects: React.FC = () => {
             )}
             {showAll && (
               <>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
+                  <div className="project-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
                   {projects.slice((page - 1) * perPage, page * perPage).map((project, idx) => (
                     <div 
                       key={`${project.id}-grid-${idx}`}

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useRef, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -23,6 +23,7 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({ isOpen, onClose, on
   const { isDarkMode } = useTheme();
   const { user, loading, signOut } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const navRef = useRef<HTMLDivElement>(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [navbarLinks, setNavbarLinks] = useState<NavbarLink[]>([
@@ -152,6 +153,12 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({ isOpen, onClose, on
       }, 200);
       return;
     }
+    if (href.startsWith('#') && pathname !== '/') {
+      setTimeout(() => {
+        router.push(`/${href}`);
+      }, 200);
+      return;
+    }
     // For internal section links, scroll to the section
     // Add a delay to ensure the menu is closed and components are loaded
     setTimeout(() => {
@@ -264,7 +271,11 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({ isOpen, onClose, on
                         onClose();
                         setTimeout(() => {
                           if (link.href === '#home') {
-                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                            if (pathname !== '/') {
+                              router.push('/');
+                            } else {
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }
                           } else {
                             window.location.href = link.href;
                           }
@@ -276,7 +287,11 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({ isOpen, onClose, on
                           onClose();
                           setTimeout(() => {
                             if (link.href === '#home') {
-                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                              if (pathname !== '/') {
+                                router.push('/');
+                              } else {
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                              }
                             } else {
                               window.location.href = link.href;
                             }

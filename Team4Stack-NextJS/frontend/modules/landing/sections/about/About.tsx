@@ -218,7 +218,7 @@ const About: React.FC = () => {
                 {/* Profile Picture */}
                 <button 
                   className="mentor-profile-btn"
-                  onClick={() => setSelectedImage(mentor.image)} 
+                  onClick={() => { setSelectedImage(mentor.image); setSelectedMemberIndex(-1); }} 
                   aria-label={`Open ${mentor.name} image`}
                 >
                   {/* Glass effect below the picture - circular */}
@@ -476,35 +476,37 @@ const About: React.FC = () => {
       {/* Image Modal */}
       {selectedImage && (
         <div className={`fixed inset-0 bg-black/90 backdrop-blur-lg z-[9999] flex items-center justify-center p-4 pt-10 md:pt-14 transition-all duration-300 ${isModalOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={() => { setSelectedImage(null); setSelectedMemberIndex(null); }}>
-          <div className={`relative transition-all duration-300 ease-out ${isModalOpen ? 'scale-100 opacity-100' : 'scale-90 opacity-0'}`} onClick={(e) => e.stopPropagation()}>
-            <button 
-              onClick={(e) => { e.stopPropagation(); setSelectedImage(null); setSelectedMemberIndex(null); }} 
-              className="preview-modal-close-btn absolute top-0 right-0 w-10 h-10 md:w-12 md:h-12 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-all duration-300 text-xl md:text-2xl font-bold shadow-lg hover:scale-110 z-50"
-              aria-label="Close preview"
-            >
-              ×
-            </button>
-            <div className="flex flex-col items-center gap-4 max-w-xl">
-              <div className="rounded-full overflow-hidden ring-4 ring-white/30 shadow-2xl shadow-white/20" style={{ width: 'clamp(220px, 45vmin, 380px)', height: 'clamp(220px, 45vmin, 380px)' }}>
-                <img src={selectedImage} alt="Profile" className="w-full h-full object-cover object-center" />
-              </div>
-              {selectedMemberIndex !== null && (
-                <div className="text-center space-y-2">
-                  {selectedMemberIndex === -1 ? (
-                    <>
-                      <h3 className="text-2xl font-bold text-white">{sirAbdullahInfo.name}</h3>
-                      <p className="text-white/80">{sirAbdullahInfo.role}</p>
-                      <p className="text-sm text-white/80 leading-relaxed max-w-xl">{sirAbdullahInfo.description}</p>
-                    </>
-                  ) : (
-                    <>
-                      <h3 className="text-2xl font-bold text-white">{teamMembers[selectedMemberIndex].name}</h3>
-                      <p className="text-white/80">{teamMembers[selectedMemberIndex].role}</p>
-                      <p className="text-sm text-white/80 leading-relaxed max-w-xl">{teamMembers[selectedMemberIndex].description}</p>
-                    </>
-                  )}
+          <div className={`relative w-full max-w-[520px] max-h-[90vh] overflow-y-auto transition-all duration-300 ease-out ${isModalOpen ? 'scale-100 opacity-100' : 'scale-90 opacity-0'}`} onClick={(e) => e.stopPropagation()}>
+            <div className="flex flex-col items-center gap-4 px-3 pb-5 pt-10 md:pt-12">
+              <div className="w-full rounded-3xl border border-white/10 bg-black/90 backdrop-blur-md p-5 shadow-xl relative">
+                <button 
+                  onClick={(e) => { e.stopPropagation(); setSelectedImage(null); setSelectedMemberIndex(null); }} 
+                  className="preview-modal-close-btn w-9 h-9 md:w-12 md:h-12 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-all duration-300 text-lg md:text-2xl font-bold shadow-lg hover:scale-110 z-50"
+                  aria-label="Close preview"
+                >
+                  ×
+                </button>
+                <div className="mx-auto rounded-full overflow-hidden ring-4 ring-white/30 shadow-2xl shadow-white/20" style={{ width: 'clamp(180px, 60vw, 320px)', height: 'clamp(180px, 60vw, 320px)' }}>
+                  <img src={selectedImage} alt="Profile" className="w-full h-full object-cover object-center" />
                 </div>
-              )}
+                {selectedMemberIndex !== null && (
+                  <div className="mt-4 text-center space-y-2">
+                    {selectedMemberIndex === -1 ? (
+                      <>
+                        <h3 className="text-2xl font-bold text-white">{sirAbdullahInfo.name}</h3>
+                        <p className="text-white/80">{sirAbdullahInfo.role}</p>
+                        <p className="text-sm text-white/80 leading-relaxed" style={{ textAlign: 'justify' }}>{sirAbdullahInfo.description}</p>
+                      </>
+                    ) : (
+                      <>
+                        <h3 className="text-2xl font-bold text-white">{teamMembers[selectedMemberIndex].name}</h3>
+                        <p className="text-white/80">{teamMembers[selectedMemberIndex].role}</p>
+                        <p className="text-sm text-white/80 leading-relaxed" style={{ textAlign: 'justify' }}>{teamMembers[selectedMemberIndex].description}</p>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

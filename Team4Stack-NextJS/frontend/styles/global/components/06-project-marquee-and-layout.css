@@ -166,6 +166,22 @@
   .project-card:hover { transform: scale(1.05) translateY(-5px); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3); }
   .project-card.dragging { pointer-events: none; /* Prevent hover effects while dragging */ transform: scale(1) translateY(0) !important; box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2) !important; }
 
+  /* Grid view (Show All): make cards responsive */
+  .project-grid .project-card {
+    width: 100%;
+    max-width: 100%;
+    flex: 1 1 auto;
+    min-width: 0;
+    touch-action: pan-y;
+  }
+
+  @media (hover: none) and (pointer: coarse) {
+    .project-grid .project-card:hover {
+      transform: none;
+      box-shadow: 0 0 35px rgba(120, 0, 255, 0.35), 0 0 35px rgba(0, 200, 255, 0.25);
+    }
+  }
+
   @media (min-width: 768px) {
     .section-padding {
       padding: 5rem 0;

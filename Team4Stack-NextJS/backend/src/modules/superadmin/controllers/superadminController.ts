@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import superadminService from '../services/superadminService';
 import { issueAdminApiToken } from '../../../shared/middleware/authMiddleware';
+import bcrypt from 'bcryptjs';
 
 function parseNumericId(param: string): number | null {
   const id = parseInt(param, 10);
@@ -127,6 +128,37 @@ export class SuperAdminController {
           role
         }
       });
+    } catch (error: any) {
+      next(error);
+    }
+  };
+
+  changeAdminPassword = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (req.auth?.kind !== 'admin') {
+        return res.status(401).json({ success: false, error: 'Admin authentication required' });
+      }
+      const { currentPassword, newPassword } = req.body as {
+        currentPassword?: string;
+        newPassword?: string;
+      };
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ success: false, error: 'Current and new password are required' });
+      }
+      if (String(newPassword).length < 8) {
+        return res.status(400).json({ success: false, error: 'New password must be at least 8 characters' });
+      }
+
+      const email = req.auth.email;
+      const verify = await superadminService.verifyAdminPassword(email, currentPassword);
+      if (!verify.valid) {
+        return res.status(400).json({ success: false, error: 'Current password is incorrect' });
+      }
+
+      const passwordHash = await bcrypt.hash(String(newPassword), 10);
+      await superadminService.updateAdminPasswordByEmail(email, passwordHash);
+
+      res.json({ success: true, message: 'Password updated successfully' });
     } catch (error: any) {
       next(error);
     }

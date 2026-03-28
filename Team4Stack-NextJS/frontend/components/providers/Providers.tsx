@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { AuthProvider } from '@/contexts/AuthContext';
@@ -9,6 +9,15 @@ import CookieConsentBanner from '@/components/cookies/CookieConsentBanner';
 import FunctionalPerformanceBootstrap from '@/components/performance/FunctionalPerformanceBootstrap';
 
 export default function Providers({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!('serviceWorker' in navigator)) return;
+
+    navigator.serviceWorker.register('/sw.js').catch(() => {
+      // Silent fail - app still works without SW
+    });
+  }, []);
+
   return (
     <ThemeProvider>
       <AuthProvider>

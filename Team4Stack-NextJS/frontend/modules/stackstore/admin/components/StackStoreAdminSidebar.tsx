@@ -90,7 +90,7 @@ const StackStoreAdminSidebar: React.FC = () => {
 
 
   const links = [
-    { to: '/adminstackt4s', label: labels.tab_label_stackstore || 'Dashboard', icon: FiLayout },
+    { to: '/adminstackt4s', label: labels.tab_label_stackstore || 'StackStore', icon: FiLayout },
     { to: '/adminstackt4s/products', label: 'Products', icon: FiPackage },
     { to: '/adminstackt4s/categories', label: 'Categories', icon: FiTag },
     { to: '/adminstackt4s/orders', label: 'Orders', icon: FiShoppingCart },

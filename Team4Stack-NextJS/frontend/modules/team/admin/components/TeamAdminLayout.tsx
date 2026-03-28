@@ -105,7 +105,7 @@ const TeamAdminLayout: React.FC<TeamAdminLayoutProps> = ({ children }) => {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-[#0a0a0f] overflow-x-visible overflow-y-hidden">
+    <div className="dark h-screen flex flex-col bg-[#0a0a0f] overflow-x-visible overflow-y-hidden">
       {/* Dark Background with Subtle Accents */}
       <div className="pointer-events-none fixed inset-0 bg-gradient-to-br from-black via-slate-950 to-black"></div>
       

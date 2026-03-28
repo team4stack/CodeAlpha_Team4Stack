@@ -175,9 +175,9 @@ const HeroMobile: React.FC<HeroMobileProps> = ({
                     window.location.href = '/courses';
                   }}
                   className="text-xs px-4 py-2 rounded-full bg-white/6 backdrop-blur-md text-white/90 border border-white/15"
-                  aria-label="Go to Student LMS"
+                  aria-label="Go to Courses"
                 >
-                  Student LMS
+                  Course
                 </button>
               </div>
             </div>

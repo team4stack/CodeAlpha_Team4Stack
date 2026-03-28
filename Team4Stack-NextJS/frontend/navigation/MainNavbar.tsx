@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -24,12 +24,18 @@ const Navbar: React.FC = () => {
   const [logoKey, setLogoKey] = useState(0);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [oauthError, setOauthError] = useState<string | null>(null);
+  const [activeHash, setActiveHash] = useState<string>('#home');
+  const lastActiveHashRef = useRef<string>('#home');
   const [navbarLinks, setNavbarLinks] = useState<NavbarLink[]>([
     { name: 'Services', href: '#services' },
     { name: 'Projects', href: '#projects' },
     { name: 'Courses', href: '/courses' },
     { name: 'Contact', href: '#contact' }
   ]);
+  const hashLinks = useMemo(() => {
+    const links = navbarLinks.filter((l) => l.href.startsWith('#')).map((l) => l.href);
+    return links.includes('#home') ? links : ['#home', ...links];
+  }, [navbarLinks]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -226,8 +232,12 @@ const Navbar: React.FC = () => {
     const scrollOnHome = () => {
       if (isHome) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
+        setActiveHash('#home');
+        lastActiveHashRef.current = '#home';
       } else if (isHash) {
         scrollToSelector(selector);
+        setActiveHash(selector);
+        lastActiveHashRef.current = selector;
       }
     };
 
@@ -242,6 +252,51 @@ const Navbar: React.FC = () => {
     // Already on home page
     scrollOnHome();
   };
+
+  useEffect(() => {
+    if (pathname !== '/') return;
+
+    const resolveActiveHash = () => {
+      const offset = 120;
+      const scrollY = window.scrollY;
+      const viewportBottom = scrollY + window.innerHeight;
+      const docHeight = document.documentElement.scrollHeight;
+
+      if (viewportBottom >= docHeight - 2) {
+        if (hashLinks.includes('#contact')) {
+          setActiveHash('#contact');
+          lastActiveHashRef.current = '#contact';
+        }
+        return;
+      }
+
+      let nextActive: string | null = null;
+      for (const hash of hashLinks) {
+        const el = document.querySelector(hash) as HTMLElement | null;
+        if (!el) continue;
+        const rect = el.getBoundingClientRect();
+        if (rect.top <= offset && rect.bottom >= offset) {
+          nextActive = hash;
+          break;
+        }
+      }
+
+      if (nextActive) {
+        setActiveHash(nextActive);
+        lastActiveHashRef.current = nextActive;
+      } else {
+        setActiveHash(lastActiveHashRef.current);
+      }
+    };
+
+    resolveActiveHash();
+    window.addEventListener('scroll', resolveActiveHash, { passive: true });
+    window.addEventListener('resize', resolveActiveHash);
+    return () => {
+      window.removeEventListener('scroll', resolveActiveHash);
+      window.removeEventListener('resize', resolveActiveHash);
+    };
+  }, [pathname, hashLinks]);
 
   // no-op: liquid effect removed per new glass btn styling
 
@@ -318,6 +373,12 @@ const Navbar: React.FC = () => {
             {/* Desktop Navigation (center) */}
             <div className="hidden md:flex items-center space-x-1 lg:space-x-2">
               {/* Team as regular nav item - moved to first position */}
+              {(() => {
+                const isTeamActive = pathname?.startsWith('/team');
+                const teamUnderline = isTeamActive
+                  ? 'left-0 w-full'
+                  : 'left-1/2 w-0 group-hover:left-0 group-hover:w-full';
+                return (
               <a
                 href="/team"
                 className={`${isScrolled
@@ -332,14 +393,23 @@ const Navbar: React.FC = () => {
                 }}
               >
                 Team
-                <span className="pointer-events-none absolute left-1/2 -bottom-0.5 w-0 h-0.5 bg-linear-to-r from-blue-400 to-cyan-500 rounded-full transition-all duration-300 group-hover:left-0 group-hover:w-full"></span>
+                <span className={`pointer-events-none absolute -bottom-0.5 h-0.5 bg-linear-to-r from-blue-400 to-cyan-500 rounded-full transition-all duration-300 ${teamUnderline}`}></span>
               </a>
+                );
+              })()}
               {navbarLinks
                 .filter((link) => link.name?.toLowerCase() !== 'team') // Filter out Team from navbarLinks since we show it separately
                 .map((link) => {
                 const isCoursesLink =
                   link.href === '/courses' ||
                   link.name?.toLowerCase?.() === 'courses';
+                const isHashLink = link.href.startsWith('#');
+                const isActive = isHashLink
+                  ? pathname === '/' && activeHash === link.href
+                  : (link.href === '/courses' ? pathname?.startsWith('/courses') : false);
+                const underlineClass = isActive
+                  ? 'left-0 w-full'
+                  : 'left-1/2 w-0 group-hover:left-0 group-hover:w-full';
 
                 // Base style for normal nav links (with hover effects)
                 const baseClasses = isScrolled
@@ -362,7 +432,7 @@ const Navbar: React.FC = () => {
                       }}
                     >
                       {link.name}
-                      <span className="pointer-events-none absolute left-1/2 -bottom-0.5 w-0 h-px bg-linear-to-r from-cyan-400 to-purple-500 rounded-full transition-all duration-300 group-hover:left-0 group-hover:w-full"></span>
+                      <span className={`pointer-events-none absolute -bottom-0.5 h-px bg-linear-to-r from-cyan-400 to-purple-500 rounded-full transition-all duration-300 ${underlineClass}`}></span>
                     </a>
                   );
                 }
@@ -376,7 +446,7 @@ const Navbar: React.FC = () => {
                     onClick={(e) => handleLinkClick(e, link.href)}
                   >
                     {link.name}
-                    <span className="pointer-events-none absolute left-1/2 -bottom-0.5 w-0 h-px bg-linear-to-r from-cyan-400 to-purple-500 rounded-full transition-all duration-300 group-hover:left-0 group-hover:w-full"></span>
+                    <span className={`pointer-events-none absolute -bottom-0.5 h-px bg-linear-to-r from-cyan-400 to-purple-500 rounded-full transition-all duration-300 ${underlineClass}`}></span>
                   </a>
                 );
               })}

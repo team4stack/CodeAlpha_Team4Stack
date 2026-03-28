@@ -213,9 +213,9 @@ const HeroDesktop: React.FC<HeroDesktopProps> = ({
                     window.location.href = '/courses';
                   }}
                   className="text-sm sm:text-base px-6 py-2.5 md:px-7 md:py-3 rounded-full bg-white/6 backdrop-blur-md text-white/90 border border-white/15 hover:bg-white/10 transition"
-                  aria-label="Go to Student LMS"
+                  aria-label="Go to Courses"
                 >
-                  Student LMS
+                  Course
                 </button>
               </div>
             </div>
