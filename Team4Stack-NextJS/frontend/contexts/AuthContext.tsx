@@ -443,6 +443,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     // OAuth uses Supabase PKCE exchange in the browser, then we persist tokens in auth_session.
     // Email/password auth tokens still come from backend (/auth/signin).
+
+    // Fallback: listen to Supabase auth state changes to persist session (covers edge cases where
+    // the callback handler doesn't store tokens).
+    let authSubscription: { unsubscribe: () => void } | null = null
+    if (isSupabaseConfigured()) {
+      const { data } = supabase.auth.onAuthStateChange(async (_event, session) => {
+        if (!session?.access_token || !session?.refresh_token) return
+        if (!isValidAuthTokenString(session.access_token) || !isValidAuthTokenString(session.refresh_token)) {
+          return
+        }
+        let expiresAt = session.expires_at
+        if (!expiresAt && session.expires_in) {
+          expiresAt = Date.now() + session.expires_in * 1000
+        } else if (expiresAt && expiresAt < 1_000_000_000_000) {
+          expiresAt = expiresAt * 1000
+        }
+        localStorage.setItem('auth_session', JSON.stringify({
+          access_token: session.access_token,
+          refresh_token: session.refresh_token,
+          expires_at: expiresAt,
+          user: session.user
+        }))
+        setAuthSessionCookieIfAllowed({
+          access_token: session.access_token,
+          refresh_token: session.refresh_token,
+          expires_at: expiresAt
+        })
+        loadSession()
+      })
+      authSubscription = data?.subscription || null
+    }
     
     // Listen for storage changes (when session is updated in another tab)
     const handleStorageChange = (e: StorageEvent) => {
@@ -476,6 +507,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       window.removeEventListener('storage', handleStorageChange)
       window.removeEventListener('auth_session_updated', handleSessionUpdate)
       window.removeEventListener('cookie_consent_changed', onConsentChanged)
+      if (authSubscription) authSubscription.unsubscribe()
       clearInterval(intervalId)
     }
   }, [loadSession])
