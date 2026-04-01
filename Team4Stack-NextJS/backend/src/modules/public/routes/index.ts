@@ -134,6 +134,21 @@ function readRequestIp(req: Request): string {
   return (req.ip || req.socket.remoteAddress || '').trim();
 }
 
+function mergePageHistory(existing: unknown, nextPagePath: string): string[] {
+  const current = Array.isArray(existing)
+    ? existing
+        .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+        .map((item) => item.trim().slice(0, 512))
+    : [];
+
+  const merged = [...current];
+  if (!merged.includes(nextPagePath)) {
+    merged.push(nextPagePath);
+  }
+
+  return merged.slice(-50);
+}
+
 router.post('/visitors/events', wrapAttachAuth, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const body = (req.body || {}) as VisitorEventPayload;
@@ -142,7 +157,7 @@ router.post('/visitors/events', wrapAttachAuth, async (req: Request, res: Respon
     const pagePath = trimText(body.pagePath, 512);
     const consentLevel = trimText(body.consentLevel, 32);
 
-    if (!visitorId || !isUuidLike(visitorId) || !pagePath) {
+    if (!visitorId || !isUuidLike(visitorId) || !sessionId || !isUuidLike(sessionId) || !pagePath) {
       res.status(400).json({ success: false, error: 'Invalid visitor tracking payload' });
       return;
     }
@@ -162,9 +177,10 @@ router.post('/visitors/events', wrapAttachAuth, async (req: Request, res: Respon
     const sanitizedReferrer = sanitizeUrlForStorage(body.referrer);
     const languages = readStringArray(body.languages);
 
-    const record = {
+    const nowIso = new Date().toISOString();
+    const baseRecord = {
       visitor_id: visitorId,
-      session_id: sessionId && isUuidLike(sessionId) ? sessionId : null,
+      session_id: sessionId,
       user_id: req.auth?.kind === 'user' ? req.auth.sub : null,
       user_email: req.auth?.kind === 'user' ? req.auth.email : null,
       consent_level: 'functional',
@@ -191,15 +207,46 @@ router.post('/visitors/events', wrapAttachAuth, async (req: Request, res: Respon
       touch_points: readOptionalInt(body.touchPoints, 20),
       hardware_concurrency: readOptionalInt(body.hardwareConcurrency, 128),
       user_agent: userAgent,
-      ip_hash: ipHash
+      ip_hash: ipHash,
+      last_seen_at: nowIso
     };
 
-    const { error } = await supabaseAdmin.from('visitor_events').insert(record);
-    if (error) {
-      throw error;
+    const { data: existingRow, error: existingError } = await supabaseAdmin
+      .from('visitor_events')
+      .select('id, page_history, visit_count, first_seen_at')
+      .eq('session_id', sessionId)
+      .maybeSingle();
+
+    if (existingError) {
+      throw existingError;
     }
 
-    res.status(201).json({ success: true });
+    if (existingRow?.id) {
+      const updateRecord = {
+        ...baseRecord,
+        visit_count: Math.max(Number(existingRow.visit_count || 0) + 1, 1),
+        page_history: mergePageHistory(existingRow.page_history, pagePath.slice(0, 512))
+      };
+
+      const { error } = await supabaseAdmin
+        .from('visitor_events')
+        .update(updateRecord)
+        .eq('id', existingRow.id);
+
+      if (error) throw error;
+    } else {
+      const insertRecord = {
+        ...baseRecord,
+        first_seen_at: nowIso,
+        visit_count: 1,
+        page_history: [pagePath.slice(0, 512)]
+      };
+
+      const { error } = await supabaseAdmin.from('visitor_events').insert(insertRecord);
+      if (error) throw error;
+    }
+
+    res.status(existingRow?.id ? 200 : 201).json({ success: true });
   } catch (err) {
     next(err);
   }
