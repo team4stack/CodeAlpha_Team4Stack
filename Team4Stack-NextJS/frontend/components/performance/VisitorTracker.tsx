@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useRef } from 'react';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { useEffect, useRef } from 'react';
+import { usePathname } from 'next/navigation';
 import { publicApi } from '@/lib/api';
 import {
   canUseFunctionalCookies,
@@ -30,12 +30,7 @@ function getOrCreateStorageId(storage: Storage, key: string): string {
 
 export default function VisitorTracker() {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const lastTrackedKeyRef = useRef<string>('');
-  const routeKey = useMemo(() => {
-    const qs = searchParams?.toString();
-    return qs ? `${pathname}?${qs}` : pathname || '/';
-  }, [pathname, searchParams]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -83,6 +78,7 @@ export default function VisitorTracker() {
     };
 
     const maybeTrack = () => {
+      const routeKey = `${pathname || '/'}${window.location.search || ''}`;
       if (!canUseFunctionalCookies()) return;
       if (lastTrackedKeyRef.current === routeKey) return;
       lastTrackedKeyRef.current = routeKey;
@@ -105,7 +101,7 @@ export default function VisitorTracker() {
       cancelled = true;
       window.removeEventListener('cookie_consent_changed', onConsentChanged);
     };
-  }, [routeKey]);
+  }, [pathname]);
 
   return null;
 }
