@@ -83,6 +83,24 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose, 
   const passwordHasNumber = /\d/.test(passwordData.newPassword);
   const passwordHasSpecial = /[^a-zA-Z0-9]/.test(passwordData.newPassword);
   const passwordStrong = passwordData.newPassword.length >= 8 && passwordHasLetter && passwordHasNumber && passwordHasSpecial;
+  const themedSurfaceClass = isDarkMode
+    ? 'border-white/10 bg-slate-900/85 shadow-[0_24px_80px_rgba(0,0,0,0.45)]'
+    : 'border-gray-200 bg-white shadow-sm';
+  const themedInsetSurfaceClass = isDarkMode
+    ? 'border-white/10 bg-white/[0.03]'
+    : 'border-gray-200 bg-white';
+  const themedLabelClass = isDarkMode ? 'text-gray-200' : 'text-gray-700';
+  const themedMutedTextClass = isDarkMode ? 'text-gray-400' : 'text-gray-500';
+  const themedInputClass = isDarkMode
+    ? 'bg-white/[0.04] text-white border-white/10 placeholder:text-gray-500'
+    : 'bg-gray-100 text-gray-900 border-gray-300 placeholder:text-gray-400';
+  const themedSecondaryButtonClass = isDarkMode
+    ? 'bg-white/10 text-gray-100 hover:bg-white/15'
+    : 'bg-gray-200 text-gray-700 hover:bg-gray-300';
+  const themedTabInactiveClass = isDarkMode
+    ? 'rounded-lg border border-white/10 bg-white/[0.04] text-gray-200 hover:bg-white/[0.08]'
+    : 'rounded-lg bg-white text-gray-700 border border-gray-200 hover:bg-gray-50';
+  const themedDividerClass = isDarkMode ? 'border-white/10' : 'border-gray-200';
 
   // Load user settings from database
   useEffect(() => {
@@ -917,9 +935,9 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose, 
           )}
 
           {asPage && (
-            <div className="mb-6 max-w-3xl mx-auto rounded-2xl border border-gray-200 bg-white/95 p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800/90">
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Account Settings</h1>
-              <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-2">
+            <div className={`mb-6 max-w-3xl mx-auto rounded-2xl border p-5 ${themedSurfaceClass}`}>
+              <h1 className={`text-2xl sm:text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Account Settings</h1>
+              <p className={`text-sm sm:text-base mt-2 ${themedMutedTextClass}`}>
                 Manage your profile, security, course preferences, and website options from one complete page.
               </p>
             </div>
@@ -944,7 +962,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose, 
                 asPage
                   ? activeTab === 'profile'
                     ? 'rounded-lg bg-purple-600 text-white'
-                    : 'rounded-lg bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-gray-700'
+                    : themedTabInactiveClass
                   : activeTab === 'profile'
                     ? 'text-purple-600 dark:text-purple-400 border-b-2 border-purple-600 dark:border-purple-400'
                     : 'text-gray-600 dark:text-gray-400 active:text-gray-900 dark:active:text-gray-200'
@@ -959,7 +977,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose, 
                 asPage
                   ? activeTab === 'security'
                     ? 'rounded-lg bg-purple-600 text-white'
-                    : 'rounded-lg bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-gray-700'
+                    : themedTabInactiveClass
                   : activeTab === 'security'
                     ? 'text-purple-600 dark:text-purple-400 border-b-2 border-purple-600 dark:border-purple-400'
                     : 'text-gray-600 dark:text-gray-400 active:text-gray-900 dark:active:text-gray-200'
@@ -974,7 +992,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose, 
                 asPage
                   ? activeTab === 'preferences'
                     ? 'rounded-lg bg-purple-600 text-white'
-                    : 'rounded-lg bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-gray-700'
+                    : themedTabInactiveClass
                   : activeTab === 'preferences'
                     ? 'text-purple-600 dark:text-purple-400 border-b-2 border-purple-600 dark:border-purple-400'
                     : 'text-gray-600 dark:text-gray-400 active:text-gray-900 dark:active:text-gray-200'
@@ -989,7 +1007,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose, 
                 asPage
                   ? activeTab === 'courses'
                     ? 'rounded-lg bg-purple-600 text-white'
-                    : 'rounded-lg bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-gray-700'
+                    : themedTabInactiveClass
                   : activeTab === 'courses'
                     ? 'text-purple-600 dark:text-purple-400 border-b-2 border-purple-600 dark:border-purple-400'
                     : 'text-gray-600 dark:text-gray-400 active:text-gray-900 dark:active:text-gray-200'
@@ -999,17 +1017,17 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose, 
             </button>
           </div>
 
-          <div className={asPage ? 'max-w-3xl mx-auto rounded-2xl border border-gray-200 bg-white p-4 sm:p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800' : ''}>
+          <div className={asPage ? `max-w-3xl mx-auto rounded-2xl border p-4 sm:p-6 ${themedSurfaceClass}` : ''}>
 
           {/* Profile Tab */}
           {activeTab === 'profile' && (
           <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
-            <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5 flex flex-col items-center text-center gap-3">
-              <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-purple-400/60 bg-gray-100 dark:bg-gray-700">
+            <div className={`rounded-xl border p-4 sm:p-5 flex flex-col items-center text-center gap-3 ${themedInsetSurfaceClass}`}>
+              <div className={`w-24 h-24 rounded-full overflow-hidden border-2 border-purple-400/60 ${isDarkMode ? 'bg-white/[0.06]' : 'bg-gray-100'}`}>
                 {profileImagePreview ? (
                   <img src={profileImagePreview} alt="Profile avatar preview" className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-500 dark:text-gray-300">
+                  <div className={`w-full h-full flex items-center justify-center ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
                     <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM4 20a8 8 0 1116 0" />
                     </svg>
@@ -1027,20 +1045,20 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose, 
                 />
                 <label
                   htmlFor="profileAvatarInput"
-                  className="inline-flex cursor-pointer items-center justify-center rounded-lg bg-gray-200 dark:bg-gray-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                  className={`inline-flex cursor-pointer items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-colors ${themedSecondaryButtonClass}`}
                 >
                   Change Profile Picture
                 </label>
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">PNG, JPG, WebP up to 3MB</p>
+                <p className={`mt-1 text-xs ${themedMutedTextClass}`}>PNG, JPG, WebP up to 3MB</p>
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+              <label className={`block text-sm font-medium mb-1.5 ${themedLabelClass}`}>
                 Name
               </label>
               <input
                 type="text"
-                className="w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm rounded-md bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation"
+                className={`w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm rounded-md border focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation ${themedInputClass}`}
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="Your name"
@@ -1048,34 +1066,34 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose, 
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+              <label className={`block text-sm font-medium mb-1.5 ${themedLabelClass}`}>
                 Email
               </label>
               <input
                 type="email"
-                className="w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm rounded-md bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation"
+                className={`w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm rounded-md border focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation ${themedInputClass}`}
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 placeholder="your.email@example.com"
               />
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              <p className={`text-xs mt-1 ${themedMutedTextClass}`}>
                 You can change your email address
               </p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+              <label className={`block text-sm font-medium mb-1.5 ${themedLabelClass}`}>
                 Username
               </label>
               <div className="relative">
                 <input
                   type="text"
-                  className={`w-full px-3 py-2.5 sm:py-2 pr-10 text-base sm:text-sm rounded-md bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white border focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation ${
+                  className={`w-full px-3 py-2.5 sm:py-2 pr-10 text-base sm:text-sm rounded-md border focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation ${themedInputClass} ${
                     usernameValidation.status === 'valid'
                       ? 'border-emerald-500'
                       : usernameValidation.status === 'invalid'
                         ? 'border-red-500'
-                        : 'border-gray-300 dark:border-gray-600'
+                        : ''
                   }`}
                   value={formData.username}
                   onChange={(e) => setFormData({ ...formData, username: e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '') })}
@@ -1096,7 +1114,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose, 
                   ? 'text-red-500'
                   : usernameValidation.status === 'valid'
                     ? 'text-emerald-500'
-                    : 'text-gray-500 dark:text-gray-400'
+                    : themedMutedTextClass
               }`}>
                 {usernameValidation.message || 'Use lowercase letters and numbers; include at least one letter and one number.'}
               </p>
@@ -1124,7 +1142,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose, 
                 <button
                   type="button"
                   onClick={handleClose}
-                  className="px-4 py-3 sm:py-2 rounded-md bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 active:bg-gray-300 dark:active:bg-gray-600 transition-colors touch-manipulation text-sm sm:text-base font-medium"
+                  className={`px-4 py-3 sm:py-2 rounded-md active:bg-gray-300 transition-colors touch-manipulation text-sm sm:text-base font-medium ${themedSecondaryButtonClass}`}
                 >
                   Cancel
                 </button>
@@ -1138,7 +1156,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose, 
             <div className="space-y-6">
               {/* Password Change */}
             <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Change Password</h3>
+                <h3 className={`text-lg font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Change Password</h3>
                 <form onSubmit={handlePasswordChange} className="space-y-4">
                   {message && message.type === 'success' && (
                     <div className="p-3 rounded-md text-sm bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border border-green-300 dark:border-green-700">
@@ -1151,16 +1169,16 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose, 
                     </div>
                   )}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <label className={`block text-sm font-medium mb-1 ${themedLabelClass}`}>
                       Current Password
               </label>
                     <div className="relative">
                       <input
                         type={showCurrentPassword ? "text" : "password"}
-                        className={`w-full px-3 py-2.5 sm:py-2 pr-10 text-base sm:text-sm rounded-md bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white border focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation ${
+                        className={`w-full px-3 py-2.5 sm:py-2 pr-10 text-base sm:text-sm rounded-md border focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation ${themedInputClass} ${
                           currentPasswordError 
                             ? 'border-red-500 dark:border-red-500' 
-                            : 'border-gray-300 dark:border-gray-600'
+                            : ''
                         }`}
                         value={passwordData.currentPassword}
                         onChange={(e) => {
@@ -1196,13 +1214,13 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose, 
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <label className={`block text-sm font-medium mb-1 ${themedLabelClass}`}>
                       New Password
                     </label>
                     <div className="relative">
                       <input
                         type={showNewPassword ? "text" : "password"}
-                        className="w-full px-3 py-2.5 sm:py-2 pr-10 text-base sm:text-sm rounded-md bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation"
+                        className={`w-full px-3 py-2.5 sm:py-2 pr-10 text-base sm:text-sm rounded-md border focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation ${themedInputClass}`}
                         value={passwordData.newPassword}
                         onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
                         placeholder="Enter new password (min 8 chars)"
@@ -1232,34 +1250,34 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose, 
                       )}
                     </div>
                     <div className="mt-2 space-y-1 text-xs">
-                      <p className={passwordHasLetter ? 'text-emerald-500' : 'text-gray-500 dark:text-gray-400'}>
+                      <p className={passwordHasLetter ? 'text-emerald-500' : themedMutedTextClass}>
                         {passwordHasLetter ? '✓' : '•'} Contains letters
                       </p>
-                      <p className={passwordHasNumber ? 'text-emerald-500' : 'text-gray-500 dark:text-gray-400'}>
+                      <p className={passwordHasNumber ? 'text-emerald-500' : themedMutedTextClass}>
                         {passwordHasNumber ? '✓' : '•'} Contains numbers
                       </p>
-                      <p className={passwordHasSpecial ? 'text-emerald-500' : 'text-gray-500 dark:text-gray-400'}>
+                      <p className={passwordHasSpecial ? 'text-emerald-500' : themedMutedTextClass}>
                         {passwordHasSpecial ? '✓' : '•'} Contains special character
                       </p>
-                      <p className={passwordData.newPassword.length >= 8 ? 'text-emerald-500' : 'text-gray-500 dark:text-gray-400'}>
+                      <p className={passwordData.newPassword.length >= 8 ? 'text-emerald-500' : themedMutedTextClass}>
                         {passwordData.newPassword.length >= 8 ? '✓' : '•'} Minimum 8 characters
                       </p>
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <label className={`block text-sm font-medium mb-1 ${themedLabelClass}`}>
                       Confirm New Password
                     </label>
                     <div className="relative">
                       <input
                         type={showConfirmPassword ? "text" : "password"}
-                        className={`w-full px-3 py-2.5 sm:py-2 pr-10 text-base sm:text-sm rounded-md bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white border focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation ${
+                        className={`w-full px-3 py-2.5 sm:py-2 pr-10 text-base sm:text-sm rounded-md border focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation ${themedInputClass} ${
                           passwordData.confirmPassword && passwordData.newPassword && passwordData.confirmPassword !== passwordData.newPassword
                             ? 'border-red-500 dark:border-red-500'
                             : passwordData.confirmPassword && passwordData.newPassword && passwordData.confirmPassword === passwordData.newPassword
                             ? 'border-green-500 dark:border-green-500'
-                            : 'border-gray-300 dark:border-gray-600'
+                            : ''
                         }`}
                         value={passwordData.confirmPassword}
                         onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
@@ -1303,9 +1321,9 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose, 
               </div>
 
               {/* Account Deletion */}
-              <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+              <div className={`border-t pt-6 ${themedDividerClass}`}>
                 <h3 className="text-lg font-semibold text-red-600 dark:text-red-400 mb-2">Danger Zone</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                <p className={`text-sm mb-4 ${themedMutedTextClass}`}>
                   Once you delete your account, there is no going back. Please be certain.
                 </p>
                 
@@ -1326,24 +1344,24 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose, 
                   </button>
                 ) : !isVerifyingDelete ? (
                   <div className="space-y-3">
-                    <p className="text-sm text-gray-700 dark:text-gray-300">
+                    <p className={`text-sm ${themedLabelClass}`}>
                       Type <span className="font-bold text-red-600 dark:text-red-400">DELETE</span> to confirm:
                     </p>
                     <input
                       type="text"
-                      className="w-full px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white border border-red-300 dark:border-red-600 focus:outline-none focus:ring-2 focus:ring-red-500"
+                      className={`w-full px-3 py-2 rounded-md border border-red-300 dark:border-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 ${themedInputClass}`}
                       value={deleteText}
                       onChange={(e) => setDeleteText(e.target.value)}
                       placeholder="Type DELETE to confirm"
                     />
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      <label className={`block text-sm font-medium mb-1 ${themedLabelClass}`}>
                         Enter Your Password
                       </label>
                       <div className="relative">
                         <input
                           type={showDeletePassword ? "text" : "password"}
-                          className="w-full px-3 py-2 pr-10 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white border border-red-300 dark:border-red-600 focus:outline-none focus:ring-2 focus:ring-red-500"
+                          className={`w-full px-3 py-2 pr-10 rounded-md border border-red-300 dark:border-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 ${themedInputClass}`}
                           value={deletePassword}
                           onChange={(e) => setDeletePassword(e.target.value)}
                           placeholder="Enter your password"
@@ -1386,7 +1404,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose, 
                           setIsVerifyingDelete(false);
                           setMessage(null);
                         }}
-                        className="px-4 py-2 rounded-md bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                        className={`px-4 py-2 rounded-md transition-colors ${themedSecondaryButtonClass}`}
                       >
                         Cancel
                       </button>
@@ -1409,20 +1427,20 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose, 
                       </p>
                     </div>
                     
-                    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border-2 border-gray-200 dark:border-gray-700">
-                      <label className="block text-base font-bold text-gray-800 dark:text-gray-200 mb-3 text-center">
+                    <div className={`p-4 rounded-lg border-2 ${themedSurfaceClass}`}>
+                      <label className={`block text-base font-bold mb-3 text-center ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
                         Enter Verification Code
                       </label>
                       <input
                         type="text"
-                        className="w-full px-4 py-5 rounded-lg bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white border-2 border-red-400 dark:border-red-500 focus:outline-none focus:ring-4 focus:ring-red-300 dark:focus:ring-red-800 focus:border-red-500 text-center text-4xl tracking-[0.3em] font-mono font-bold shadow-lg"
+                        className={`w-full px-4 py-5 rounded-lg border-2 border-red-400 dark:border-red-500 focus:outline-none focus:ring-4 focus:ring-red-300 dark:focus:ring-red-800 focus:border-red-500 text-center text-4xl tracking-[0.3em] font-mono font-bold shadow-lg ${themedInputClass}`}
                         value={deleteVerificationCode}
                         onChange={(e) => setDeleteVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                         placeholder="000000"
                         maxLength={6}
                         autoFocus
                       />
-                      <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-3">
+                      <p className={`text-xs text-center mt-3 ${themedMutedTextClass}`}>
                         ⏱️ Code expires in 10 minutes
                       </p>
                       {message && message.type === 'error' && (
@@ -1447,7 +1465,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose, 
                           setDeleteVerificationCode('');
                           setMessage(null);
                         }}
-                        className="px-4 py-2 rounded-md bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                        className={`px-4 py-2 rounded-md transition-colors ${themedSecondaryButtonClass}`}
                       >
                         Back
                       </button>
@@ -1462,10 +1480,10 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose, 
           {activeTab === 'preferences' && (
             <div className="space-y-6">
               {/* Dark Mode Toggle */}
-              <div className="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-700">
+              <div className={`flex items-center justify-between py-3 border-b ${themedDividerClass}`}>
                 <div>
-                  <h3 className="text-sm font-medium text-gray-900 dark:text-white">Dark Mode</h3>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  <h3 className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Dark Mode</h3>
+                  <p className={`text-xs mt-1 ${themedMutedTextClass}`}>
                     Toggle between light and dark theme
                   </p>
                 </div>
@@ -1485,10 +1503,10 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose, 
               </div>
 
               {/* Email Notifications */}
-              <div className="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-700">
+              <div className={`flex items-center justify-between py-3 border-b ${themedDividerClass}`}>
                 <div>
-                  <h3 className="text-sm font-medium text-gray-900 dark:text-white">Email Notifications</h3>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  <h3 className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Email Notifications</h3>
+                  <p className={`text-xs mt-1 ${themedMutedTextClass}`}>
                     Receive email updates about your account
                   </p>
                 </div>
@@ -1625,9 +1643,9 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose, 
                 </button>
               </div>
 
-              <div className="py-3 border-b border-gray-200 dark:border-gray-700">
-                <label className="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">Default courses view</label>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">When you open Courses, start on:</p>
+              <div className={`py-3 border-b ${themedDividerClass}`}>
+                <label className={`block text-sm font-medium mb-1.5 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Default courses view</label>
+                <p className={`text-xs mb-2 ${themedMutedTextClass}`}>When you open Courses, start on:</p>
                 <select
                   value={courseSettings.defaultCoursesView}
                   onChange={(e) =>
@@ -1636,7 +1654,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose, 
                       defaultCoursesView: e.target.value as 'catalog' | 'my'
                     })
                   }
-                  className="w-full px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className={`w-full px-3 py-2 rounded-md border focus:outline-none focus:ring-2 focus:ring-purple-500 ${themedInputClass}`}
                 >
                   <option value="catalog">All courses (catalog)</option>
                   <option value="my">My enrollments</option>

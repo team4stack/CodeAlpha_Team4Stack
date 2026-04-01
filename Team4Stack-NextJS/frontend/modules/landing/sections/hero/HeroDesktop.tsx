@@ -64,7 +64,7 @@ const HeroDesktop: React.FC<HeroDesktopProps> = ({
     "provider": {
       "@type": "Organization",
       "name": "Team4Stack",
-      "url": "https://team4stack.com/"
+      "url": "https://www.team4stack.com/"
     },
     "areaServed": {
       "@type": "Country",
