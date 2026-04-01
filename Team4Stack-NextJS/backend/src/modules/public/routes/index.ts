@@ -113,11 +113,7 @@ function getVisitorHashSecret(): string {
   if (process.env.NODE_ENV !== 'production') {
     return 'dev-only-visitor-hash-secret-change-in-production';
   }
-  return (
-    process.env.ADMIN_API_TOKEN_SECRET?.trim() ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
-    ''
-  );
+  return process.env.ADMIN_API_TOKEN_SECRET?.trim() || '';
 }
 
 function hashIpAddress(ip: string): string | null {
