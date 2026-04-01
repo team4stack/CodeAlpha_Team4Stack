@@ -7,6 +7,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import ThemeManager from '@/themes/ThemeManager';
 import CookieConsentBanner from '@/components/cookies/CookieConsentBanner';
 import FunctionalPerformanceBootstrap from '@/components/performance/FunctionalPerformanceBootstrap';
+import VisitorTracker from '@/components/performance/VisitorTracker';
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -23,6 +24,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       <AuthProvider>
         <ThemeManager />
         <FunctionalPerformanceBootstrap />
+        <VisitorTracker />
         {children}
         <Toaster
           position="top-right"

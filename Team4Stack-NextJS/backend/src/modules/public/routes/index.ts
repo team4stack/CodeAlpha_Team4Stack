@@ -2,8 +2,212 @@ import { Router, Request, Response, NextFunction } from 'express';
 import crypto from 'node:crypto';
 import { Readable } from 'node:stream';
 import { google } from 'googleapis';
+import { supabaseAdmin } from '../../../config/supabase';
+import { wrapAttachAuth } from '../../../shared/middleware/authMiddleware';
 
 const router = Router();
+
+type VisitorEventPayload = {
+  visitorId?: string;
+  sessionId?: string;
+  consentLevel?: string;
+  pagePath?: string;
+  pageUrl?: string;
+  pageTitle?: string;
+  referrer?: string;
+  language?: string;
+  languages?: string[];
+  timezone?: string;
+  screenWidth?: number;
+  screenHeight?: number;
+  viewportWidth?: number;
+  viewportHeight?: number;
+  colorScheme?: string;
+  cookieEnabled?: boolean;
+  touchPoints?: number;
+  hardwareConcurrency?: number;
+  platform?: string;
+};
+
+function trimText(value: unknown, max = 255): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim().replace(/\0/g, '');
+  if (!trimmed) return null;
+  return trimmed.slice(0, max);
+}
+
+function readOptionalInt(value: unknown, max = 100000): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+  const rounded = Math.trunc(value);
+  if (rounded < 0 || rounded > max) return null;
+  return rounded;
+}
+
+function readOptionalBoolean(value: unknown): boolean | null {
+  return typeof value === 'boolean' ? value : null;
+}
+
+function readStringArray(value: unknown, maxItems = 10, maxItemChars = 64): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => trimText(item, maxItemChars))
+    .filter((item): item is string => Boolean(item))
+    .slice(0, maxItems);
+}
+
+function isUuidLike(value: string | null): value is string {
+  return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value));
+}
+
+function sanitizeUrlForStorage(value: unknown): string | null {
+  const raw = trimText(value, 2048);
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
+    url.search = '';
+    url.hash = '';
+    return url.toString().slice(0, 2048);
+  } catch {
+    return null;
+  }
+}
+
+function detectBrowser(userAgent: string): { name: string; version: string | null } {
+  const patterns: Array<{ name: string; regex: RegExp }> = [
+    { name: 'Edge', regex: /Edg\/([\d.]+)/i },
+    { name: 'Opera', regex: /OPR\/([\d.]+)/i },
+    { name: 'Samsung Internet', regex: /SamsungBrowser\/([\d.]+)/i },
+    { name: 'Chrome', regex: /Chrome\/([\d.]+)/i },
+    { name: 'Firefox', regex: /Firefox\/([\d.]+)/i },
+    { name: 'Safari', regex: /Version\/([\d.]+).*Safari/i }
+  ];
+  for (const pattern of patterns) {
+    const match = userAgent.match(pattern.regex);
+    if (match) {
+      return { name: pattern.name, version: trimText(match[1], 40) };
+    }
+  }
+  return { name: 'Unknown', version: null };
+}
+
+function detectOs(userAgent: string): string {
+  if (/Windows NT/i.test(userAgent)) return 'Windows';
+  if (/Android/i.test(userAgent)) return 'Android';
+  if (/(iPhone|iPad|iPod)/i.test(userAgent)) return 'iOS';
+  if (/Mac OS X|Macintosh/i.test(userAgent)) return 'macOS';
+  if (/Linux/i.test(userAgent)) return 'Linux';
+  return 'Unknown';
+}
+
+function detectDeviceType(userAgent: string): string {
+  if (/bot|crawler|spider|crawling/i.test(userAgent)) return 'bot';
+  if (/iPad|Tablet|Nexus 7|Nexus 10|SM-T|Tab/i.test(userAgent)) return 'tablet';
+  if (/Mobi|Android|iPhone|iPod/i.test(userAgent)) return 'mobile';
+  return 'desktop';
+}
+
+function getVisitorHashSecret(): string {
+  const explicit = process.env.VISITOR_HASH_SECRET?.trim();
+  if (explicit) return explicit;
+  if (process.env.NODE_ENV !== 'production') {
+    return 'dev-only-visitor-hash-secret-change-in-production';
+  }
+  return (
+    process.env.ADMIN_API_TOKEN_SECRET?.trim() ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
+    ''
+  );
+}
+
+function hashIpAddress(ip: string): string | null {
+  const secret = getVisitorHashSecret();
+  const safeIp = trimText(ip, 200);
+  if (!secret || !safeIp) return null;
+  return crypto.createHmac('sha256', secret).update(safeIp).digest('hex');
+}
+
+function readRequestIp(req: Request): string {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (typeof forwarded === 'string' && forwarded.trim()) {
+    return forwarded.split(',')[0].trim();
+  }
+  if (Array.isArray(forwarded) && forwarded[0]) {
+    return String(forwarded[0]).split(',')[0].trim();
+  }
+  return (req.ip || req.socket.remoteAddress || '').trim();
+}
+
+router.post('/visitors/events', wrapAttachAuth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const body = (req.body || {}) as VisitorEventPayload;
+    const visitorId = trimText(body.visitorId, 64);
+    const sessionId = trimText(body.sessionId, 64);
+    const pagePath = trimText(body.pagePath, 512);
+    const consentLevel = trimText(body.consentLevel, 32);
+
+    if (!visitorId || !isUuidLike(visitorId) || !pagePath) {
+      res.status(400).json({ success: false, error: 'Invalid visitor tracking payload' });
+      return;
+    }
+
+    if (consentLevel !== 'functional') {
+      res.status(202).json({ success: true, skipped: true });
+      return;
+    }
+
+    const userAgent = trimText(req.headers['user-agent'], 1024) || 'Unknown';
+    const browser = detectBrowser(userAgent);
+    const osName = detectOs(userAgent);
+    const deviceType = detectDeviceType(userAgent);
+    const platform = trimText(body.platform, 120);
+    const ipHash = hashIpAddress(readRequestIp(req));
+    const sanitizedPageUrl = sanitizeUrlForStorage(body.pageUrl);
+    const sanitizedReferrer = sanitizeUrlForStorage(body.referrer);
+    const languages = readStringArray(body.languages);
+
+    const record = {
+      visitor_id: visitorId,
+      session_id: sessionId && isUuidLike(sessionId) ? sessionId : null,
+      user_id: req.auth?.kind === 'user' ? req.auth.sub : null,
+      user_email: req.auth?.kind === 'user' ? req.auth.email : null,
+      consent_level: 'functional',
+      event_type: 'page_view',
+      page_path: pagePath.slice(0, 512),
+      page_url: sanitizedPageUrl,
+      page_title: trimText(body.pageTitle, 180),
+      referrer: sanitizedReferrer,
+      browser_name: browser.name,
+      browser_version: browser.version,
+      os_name: osName,
+      device_type: deviceType,
+      device_label: `${osName} ${browser.name}`.trim(),
+      platform,
+      language: trimText(body.language, 24),
+      languages,
+      timezone: trimText(body.timezone, 80),
+      screen_width: readOptionalInt(body.screenWidth, 10000),
+      screen_height: readOptionalInt(body.screenHeight, 10000),
+      viewport_width: readOptionalInt(body.viewportWidth, 10000),
+      viewport_height: readOptionalInt(body.viewportHeight, 10000),
+      color_scheme: trimText(body.colorScheme, 20),
+      cookie_enabled: readOptionalBoolean(body.cookieEnabled),
+      touch_points: readOptionalInt(body.touchPoints, 20),
+      hardware_concurrency: readOptionalInt(body.hardwareConcurrency, 128),
+      user_agent: userAgent,
+      ip_hash: ipHash
+    };
+
+    const { error } = await supabaseAdmin.from('visitor_events').insert(record);
+    if (error) {
+      throw error;
+    }
+
+    res.status(201).json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+});
 
 function logDriveUploadError(context: string, err: unknown): void {
   try {

@@ -16,6 +16,8 @@ export const COOKIE_CONSENT_STORAGE_KEY = 't4s_cookie_consent_v1';
 export const REMEMBER_EMAIL_KEY = 't4s_remember_email';
 /** Richer cache: email + name for sign-in UX when user chose Accept all */
 export const SAVED_SIGNIN_IDENTITY_KEY = 't4s_signin_identity_v1';
+export const VISITOR_ID_STORAGE_KEY = 't4s_visitor_id_v1';
+export const VISITOR_SESSION_STORAGE_KEY = 't4s_visitor_session_v1';
 
 export type CookieConsentLevel = 'pending' | 'essential' | 'functional';
 
@@ -146,6 +148,12 @@ export function clearRememberedEmail(): void {
 
 export function clearOptionalPreferenceStorage(): void {
   clearRememberedEmail();
+  try {
+    localStorage.removeItem(VISITOR_ID_STORAGE_KEY);
+    sessionStorage.removeItem(VISITOR_SESSION_STORAGE_KEY);
+  } catch {
+    // ignore
+  }
   if (typeof window !== 'undefined') {
     void import('@/lib/performance/functionalExperienceCache')
       .then((m) => m.clearFunctionalPublicCaches())
