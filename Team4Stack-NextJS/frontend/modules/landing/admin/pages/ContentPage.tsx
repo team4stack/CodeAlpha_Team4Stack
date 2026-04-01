@@ -50,7 +50,7 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
     }
   }, [selectedService])
   const isReviews = table === 'reviews'
-  const isTeamLike = table === 'team_members' || table === 'mentor_profile'
+  const isTeamLike = table === 'team_members' || table === 'mentor_profiles'
   const isCourses = table === 'courses'
   const isServices = table === 'services'
   const isContact = table === 'contact'

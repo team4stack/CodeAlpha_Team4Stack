@@ -63,7 +63,7 @@ export class TeamService {
 
   async getMentorProfiles(): Promise<MentorProfile[]> {
     const { data, error } = await supabaseAdmin
-      .from('mentor_profile')
+      .from('mentor_profiles')
       .select('*')
       .eq('active', true)
       .order('order_index', { ascending: true })
@@ -74,21 +74,21 @@ export class TeamService {
 
   async createMentorProfile(mentor: Partial<MentorProfile>): Promise<MentorProfile> {
     const insert = pickAllowedKeys(mentor, MENTOR_KEYS);
-    const { data, error } = await supabaseAdmin.from('mentor_profile').insert(insert).select().single();
+    const { data, error } = await supabaseAdmin.from('mentor_profiles').insert(insert).select().single();
     if (error) throw error;
     return data;
   }
 
   async updateMentorProfile(id: number, mentor: Partial<MentorProfile>): Promise<MentorProfile> {
     const patch = pickAllowedKeys(mentor, MENTOR_KEYS);
-    const row = await updateByIdWithTimestampRetry('mentor_profile', id, patch, {
+    const row = await updateByIdWithTimestampRetry('mentor_profiles', id, patch, {
       notFoundMessage: 'Mentor profile not found'
     });
     return row as unknown as MentorProfile;
   }
 
   async deleteMentorProfile(id: number): Promise<void> {
-    const { error } = await supabaseAdmin.from('mentor_profile').delete().eq('id', id);
+    const { error } = await supabaseAdmin.from('mentor_profiles').delete().eq('id', id);
     if (error) throw error;
   }
 }

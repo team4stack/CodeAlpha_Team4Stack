@@ -102,7 +102,7 @@ const AdminSidebar: React.FC = () => {
     { to: '/adminlandingt4s/services', label: labels.tab_label_services || 'Services', icon: FiBriefcase },
     { to: '/adminlandingt4s/reviews', label: labels.tab_label_reviews || 'Reviews', icon: FiStar },
     { to: '/adminlandingt4s/team_members', label: labels.tab_label_team || 'Team', icon: FiUsers },
-    { to: '/adminlandingt4s/mentor_profile', label: labels.tab_label_mentor || 'Mentor', icon: FiBook },
+    { to: '/adminlandingt4s/mentor_profiles', label: labels.tab_label_mentor || 'Mentor', icon: FiBook },
     { to: '/adminlandingt4s/contact', label: labels.tab_label_contact || 'Contact', icon: FiPhone },
     { to: '/adminlandingt4s/footer', label: labels.tab_label_footer || 'Footer', icon: FiNavigation },
     { to: '/adminlandingt4s/support', label: labels.tab_label_support || 'Support', icon: FiMessageCircle },

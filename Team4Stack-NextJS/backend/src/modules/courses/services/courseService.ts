@@ -292,7 +292,7 @@ export class CourseService {
   }
 
   private async insertAdmissionFormWithDateFallback(insert: Record<string, unknown>): Promise<AdmissionForm> {
-    let { data, error } = await supabaseAdmin.from('admission_form').insert(insert).select().single();
+    let { data, error } = await supabaseAdmin.from('admission_forms').insert(insert).select().single();
 
     // Older DBs may not have date_of_birth yet — retry with age only.
     if (error && insert.date_of_birth !== undefined) {
@@ -300,7 +300,7 @@ export class CourseService {
       if (msg.includes('date_of_birth') || msg.includes('column') || msg.includes('schema')) {
         const retry = { ...insert };
         delete retry.date_of_birth;
-        ({ data, error } = await supabaseAdmin.from('admission_form').insert(retry).select().single());
+        ({ data, error } = await supabaseAdmin.from('admission_forms').insert(retry).select().single());
       }
     }
 
@@ -596,7 +596,7 @@ export class CourseService {
     approved?: boolean;
     course_name?: string;
   }): Promise<AdmissionForm[]> {
-    let query = supabaseAdmin.from('admission_form').select('*');
+    let query = supabaseAdmin.from('admission_forms').select('*');
 
     if (filters?.email) {
       query = query.eq('email', filters.email.toLowerCase().trim());
@@ -626,7 +626,7 @@ export class CourseService {
   }
 
   async getAdmissionFormById(id: number): Promise<AdmissionForm | null> {
-    const { data, error } = await supabaseAdmin.from('admission_form').select('*').eq('id', id).maybeSingle();
+    const { data, error } = await supabaseAdmin.from('admission_forms').select('*').eq('id', id).maybeSingle();
     if (error) throw error;
     return data;
   }
@@ -646,7 +646,7 @@ export class CourseService {
     const email = String(insert.email || '').toLowerCase().trim();
     if (email) {
       const { data: existing, error } = await supabaseAdmin
-        .from('admission_form')
+        .from('admission_forms')
         .select('id')
         .eq('email', email)
         .order('created_at', { ascending: false })
@@ -654,7 +654,7 @@ export class CourseService {
         .maybeSingle();
       if (error) throw error;
       if (existing?.id) {
-        const row = await updateByIdWithTimestampRetry('admission_form', Number(existing.id), insert, {
+        const row = await updateByIdWithTimestampRetry('admission_forms', Number(existing.id), insert, {
           notFoundMessage: 'Admission form not found'
         });
         return row as unknown as AdmissionForm;
@@ -666,7 +666,7 @@ export class CourseService {
 
   async updateAdmissionForm(id: number, form: Partial<AdmissionForm>): Promise<AdmissionForm> {
     const patch = pickAllowedKeys(form, ADMISSION_KEYS);
-    const row = await updateByIdWithTimestampRetry('admission_form', id, patch, {
+    const row = await updateByIdWithTimestampRetry('admission_forms', id, patch, {
       notFoundMessage: 'Admission form not found'
     });
     return row as unknown as AdmissionForm;
@@ -689,14 +689,14 @@ export class CourseService {
     if (Object.keys(patch).length === 0) {
       return existing;
     }
-    const row = await updateByIdWithTimestampRetry('admission_form', id, patch, {
+    const row = await updateByIdWithTimestampRetry('admission_forms', id, patch, {
       notFoundMessage: 'Admission form not found'
     });
     return row as unknown as AdmissionForm;
   }
 
   async deleteAdmissionForm(id: number): Promise<void> {
-    const { error } = await supabaseAdmin.from('admission_form').delete().eq('id', id);
+    const { error } = await supabaseAdmin.from('admission_forms').delete().eq('id', id);
 
     if (error) throw error;
   }

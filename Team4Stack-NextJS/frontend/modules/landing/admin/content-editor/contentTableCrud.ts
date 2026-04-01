@@ -4,7 +4,7 @@ const getApiForTable = (tableName: string) => {
   if (tableName === 'reviews' || tableName === 'projects' || tableName === 'services') {
     return landingApi;
   }
-  if (tableName === 'team_members' || tableName === 'mentor_profile') {
+  if (tableName === 'team_members' || tableName === 'mentor_profiles') {
     return teamApi;
   }
   if (tableName === 'courses') {
@@ -23,7 +23,7 @@ export const updateContentTableRecord = async (tableName: string, id: number, pa
   if (tableName === 'projects') return await api.updateProject(id, payload);
   if (tableName === 'services') return await api.updateService(id, payload);
   if (tableName === 'team_members') return await api.updateTeamMember(id, payload);
-  if (tableName === 'mentor_profile') return await api.updateMentorProfile(id, payload);
+  if (tableName === 'mentor_profiles') return await api.updateMentorProfile(id, payload);
   if (tableName === 'courses') return await api.updateCourse(id, payload);
 
   return { error: `Update not implemented for table: ${tableName}` };
@@ -39,7 +39,7 @@ export const createContentTableRecord = async (tableName: string, payload: any) 
   if (tableName === 'projects') return await api.createProject(payload);
   if (tableName === 'services') return await api.createService(payload);
   if (tableName === 'team_members') return await api.createTeamMember(payload);
-  if (tableName === 'mentor_profile') return await api.createMentorProfile(payload);
+  if (tableName === 'mentor_profiles') return await api.createMentorProfile(payload);
   if (tableName === 'courses') return await api.createCourse(payload);
 
   return { error: `Create not implemented for table: ${tableName}` };
@@ -55,7 +55,7 @@ export const deleteContentTableRecord = async (tableName: string, id: number) =>
   if (tableName === 'projects') return await api.deleteProject(id);
   if (tableName === 'services') return await api.deleteService(id);
   if (tableName === 'team_members') return await api.deleteTeamMember(id);
-  if (tableName === 'mentor_profile') return await api.deleteMentorProfile(id);
+  if (tableName === 'mentor_profiles') return await api.deleteMentorProfile(id);
   if (tableName === 'courses') return await api.deleteCourse(id);
 
   return { error: `Delete not implemented for table: ${tableName}` };

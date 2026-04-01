@@ -157,23 +157,23 @@ export async function migrateMentorProfile(): Promise<SeedResult> {
   try {
     // upsert by name
     const { data: existing } = await supabase
-      .from('mentor_profile')
+      .from('mentor_profiles')
       .select('id')
       .eq('name', mentor.name)
       .maybeSingle()
 
     if (existing?.id) {
       const { error } = await supabase
-        .from('mentor_profile')
+        .from('mentor_profiles')
         .update(mentor)
         .eq('id', existing.id)
-      return { table: 'mentor_profile', inserted: 0, skipped: false, error: error?.message }
+      return { table: 'mentor_profiles', inserted: 0, skipped: false, error: error?.message }
     } else {
-      const { error } = await supabase.from('mentor_profile').insert(mentor)
-      return { table: 'mentor_profile', inserted: error ? 0 : 1, skipped: false, error: error?.message }
+      const { error } = await supabase.from('mentor_profiles').insert(mentor)
+      return { table: 'mentor_profiles', inserted: error ? 0 : 1, skipped: false, error: error?.message }
     }
   } catch (e: any) {
-    return { table: 'mentor_profile', inserted: 0, skipped: false, error: String(e?.message || e) }
+    return { table: 'mentor_profiles', inserted: 0, skipped: false, error: String(e?.message || e) }
   }
 }
 

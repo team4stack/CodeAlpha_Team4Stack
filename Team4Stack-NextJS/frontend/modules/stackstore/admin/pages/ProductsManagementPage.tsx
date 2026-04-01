@@ -3,7 +3,6 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
 import { stackstoreApi } from '@/lib/api'
-import { supabase } from '@/lib/supabase/client'
 
 type Product = {
   id: string
@@ -162,32 +161,22 @@ const ProductsManagementPage: React.FC = () => {
         category_id: formData.category_id || null,
         image_url: formData.image_url || null,
         active: formData.active,
-        stock: formData.stock ? parseInt(formData.stock) : null,
-        updated_at: new Date().toISOString()
+        stock: formData.stock ? parseInt(formData.stock) : null
       }
 
       if (editingProduct) {
-        // Update existing product
-        const { error: updateError } = await supabase
-          .from('products')
-          .update(productData)
-          .eq('id', editingProduct.id)
-
-        if (updateError) throw updateError
+        const result = await stackstoreApi.updateProduct(editingProduct.id, productData)
+        if (result.error) throw new Error(result.error)
         setSuccess('Product updated successfully!')
       } else {
-        // Create new product
-        const { error: insertError } = await supabase
-          .from('products')
-          .insert(productData)
-
-        if (insertError) throw insertError
+        const result = await stackstoreApi.createProduct(productData)
+        if (result.error) throw new Error(result.error)
         setSuccess('Product added successfully!')
       }
 
       setShowAddForm(false)
       setEditingProduct(null)
-      loadData()
+      await loadData()
       setTimeout(() => setSuccess(null), 3000)
     } catch (err: any) {
       const { sanitizeError, logErrorSecurely } = await import('@/lib/utils/errorHandler')
@@ -206,15 +195,11 @@ const ProductsManagementPage: React.FC = () => {
       setError(null)
       setSuccess(null)
 
-      const { error: deleteError } = await supabase
-        .from('products')
-        .delete()
-        .eq('id', productId)
-
-      if (deleteError) throw deleteError
+      const result = await stackstoreApi.deleteProduct(productId)
+      if (result.error) throw new Error(result.error)
 
       setSuccess('Product deleted successfully!')
-      loadData()
+      await loadData()
       setTimeout(() => setSuccess(null), 3000)
     } catch (err: any) {
       const { sanitizeError, logErrorSecurely } = await import('@/lib/utils/errorHandler')
@@ -229,15 +214,13 @@ const ProductsManagementPage: React.FC = () => {
       setError(null)
       setSuccess(null)
 
-      const { error: updateError } = await supabase
-        .from('products')
-        .update({ active: !product.active, updated_at: new Date().toISOString() })
-        .eq('id', product.id)
-
-      if (updateError) throw updateError
+      const result = await stackstoreApi.updateProduct(product.id, {
+        active: !product.active
+      })
+      if (result.error) throw new Error(result.error)
 
       setSuccess(`Product ${!product.active ? 'activated' : 'deactivated'} successfully!`)
-      loadData()
+      await loadData()
       setTimeout(() => setSuccess(null), 3000)
     } catch (err: any) {
       const { sanitizeError, logErrorSecurely } = await import('@/lib/utils/errorHandler')

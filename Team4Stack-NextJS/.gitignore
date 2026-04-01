@@ -1,0 +1,32 @@
+# Root tooling and workspace caches
+/node_modules/
+/.cursor/
+/.vscode/
+
+# Local environment and secrets
+/.env
+/.env.*
+!.env.example
+!/.env.example
+*.local
+*.secret
+*.token
+
+# Logs and OS junk
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+Thumbs.db
+
+# Supabase local/linked metadata caches
+/supabase/.temp/
+/supabase/.branches/
+/supabase/*.dump.sql
+/supabase/*.bak.sql
+
+# Build/test output if produced at repo root
+/coverage/
+/dist/
+/tmp/
