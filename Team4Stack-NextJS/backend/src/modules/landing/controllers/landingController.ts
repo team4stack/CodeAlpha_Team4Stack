@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import landingService from '../services/landingService';
 import { COURSES_ADMIN_ROLES, LANDING_ADMIN_ROLES } from '../../../shared/middleware/authMiddleware';
 import { areAllPublicOtpSettingKeys, isPublicOtpSettingKey } from '../../../shared/utils/landingSettingsPolicy';
+import { parsePublicLandingReviewBody } from '../utils/publicReviewSubmit';
 
 function parseNumericId(param: string): number | null {
   const id = Number.parseInt(param, 10);
@@ -35,10 +36,22 @@ export class LandingController {
 
   createReview = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      if (!isLandingAdmin(req)) {
-        return res.status(403).json({ success: false, error: 'Landing admin access required' });
+      if (isLandingAdmin(req)) {
+        const review = await landingService.createReview(req.body);
+        res.status(201).json({ success: true, data: review });
+        return;
       }
-      const review = await landingService.createReview(req.body);
+
+      // Public review submission (marketing site): validate server-side; always pending for moderation.
+      const parsed = parsePublicLandingReviewBody(req.body);
+      if (!parsed.ok) {
+        return res.status(parsed.statusCode).json({ success: false, error: parsed.error });
+      }
+
+      const review = await landingService.createReview({
+        ...parsed.value,
+        status: 'pending'
+      });
       res.status(201).json({ success: true, data: review });
     } catch (error: any) {
       next(error);

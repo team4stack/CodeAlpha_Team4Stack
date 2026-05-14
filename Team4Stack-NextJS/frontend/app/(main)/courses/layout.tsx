@@ -9,9 +9,10 @@ interface CoursesLayoutProps {
 export default function CoursesLayout({ children }: CoursesLayoutProps) {
   return (
     <>
-      <main className="responsive-main">
+      {/* Use a div (not a second <main>) — (main)/layout already wraps the tree in <main> */}
+      <div className="responsive-main min-h-0 w-full">
         {children}
-      </main>
+      </div>
       {/* Footer is already rendered in app/(main)/layout.tsx */}
       {/* WhatsAppButton and PWAInstallPrompt are also in main layout */}
     </>

@@ -16,6 +16,7 @@ import superadminRoutes from './modules/superadmin/routes';
 import usersRoutes from './shared/modules/users/routes';
 import authRoutes from './shared/modules/auth/routes';
 import publicRoutes from './modules/public/routes';
+import { supabaseAdmin } from './config/supabase';
 
 const app: Express = express();
 const PORT = process.env.PORT || 5000;
@@ -103,6 +104,28 @@ app.get('/health', (req: Request, res: Response) => {
     message: 'Team4Stack Backend API is running',
     timestamp: new Date().toISOString()
   });
+});
+
+/** Optional: verify Supabase service-role DB reachability (admin panels depend on this). */
+app.get('/health/supabase', async (req: Request, res: Response) => {
+  try {
+    const { error } = await supabaseAdmin.from('admin_users').select('id').limit(1);
+    if (error) {
+      return res.status(503).json({
+        ok: false,
+        message: 'Database query failed',
+        code: error.code,
+        hint: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+    return res.status(200).json({ ok: true, message: 'Supabase reachable' });
+  } catch (e: any) {
+    return res.status(503).json({
+      ok: false,
+      message: 'Supabase check threw',
+      hint: process.env.NODE_ENV === 'development' ? String(e?.message || e) : undefined
+    });
+  }
 });
 
 // API routes

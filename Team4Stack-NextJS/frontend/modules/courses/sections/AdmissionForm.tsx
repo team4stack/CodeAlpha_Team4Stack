@@ -571,7 +571,7 @@ const AdmissionForm: React.FC = () => {
   const stepProgressPercent = ((currentStep - 1) / (TOTAL_STEPS - 1)) * 100
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0a0f1f] via-[#0b1226] to-[#060b18] pt-16 sm:pt-20 md:pt-28 pb-10 px-3 sm:px-4 relative overflow-hidden">
+    <div className="relative w-full min-h-0 flex-1 overflow-hidden bg-gradient-to-br from-[#0a0f1f] via-[#0b1226] to-[#060b18] pt-16 sm:pt-20 md:pt-28 pb-10 px-3 sm:px-4">
       <AdmissionFormAnimatedBackground />
 
       <div className="container-custom max-w-7xl mx-auto relative z-10 px-3 sm:px-6 lg:px-8">

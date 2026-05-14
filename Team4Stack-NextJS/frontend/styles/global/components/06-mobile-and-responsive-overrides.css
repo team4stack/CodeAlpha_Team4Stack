@@ -1,7 +1,9 @@
 @layer components {
   /* Responsive main content area - applies to all pages (except admin panels) */
   .responsive-main {
+    /* 100dvh matches the *visible* viewport on mobile; 100vh can be taller and leaves a strip under the footer */
     min-height: calc(100vh - 4rem);
+    min-height: calc(100dvh - 4rem);
     width: 100%;
     overflow-x: hidden;
   }

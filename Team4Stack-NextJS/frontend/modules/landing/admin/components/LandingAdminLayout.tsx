@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import AdminSidebar from './LandingAdminSidebar'
 import AdminHeader from '@/components/admin/shared/AdminHeader'
 import AdminFooter from '@/components/admin/shared/AdminFooter'
+import { isTransientAdminDirectoryError } from '../utils/adminSessionCheck'
 interface LandingAdminLayoutProps {
   children: React.ReactNode
 }
@@ -12,6 +13,7 @@ interface LandingAdminLayoutProps {
 const LandingAdminLayout: React.FC<LandingAdminLayoutProps> = ({ children }) => {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
+  const [verificationDegraded, setVerificationDegraded] = useState(false)
 
   useEffect(() => {
     const checkSession = async () => {
@@ -56,16 +58,35 @@ const LandingAdminLayout: React.FC<LandingAdminLayoutProps> = ({ children }) => 
         // API TABLE CHECK
         // Multi-layer security: Both environment variable AND API check must pass
         const { superadminApi } = await import('@/lib/api')
-        const adminResult = await superadminApi.checkAdminByEmail(userEmail)
+
+        const runDirectoryCheck = async () => {
+          let adminResult = await superadminApi.checkAdminByEmail(userEmail)
+          for (let attempt = 0; attempt < 2; attempt++) {
+            if (!adminResult.error) break
+            if (!isTransientAdminDirectoryError(adminResult.error)) break
+            superadminApi.clearAdminDirectoryCheckCache(userEmail)
+            await new Promise((r) => setTimeout(r, 450 * (attempt + 1)))
+            adminResult = await superadminApi.checkAdminByEmail(userEmail)
+          }
+          return adminResult
+        }
+
+        const adminResult = await runDirectoryCheck()
         const adminRow = adminResult.data as any
 
         if (adminResult.error) {
-          // No sensitive info in logs
+          if (isTransientAdminDirectoryError(adminResult.error)) {
+            setVerificationDegraded(true)
+            setLoading(false)
+            return
+          }
           sessionStorage.removeItem('admin_session')
           router.replace('/adminlandingt4s/login')
           setLoading(false)
           return
         }
+
+        setVerificationDegraded(false)
 
         // CRITICAL: If user email is NOT in admin_users table, deny access
         // Normal users ka email admin_users mein nahi hoga
@@ -82,7 +103,9 @@ const LandingAdminLayout: React.FC<LandingAdminLayoutProps> = ({ children }) => 
         // Step 3: ROLE-BASED ACCESS CONTROL
         // Check if user has permission to access landing admin panel
         // Only super_admin, landing_admin, or legacy 'admin' role can access
-        const userRole = adminRow?.role || 'admin'
+        const userRole = String(adminRow?.role || 'admin')
+          .toLowerCase()
+          .trim()
         const allowedRoles = ['super_admin', 'landing_admin', 'admin']
         if (!allowedRoles.includes(userRole)) {
           // User doesn't have permission for this admin panel
@@ -95,8 +118,13 @@ const LandingAdminLayout: React.FC<LandingAdminLayoutProps> = ({ children }) => 
 
         // User is authenticated and is admin - allow access
         setLoading(false)
-      } catch (error) {
-        // Invalid session, remove it
+      } catch (error: any) {
+        const msg = String(error?.message || error || '')
+        if (isTransientAdminDirectoryError(msg)) {
+          setVerificationDegraded(true)
+          setLoading(false)
+          return
+        }
         sessionStorage.removeItem('admin_session')
         router.replace('/adminlandingt4s/login')
         setLoading(false)
@@ -105,10 +133,10 @@ const LandingAdminLayout: React.FC<LandingAdminLayoutProps> = ({ children }) => 
     
     checkSession()
     
-    // Re-check periodically (every 5 minutes)
+    // Re-check periodically (every 15 minutes — avoids kicking admins on brief API/DB blips)
     const interval = setInterval(() => {
       checkSession()
-    }, 5 * 60 * 1000)
+    }, 15 * 60 * 1000)
 
     return () => {
       clearInterval(interval)
@@ -144,6 +172,21 @@ const LandingAdminLayout: React.FC<LandingAdminLayoutProps> = ({ children }) => 
           </aside>
           <div className="flex-1 min-w-0 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden admin-custom-scrollbar">
             <main className="flex-1 min-h-full p-4 pb-8 sm:p-6 sm:pb-10 text-white/90">
+              {verificationDegraded && (
+                <div
+                  className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100"
+                  role="status"
+                >
+                  <p className="font-medium text-amber-50">Could not verify admin with the server</p>
+                  <p className="mt-1 text-amber-100/90">
+                    This is usually a temporary API or database issue (for example Supabase paused or backend
+                    restarting). Your session is still open. If saving content fails, confirm the backend is running,
+                    then open{' '}
+                    <code className="rounded bg-black/30 px-1 py-0.5 text-xs text-amber-50">/health/supabase</code> on
+                    the API host to confirm the database is reachable.
+                  </p>
+                </div>
+              )}
               {children}
             </main>
           </div>

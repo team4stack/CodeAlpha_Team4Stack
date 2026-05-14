@@ -3,6 +3,8 @@
   margin-top: auto;
   width: 100%;
   overflow: hidden;
+  /* Fill home-indicator / safe-area on notched devices so the gradient meets the screen edge */
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .footer.dark {

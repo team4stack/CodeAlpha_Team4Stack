@@ -4,6 +4,8 @@ import { Readable } from 'node:stream';
 import { google } from 'googleapis';
 import { supabaseAdmin } from '../../../config/supabase';
 import { wrapAttachAuth } from '../../../shared/middleware/authMiddleware';
+import landingService from '../../landing/services/landingService';
+import { parsePublicLandingReviewBody } from '../../landing/utils/publicReviewSubmit';
 
 const router = Router();
 
@@ -278,6 +280,28 @@ function logDriveUploadError(context: string, err: unknown): void {
     console.error(`[google-drive-upload] ${context}: failed to log error`);
   }
 }
+
+/**
+ * Public landing-page review submission (moderated as pending).
+ * POST /api/public/landing/reviews
+ * Uses the public router so visitor POSTs are not tied to landing-admin auth on `/api/landing`.
+ */
+router.post('/landing/reviews', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const parsed = parsePublicLandingReviewBody(req.body);
+    if (!parsed.ok) {
+      res.status(parsed.statusCode).json({ success: false, error: parsed.error });
+      return;
+    }
+    const review = await landingService.createReview({
+      ...parsed.value,
+      status: 'pending'
+    });
+    res.status(201).json({ success: true, data: review });
+  } catch (error) {
+    next(error);
+  }
+});
 
 /**
  * Server-side YouTube Data API proxy — use `YOUTUBE_API_KEY` (never expose to the browser).

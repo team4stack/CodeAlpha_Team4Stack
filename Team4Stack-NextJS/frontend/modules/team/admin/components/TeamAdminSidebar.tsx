@@ -1,49 +1,21 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { landingApi } from '@/lib/api'
-import {
-  FiUsers,
-  FiUser,
-  FiBook,
-  FiBriefcase,
-  FiSettings,
-  FiLogOut
-} from 'react-icons/fi'
+import { FiUsers, FiSettings, FiLogOut } from 'react-icons/fi'
 import SidebarPinButton from '@/components/admin/shared/SidebarPinButton'
 
 const TeamAdminSidebar: React.FC = () => {
   const pathname = usePathname()
-  const [labels, setLabels] = useState<Record<string, string>>({})
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [hoveredLink, setHoveredLink] = useState<string | null>(null)
   const [tooltipPosition, setTooltipPosition] = useState<{ top: number; left: number } | null>(null)
   const [isSidebarHovered, setIsSidebarHovered] = useState(false)
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const result = await landingApi.getSiteSettings(['tab_label_team'])
-        if (result.data && Array.isArray(result.data)) {
-          const map: Record<string, string> = {}
-          result.data.forEach((r: any) => { map[r.key] = r.value })
-          setLabels(map)
-        }
-      } catch (error) {
-        console.error('Failed to load tab labels:', error)
-      }
-    }
-    load()
-  }, [])
-
 
   const links = [
-    { to: '/adminteamt4s', label: labels.tab_label_team || 'Dashboard', icon: FiUsers },
-    { to: '/adminteamt4s/members', label: 'Team Members', icon: FiUser },
-    { to: '/adminteamt4s/mentor', label: 'Mentor Profile', icon: FiBook },
-    { to: '/adminteamt4s/roles', label: 'Roles & Positions', icon: FiBriefcase },
-    { to: '/adminteamt4s/settings', label: 'Settings', icon: FiSettings },
+    { to: '/adminteamt4s', label: 'Dashboard', icon: FiUsers },
+    { to: '/adminteamt4s/settings', label: 'Settings', icon: FiSettings }
   ]
 
   const handleLogout = () => {
@@ -147,12 +119,10 @@ const TeamAdminSidebar: React.FC = () => {
                         <span className="flex-1 relative z-10">{link.label}</span>
                       )}
 
-                      {/* Active Indicator */}
                       {isActive && !isCollapsed && (
                         <div className="absolute right-3 w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,1)] animate-pulse"></div>
                       )}
 
-                      {/* Hover Glow */}
                       {!isActive && (
                         <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/0 via-orange-500/0 to-cyan-500/0 group-hover:from-cyan-500/5 group-hover:via-orange-500/5 group-hover:to-cyan-500/5 transition-all duration-[440ms] ease-[cubic-bezier(0.22,1,0.36,1)]"></div>
                       )}
@@ -164,7 +134,6 @@ const TeamAdminSidebar: React.FC = () => {
             </ul>
           </nav>
 
-          {/* Logout Button at Bottom (inside scroll area) */}
           <div className="mt-auto pt-4 pb-4 border-t border-cyan-500/20 flex-shrink-0">
             <div className="relative">
               <button
@@ -190,7 +159,6 @@ const TeamAdminSidebar: React.FC = () => {
         </div>
       </aside>
 
-      {/* Tooltip - Fixed Position Outside Sidebar */}
       {isCollapsed && hoveredLink && tooltipPosition && (
         <div
           className="fixed z-[9999] px-3 py-2 rounded-lg bg-black/90 backdrop-blur-md text-white text-sm font-medium whitespace-nowrap shadow-xl border border-cyan-500/30 pointer-events-auto"
@@ -222,7 +190,6 @@ const TeamAdminSidebar: React.FC = () => {
               {links.find(l => l.to === hoveredLink)?.label}
             </Link>
           )}
-          {/* Arrow pointing to icon */}
           <div className="absolute right-full top-1/2 -translate-y-1/2 w-0 h-0 border-t-4 border-t-transparent border-b-4 border-b-transparent border-r-4 border-r-black/90"></div>
         </div>
       )}

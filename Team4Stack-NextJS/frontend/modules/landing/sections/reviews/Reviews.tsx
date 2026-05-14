@@ -13,6 +13,14 @@ interface Review {
   status?: 'pending' | 'approved' | 'rejected';
 }
 
+/** Must match `parsePublicLandingReviewBody` on the API */
+const REVIEW_NAME_MIN = 2;
+const REVIEW_NAME_MAX = 120;
+const REVIEW_LOCATION_MIN = 2;
+const REVIEW_LOCATION_MAX = 200;
+const REVIEW_COMMENT_MIN = 10;
+const REVIEW_COMMENT_MAX = 2000;
+
 const Reviews: React.FC = () => {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,27 +119,53 @@ const Reviews: React.FC = () => {
     setSubmitSuccess(false);
 
     try {
-      // Validate required fields
-      if (!newReview.name || !newReview.address || newReview.rating === 0 || !newReview.comment) {
-        throw new Error('Please fill in all required fields');
+      const name = newReview.name.trim();
+      const address = newReview.address.trim();
+      const comment = newReview.comment.trim();
+
+      if (!name || !address || newReview.rating === 0 || !comment) {
+        setSubmitError('Please fill in all required fields.');
+        return;
+      }
+      if (name.length < REVIEW_NAME_MIN || name.length > REVIEW_NAME_MAX) {
+        setSubmitError(`Name must be between ${REVIEW_NAME_MIN} and ${REVIEW_NAME_MAX} characters.`);
+        return;
+      }
+      if (address.length < REVIEW_LOCATION_MIN || address.length > REVIEW_LOCATION_MAX) {
+        setSubmitError(
+          `Location must be between ${REVIEW_LOCATION_MIN} and ${REVIEW_LOCATION_MAX} characters.`
+        );
+        return;
+      }
+      if (comment.length < REVIEW_COMMENT_MIN || comment.length > REVIEW_COMMENT_MAX) {
+        setSubmitError(
+          comment.length < REVIEW_COMMENT_MIN
+            ? `Please write a little more — at least ${REVIEW_COMMENT_MIN} characters after trimming spaces (you have ${comment.length}).`
+            : `Review text must be at most ${REVIEW_COMMENT_MAX} characters.`
+        );
+        return;
       }
 
-      // Insert the new review via API
-      const { landingApi } = await import('@/lib/api')
+      const { landingApi } = await import('@/lib/api');
       const result = await landingApi.createReview({
-        name: newReview.name,
-        address: newReview.address,
+        name,
+        address,
         rating: newReview.rating,
-        comment: newReview.comment,
+        comment,
         status: 'pending'
-      })
+      });
 
       if (result.error) {
-        // Handle 429 rate limiting
-        if (result.error.includes('429') || result.error.includes('rate limit') || result.error.includes('Too Many Requests')) {
-          throw new Error('Too many requests. Please wait a moment and try again.');
+        if (
+          result.error.includes('429') ||
+          result.error.includes('rate limit') ||
+          result.error.includes('Too Many Requests')
+        ) {
+          setSubmitError('Too many requests. Please wait a moment and try again.');
+          return;
         }
-        throw new Error(result.error);
+        setSubmitError(result.error);
+        return;
       }
 
       setSubmitSuccess(true);
@@ -151,11 +185,12 @@ const Reviews: React.FC = () => {
         // Reload reviews to show the new one
         loadReviews();
       }, 2000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (process.env.NODE_ENV === 'development') {
         console.error('Error submitting review:', error);
       }
-      setSubmitError(error.message || 'Failed to submit review. Please try again.');
+      const message = error instanceof Error ? error.message : 'Failed to submit review. Please try again.';
+      setSubmitError(message);
     } finally {
       setSubmitting(false);
     }
@@ -336,6 +371,7 @@ const Reviews: React.FC = () => {
                       name="name"
                       value={newReview.name}
                       onChange={handleInputChange}
+                      maxLength={REVIEW_NAME_MAX}
                       className="w-full px-3 py-2 sm:px-4 sm:py-3 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:text-white transition-all duration-200"
                       placeholder="Enter your name"
                       required
@@ -352,6 +388,7 @@ const Reviews: React.FC = () => {
                       name="address"
                       value={newReview.address}
                       onChange={handleInputChange}
+                      maxLength={REVIEW_LOCATION_MAX}
                       className="w-full px-3 py-2 sm:px-4 sm:py-3 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:text-white transition-all duration-200"
                       placeholder="Enter your city, country"
                       required

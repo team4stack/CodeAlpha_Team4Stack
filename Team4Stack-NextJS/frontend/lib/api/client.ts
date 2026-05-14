@@ -140,7 +140,18 @@ class ApiClient {
           } else if (response.status === 401) {
             errorMessage = 'Invalid email or password.';
           } else if (response.status === 403) {
-            errorMessage = 'Access denied. You do not have permission.';
+            try {
+              const errorData = await response.clone().json();
+              const { sanitizeError } = await import('@/lib/utils/errorHandler');
+              const sanitized = sanitizeError(errorData.error || errorData.message || '');
+              if (sanitized.message && sanitized.message.length > 0) {
+                errorMessage = sanitized.message;
+              } else {
+                errorMessage = 'Access denied. You do not have permission.';
+              }
+            } catch {
+              errorMessage = 'Access denied. You do not have permission.';
+            }
           } else if (response.status === 404) {
             errorMessage = 'The requested resource was not found.';
           } else if (response.status === 500) {

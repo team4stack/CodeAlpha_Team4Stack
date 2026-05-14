@@ -15,7 +15,8 @@ export const landingApi = {
   },
 
   createReview: async (review: any) => {
-    const res = await apiClient.post('/landing/reviews', review);
+    // Public form: `/api/public/landing/reviews` — no landing-admin gate; do not send admin_session.
+    const res = await apiClient.post('/public/landing/reviews', review, { authMode: 'user-only' });
     // New reviews may change the approved list after moderation; keep UI responsive by invalidating.
     clearCachedPublicGet('landing:reviews:approved');
     clearCachedPublicGet('landing:reviews:all');

@@ -1,9 +1,11 @@
 export interface Review {
   id: number;
   name: string;
+  address?: string;
   rating: number;
   comment?: string;
   status: 'pending' | 'approved' | 'rejected';
+  order_index?: number | null;
   created_at?: string;
 }
 

@@ -7,7 +7,7 @@ import {
 import { Review, Project, Service, SiteSetting, SupportRequest } from '../types';
 
 const PROJECT_WRITE_KEYS = ['title', 'description', 'video_id', 'github_url', 'image_url', 'order_index'] as const;
-const REVIEW_WRITE_KEYS = ['name', 'rating', 'comment', 'status'] as const;
+const REVIEW_WRITE_KEYS = ['name', 'address', 'rating', 'comment', 'status', 'order_index'] as const;
 const SERVICE_WRITE_KEYS = [
   'title',
   'description',

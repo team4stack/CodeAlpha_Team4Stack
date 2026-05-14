@@ -1,10 +1,17 @@
 'use client'
 
-export default function RolesPage() {
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+
+/** Roles/positions for the public site are configured via Landing admin (team section). */
+export default function RolesRedirectPage() {
+  const router = useRouter()
+  useEffect(() => {
+    router.replace('/adminlandingt4s/team_members')
+  }, [router])
   return (
-    <div className="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
-      <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-white">Roles & Positions</h2>
-      <p className="text-gray-600 dark:text-gray-400">Role management feature coming soon...</p>
+    <div className="p-6 text-center text-white/80">
+      <p className="text-sm">Team roles are managed from Landing admin. Redirecting…</p>
     </div>
-  );
+  )
 }

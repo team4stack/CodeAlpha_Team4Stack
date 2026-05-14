@@ -22,14 +22,24 @@ export const superadminApi = {
     if (cached && now - cached.ts < ADMIN_CHECK_TTL_MS) {
       return cached.promise;
     }
-    const promise = apiClient.get(`/superadmin/admins/check/${encodeURIComponent(key)}`);
-    adminCheckCache.set(key, { ts: now, promise });
-    try {
-      return await promise;
-    } catch (err) {
-      adminCheckCache.delete(key);
-      throw err;
+
+    const res = await apiClient.get(`/superadmin/admins/check/${encodeURIComponent(key)}`);
+
+    // Only cache successful directory hits. Do not cache errors or "not an admin" — avoids sticky failures after outages.
+    if (res.success && !res.error && res.data && typeof (res.data as { email?: unknown }).email === 'string') {
+      adminCheckCache.set(key, { ts: now, promise: Promise.resolve(res) });
     }
+
+    return res;
+  },
+
+  /** Clear cached admin-directory lookups (e.g. after a transient failure before retry). */
+  clearAdminDirectoryCheckCache: (email?: string) => {
+    if (!email) {
+      adminCheckCache.clear();
+      return;
+    }
+    adminCheckCache.delete(String(email).trim().toLowerCase());
   },
 
   createAdminUser: async (admin: AdminPayload) => {
