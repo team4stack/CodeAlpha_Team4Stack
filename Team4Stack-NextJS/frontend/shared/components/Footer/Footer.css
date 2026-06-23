@@ -185,10 +185,19 @@
   margin: 0;
   font-size: 1.75rem;
   font-weight: 700;
-  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #ec4899 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  letter-spacing: -0.02em;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  background: none !important;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.4);
+  transition: opacity 0.25s ease;
+}
+
+.footer-logo-wrapper:hover .footer-logo-text,
+.footer-logo-wrapper:focus-visible .footer-logo-text {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  opacity: 0.9;
 }
 
 .footer-description {

@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { FiCode, FiBookOpen, FiBriefcase } from 'react-icons/fi'
+import { useAuth } from '@/contexts/AuthContext'
+import AuthModal from '@/lib/auth/components/AuthModal'
 import { useHeroBackgroundFit } from './useHeroBackgroundFit'
 import './HeroBrick.css'
 
@@ -38,6 +40,8 @@ const HERO_FEATURES = [
 
 const HeroSimple: React.FC = () => {
   const heroRef = useHeroBackgroundFit()
+  const { user, loading: authLoading } = useAuth()
+  const [isAuthOpen, setIsAuthOpen] = useState(false)
   const [heroTexts, setHeroTexts] = useState<string[]>(DEFAULT_HERO_TEXTS)
   const [textIndex, setTextIndex] = useState(0)
   const [displayText, setDisplayText] = useState('')
@@ -183,10 +187,32 @@ const HeroSimple: React.FC = () => {
               <Link href="/courses" className="home-hero__btn-ghost">
                 Courses
               </Link>
+              {!authLoading && !user && (
+                <a
+                  href="#login"
+                  role="button"
+                  className="home-hero__btn-ghost home-hero__btn-ghost--wide"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    setIsAuthOpen(true)
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      setIsAuthOpen(true)
+                    }
+                  }}
+                  aria-label="Login or Sign up"
+                >
+                  Login / Signup
+                </a>
+              )}
             </div>
           </div>
         </div>
       </div>
+
+      <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
     </section>
   )
 }

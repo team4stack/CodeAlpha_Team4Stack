@@ -1,0 +1,412 @@
+/* Get in Touch — premium glass + cyan brand (matches hero / services) */
+
+.dark .home-page #contact.home-contact,
+#contact.home-contact,
+.home-contact {
+  --contact-cyan: #00c8f0;
+  --contact-cyan-bright: #00e5ff;
+  --contact-cyan-deep: #0090b8;
+  background:
+    radial-gradient(ellipse 85% 65% at 50% 0%, rgba(0, 200, 240, 0.08) 0%, transparent 52%),
+    radial-gradient(ellipse 75% 55% at 10% 85%, rgba(168, 85, 247, 0.06) 0%, transparent 48%),
+    radial-gradient(ellipse 70% 50% at 92% 72%, rgba(0, 144, 184, 0.06) 0%, transparent 45%),
+    #000 !important;
+}
+
+.home-contact__backdrop {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.home-contact__mesh {
+  position: absolute;
+  inset: -12%;
+  background:
+    radial-gradient(ellipse 52% 42% at 20% 38%, rgba(0, 200, 240, 0.22) 0%, transparent 68%),
+    radial-gradient(ellipse 48% 40% at 80% 58%, rgba(168, 85, 247, 0.16) 0%, transparent 65%),
+    radial-gradient(ellipse 68% 50% at 50% 90%, rgba(0, 144, 184, 0.14) 0%, transparent 62%);
+  filter: blur(48px);
+  opacity: 0.9;
+}
+
+.home-contact__glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(72px);
+}
+
+.home-contact__glow--left {
+  top: 12%;
+  left: -8%;
+  width: min(26rem, 42vw);
+  height: min(26rem, 42vw);
+  background: rgba(0, 200, 240, 0.32);
+  opacity: 0.55;
+}
+
+.home-contact__glow--right {
+  bottom: 8%;
+  right: -6%;
+  width: min(24rem, 40vw);
+  height: min(24rem, 40vw);
+  background: rgba(168, 85, 247, 0.22);
+  opacity: 0.48;
+}
+
+.home-contact__grid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.04;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.35) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.35) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 78% 68% at 50% 48%, #000 18%, transparent 78%);
+  -webkit-mask-image: radial-gradient(ellipse 78% 68% at 50% 48%, #000 18%, transparent 78%);
+}
+
+.home-contact__header {
+  text-align: center;
+  margin-bottom: 4rem;
+}
+
+.home-contact__title {
+  font-size: clamp(2rem, 5vw, 3rem);
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 1.5rem;
+  letter-spacing: -0.03em;
+}
+
+.home-contact__title-accent {
+  background: linear-gradient(100deg, #00e5ff 0%, #7dd3fc 45%, #00c8f0 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.home-contact__subtitle {
+  font-size: clamp(1rem, 2vw, 1.25rem);
+  color: rgba(255, 255, 255, 0.68);
+  max-width: 48rem;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.65;
+}
+
+.home-contact__card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  padding: 1.75rem;
+  color: #fff;
+  background: linear-gradient(
+    148deg,
+    rgba(255, 255, 255, 0.2) 0%,
+    rgba(255, 255, 255, 0.08) 38%,
+    rgba(255, 255, 255, 0.03) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  backdrop-filter: blur(42px) saturate(1.9);
+  -webkit-backdrop-filter: blur(42px) saturate(1.9);
+  box-shadow:
+    0 10px 44px rgba(0, 0, 0, 0.42),
+    0 0 0 1px rgba(255, 255, 255, 0.06) inset,
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+/* Water / frosted glass shine */
+.home-contact__card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    125deg,
+    rgba(255, 255, 255, 0.48) 0%,
+    rgba(255, 255, 255, 0.14) 22%,
+    rgba(255, 255, 255, 0.04) 45%,
+    transparent 62%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+.home-contact__card::after {
+  content: '';
+  position: absolute;
+  top: -45%;
+  left: -25%;
+  width: 75%;
+  height: 110%;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 255, 255, 0.28) 0%,
+    rgba(255, 255, 255, 0.08) 42%,
+    transparent 72%
+  );
+  filter: blur(28px);
+  pointer-events: none;
+  z-index: 0;
+  animation: home-contact-water-drift 9s ease-in-out infinite;
+}
+
+.home-contact__card > * {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes home-contact-water-drift {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.75;
+  }
+  50% {
+    transform: translate(10%, 8%) scale(1.1);
+    opacity: 1;
+  }
+}
+
+.home-contact__card:hover {
+  border-color: rgba(255, 255, 255, 0.42);
+  transform: translateY(-2px);
+  box-shadow:
+    0 16px 52px rgba(0, 0, 0, 0.48),
+    0 0 40px rgba(255, 255, 255, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.home-contact__card--highlight {
+  background: linear-gradient(
+    148deg,
+    rgba(255, 255, 255, 0.22) 0%,
+    rgba(255, 255, 255, 0.1) 40%,
+    rgba(0, 200, 240, 0.06) 100%
+  );
+  border-color: rgba(255, 255, 255, 0.34);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  padding-top: 1.5rem;
+  padding-bottom: 1.5rem;
+}
+
+.home-contact__card-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.home-contact__map-frame {
+  border-radius: 0.75rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.home-contact__meta {
+  margin-top: 1rem;
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.home-contact__meta a {
+  color: var(--contact-cyan-bright);
+  transition: color 0.2s ease;
+}
+
+.home-contact__meta a:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
+.home-contact__avatar {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 9999px;
+  background: rgba(0, 200, 240, 0.15);
+  border: 1px solid rgba(0, 232, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--contact-cyan-bright);
+}
+
+/* Shared primary CTA — same cyan on every contact button */
+.home-contact__btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: 1rem;
+  padding: 0.75rem 1.35rem;
+  border-radius: 9999px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #001820 !important;
+  -webkit-text-fill-color: #001820;
+  background: linear-gradient(
+    135deg,
+    var(--contact-cyan-bright) 0%,
+    var(--contact-cyan) 48%,
+    var(--contact-cyan-deep) 100%
+  );
+  border: 1px solid rgba(0, 232, 255, 0.35);
+  box-shadow:
+    0 0 24px rgba(0, 200, 240, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  text-decoration: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.home-contact__btn-primary svg {
+  color: #001820;
+  stroke: #001820;
+  fill: currentColor;
+  flex-shrink: 0;
+}
+
+.home-contact__btn-primary span {
+  color: #001820 !important;
+}
+
+button.home-contact__btn-primary {
+  border: 1px solid rgba(0, 232, 255, 0.35);
+}
+
+.home-contact__btn-primary:hover,
+.home-contact__btn-primary:focus-visible {
+  color: #000810 !important;
+  -webkit-text-fill-color: #000810;
+  transform: translateY(-2px);
+  border-color: rgba(0, 232, 255, 0.55);
+  box-shadow:
+    0 0 32px rgba(0, 200, 240, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.home-contact__btn-primary--inline {
+  width: auto;
+  margin-top: 0;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 2rem;
+  padding-right: 2rem;
+}
+
+/* WhatsApp — brand green, glass pill */
+.home-contact__btn-whatsapp {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: auto;
+  margin-top: 0;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 0.75rem 2rem;
+  border-radius: 9999px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff;
+  background: linear-gradient(135deg, #2ee06a 0%, #25d366 45%, #128c7e 100%);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow:
+    0 0 28px rgba(37, 211, 102, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.32);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.home-contact__btn-whatsapp svg {
+  color: #ffffff;
+  fill: #ffffff;
+  flex-shrink: 0;
+}
+
+.home-contact__btn-whatsapp span {
+  color: #ffffff !important;
+}
+
+button.home-contact__btn-whatsapp {
+  border: 1px solid rgba(255, 255, 255, 0.28);
+}
+
+.home-contact__btn-whatsapp:hover,
+.home-contact__btn-whatsapp:focus-visible {
+  color: #ffffff !important;
+  transform: translateY(-2px);
+  filter: brightness(1.06);
+  box-shadow:
+    0 0 36px rgba(37, 211, 102, 0.52),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.home-contact__social-label {
+  margin-top: 1.5rem;
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.home-contact__socials {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.home-contact__social-link {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.65rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.home-contact__social-link:hover {
+  transform: translateY(-2px) scale(1.06);
+  border-color: rgba(0, 232, 255, 0.35);
+  box-shadow: 0 0 20px rgba(0, 200, 240, 0.2);
+}
+
+.home-contact__empty {
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 1.5rem;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-contact__card,
+  .home-contact__card::after,
+  .home-contact__btn-primary,
+  .home-contact__btn-whatsapp,
+  .home-contact__social-link {
+    transition: none;
+    animation: none;
+  }
+}

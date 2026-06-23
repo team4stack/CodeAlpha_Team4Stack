@@ -226,12 +226,39 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(showcaseImagesStructuredData) }}
         />
-        {/* SVG Filter for Liquid Glass Button Effect */}
+        {/* SVG filters — liquid glass / water refraction (Chromium) + fallbacks elsewhere */}
         <svg xmlns="http://www.w3.org/2000/svg" style={{ position: 'absolute', width: 0, height: 0, pointerEvents: 'none' }} aria-hidden="true" focusable="false">
           <defs>
             <filter id="turbulence-displacement" x="0" y="0" width="100%" height="100%">
               <feTurbulence type="turbulence" baseFrequency="0.05" numOctaves="2" result="noise" />
               <feDisplacementMap in="SourceGraphic" in2="noise" scale="20" xChannelSelector="R" yChannelSelector="G" />
+            </filter>
+            {/* Navbar active tab — live backdrop refraction (liquid glass in glass) */}
+            <filter id="nav-liquid-glass" x="-30%" y="-30%" width="160%" height="160%" colorInterpolationFilters="sRGB">
+              <feTurbulence
+                type="fractalNoise"
+                baseFrequency="0.045 0.065"
+                numOctaves="2"
+                seed="4"
+                result="navWaterNoise"
+              >
+                <animate
+                  attributeName="baseFrequency"
+                  dur="9s"
+                  values="0.038 0.055;0.052 0.078;0.038 0.055"
+                  repeatCount="indefinite"
+                />
+              </feTurbulence>
+              <feGaussianBlur in="navWaterNoise" stdDeviation="1.2" result="navWaterSoft" />
+              <feDisplacementMap
+                in="SourceGraphic"
+                in2="navWaterSoft"
+                scale="10"
+                xChannelSelector="R"
+                yChannelSelector="G"
+                result="navRefracted"
+              />
+              <feColorMatrix in="navRefracted" type="saturate" values="1.35" />
             </filter>
           </defs>
         </svg>

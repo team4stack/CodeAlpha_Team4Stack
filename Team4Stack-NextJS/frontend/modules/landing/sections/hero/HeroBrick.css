@@ -417,8 +417,8 @@
 }
 
 .home-hero__actions {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(3, max-content);
   align-items: center;
   gap: 0.65rem;
   margin-top: 2rem;
@@ -514,6 +514,32 @@
     var(--t4s-glass-highlight);
 }
 
+/* Spans Our Developers → Courses row; same pill + glass as Services/Courses + extra blur */
+.home-hero__btn-ghost--wide {
+  grid-column: 1 / -1;
+  justify-content: center;
+  justify-self: stretch;
+  cursor: pointer;
+  border-radius: 9999px;
+  overflow: hidden;
+  backdrop-filter: blur(28px) saturate(1.5);
+  -webkit-backdrop-filter: blur(28px) saturate(1.5);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow:
+    var(--t4s-glass-shadow),
+    0 0 28px rgba(0, 200, 240, 0.14),
+    var(--t4s-glass-highlight);
+}
+
+.home-hero__btn-ghost--wide:hover {
+  backdrop-filter: blur(32px) saturate(1.6);
+  -webkit-backdrop-filter: blur(32px) saturate(1.6);
+  box-shadow:
+    var(--t4s-glass-shadow),
+    0 0 34px rgba(0, 200, 240, 0.24),
+    var(--t4s-glass-highlight);
+}
+
 @media (max-width: 1023px) {
   .home-hero__overlay {
     background:
@@ -538,8 +564,14 @@
 
 @media (max-width: 639px) {
   .home-hero__actions {
+    display: flex;
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .home-hero__btn-ghost--wide {
+    grid-column: auto;
+    width: 100%;
   }
 
   .home-hero__btn-primary,

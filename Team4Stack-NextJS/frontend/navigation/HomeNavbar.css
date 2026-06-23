@@ -94,7 +94,7 @@
   opacity: 0.9;
 }
 
-/* Floating pill dock */
+/* Floating pill dock — dark cluster blur (no white frost) */
 .home-nav__dock {
   position: relative;
   justify-self: center;
@@ -104,81 +104,85 @@
   padding: 0.35rem 0.45rem;
   max-width: 100%;
   border-radius: 9999px;
-  overflow: visible;
+  overflow: hidden;
+  isolation: isolate;
   z-index: 1;
-  background: linear-gradient(
-    165deg,
-    rgba(28, 28, 36, 0.92) 0%,
-    rgba(12, 12, 18, 0.95) 100%
-  );
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  backdrop-filter: var(--t4s-glass-blur) !important;
-  -webkit-backdrop-filter: var(--t4s-glass-blur) !important;
+  background: rgba(10, 12, 18, 0.52);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(28px) saturate(1.35) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(1.35) !important;
   box-shadow:
-    0 12px 40px rgba(0, 0, 0, 0.65),
-    0 0 0 1px rgba(255, 255, 255, 0.05) inset,
-    0 0 28px rgba(168, 85, 247, 0.14),
-    0 0 28px rgba(249, 115, 22, 0.1);
+    0 12px 40px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
   transition:
-    background 0.4s ease,
-    box-shadow 0.4s ease;
+    background 0.35s ease,
+    box-shadow 0.35s ease;
 }
 
-/* Subtle dock aura */
+/* Cluster blur blobs inside dock */
 .home-nav__dock::before {
   content: '';
   position: absolute;
-  inset: -2px;
+  inset: -20%;
   border-radius: inherit;
-  z-index: -1;
-  background: linear-gradient(
-    90deg,
-    rgba(249, 115, 22, 0.2),
-    rgba(168, 85, 247, 0.22),
-    rgba(249, 115, 22, 0.15)
-  );
-  filter: blur(10px);
-  opacity: 0.7;
+  z-index: 0;
   pointer-events: none;
+  background:
+    radial-gradient(ellipse 42% 70% at 18% 50%, rgba(0, 200, 240, 0.14) 0%, transparent 62%),
+    radial-gradient(ellipse 38% 65% at 82% 48%, rgba(168, 85, 247, 0.12) 0%, transparent 58%),
+    radial-gradient(ellipse 50% 55% at 50% 100%, rgba(0, 144, 184, 0.1) 0%, transparent 55%);
+  filter: blur(22px);
+  opacity: 0.9;
+}
+
+.home-nav__dock::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  z-index: 0;
+  pointer-events: none;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.home-nav__dock > .home-nav__link {
+  position: relative;
+  z-index: 1;
 }
 
 .home-nav--scrolled .home-nav__dock {
-  background: linear-gradient(
-    165deg,
-    rgba(14, 16, 22, 0.88) 0%,
-    rgba(8, 10, 16, 0.92) 100%
-  );
-  backdrop-filter: var(--t4s-glass-blur) !important;
-  -webkit-backdrop-filter: var(--t4s-glass-blur) !important;
+  background: rgba(8, 10, 16, 0.62);
+  border-color: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(32px) saturate(1.4) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(1.4) !important;
   box-shadow:
-    0 16px 48px rgba(0, 0, 0, 0.55),
-    0 0 32px rgba(168, 85, 247, 0.14),
-    0 0 32px rgba(249, 115, 22, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-}
-
-.home-nav--scrolled .home-nav__link--active {
-  background: rgba(255, 255, 255, 0.16) !important;
-  box-shadow: inset 0 0 0 1px rgba(0, 200, 240, 0.38);
+    0 16px 48px rgba(0, 0, 0, 0.58),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .home-nav__link {
   position: relative;
   z-index: 1;
+  isolation: isolate;
+  overflow: hidden;
   display: inline-block;
   padding: 0.42rem 0.62rem;
   border-radius: 9999px;
-  border: none !important;
+  border: 1px solid transparent !important;
   background: transparent !important;
   font-size: 0.78rem;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.7) !important;
+  color: rgba(255, 255, 255, 0.68) !important;
   text-decoration: none;
   white-space: nowrap;
   transition:
     color 0.3s ease,
     transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    box-shadow 0.3s ease;
+    box-shadow 0.3s ease,
+    border-color 0.3s ease,
+    background 0.3s ease;
 }
 
 @media (min-width: 1280px) {
@@ -188,29 +192,115 @@
   }
 }
 
-.home-nav__link:hover {
-  color: rgba(255, 255, 255, 0.95) !important;
+.home-nav__link:hover:not(.home-nav__link--active) {
+  color: rgba(255, 255, 255, 0.92) !important;
   transform: translateY(-1px);
-  box-shadow: 0 0 16px rgba(168, 85, 247, 0.2);
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 0 14px rgba(0, 200, 240, 0.08);
 }
 
-/* Active tab — clean pill, no blur glow */
+/* Active tab — liquid glass + mirror water (SVG refraction in Chromium) */
 .home-nav__link--active {
   color: #ffffff !important;
   font-weight: 600;
-  background: rgba(255, 255, 255, 0.14) !important;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.24);
+  isolation: isolate;
+  overflow: hidden;
+  background: rgba(10, 16, 24, 0.48) !important;
+  border: 1px solid rgba(0, 210, 240, 0.38) !important;
+  backdrop-filter: blur(20px) saturate(1.7) url(#nav-liquid-glass);
+  -webkit-backdrop-filter: blur(20px) saturate(1.7);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -2px 10px rgba(0, 180, 220, 0.1),
+    0 0 0 1px rgba(0, 200, 240, 0.1),
+    0 0 26px rgba(0, 200, 240, 0.22),
+    0 5px 16px rgba(0, 0, 0, 0.38);
+  transform: translateY(-1px);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
 }
 
-.home-nav__link--active::before,
+/* Water depth + mirror sheen inside glass (behind label) */
+.home-nav__link--active::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      105deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.05) 40%,
+      rgba(255, 255, 255, 0.28) 50%,
+      rgba(255, 255, 255, 0.05) 60%,
+      transparent 75%
+    ),
+    radial-gradient(ellipse 85% 65% at 50% 115%, rgba(0, 200, 240, 0.24) 0%, transparent 58%),
+    radial-gradient(ellipse 45% 35% at 72% 28%, rgba(120, 200, 255, 0.14) 0%, transparent 55%),
+    linear-gradient(165deg, rgba(255, 255, 255, 0.05) 0%, rgba(0, 160, 200, 0.1) 100%);
+  background-size: 220% 100%, 100% 100%, 100% 100%, 100% 100%;
+  filter: blur(0.35px);
+  animation:
+    home-nav-mirror-sheen 4.8s ease-in-out infinite,
+    home-nav-water-caustic 7s ease-in-out infinite;
+}
+
 .home-nav__link--active::after {
   display: none;
   content: none;
 }
 
+@keyframes home-nav-mirror-sheen {
+  0%,
+  100% {
+    background-position: -40% 0, 50% 50%, 72% 28%, 0 0;
+    opacity: 0.7;
+  }
+  50% {
+    background-position: 140% 0, 50% 50%, 68% 32%, 0 0;
+    opacity: 1;
+  }
+}
+
+@keyframes home-nav-water-caustic {
+  0%,
+  100% {
+    filter: blur(0.35px);
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    filter: blur(0.6px);
+    transform: translate(2%, -2%) scale(1.04);
+  }
+}
+
+/* Chromium: SVG backdrop refraction; others: frosted blur only */
+@supports (backdrop-filter: url('#nav-liquid-glass')) {
+  .home-nav__link--active {
+    backdrop-filter: blur(20px) saturate(1.7) url(#nav-liquid-glass) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(1.7) url(#nav-liquid-glass) !important;
+  }
+}
+
+@supports not (backdrop-filter: url('#nav-liquid-glass')) {
+  .home-nav__link--active {
+    backdrop-filter: blur(22px) saturate(1.75) !important;
+    -webkit-backdrop-filter: blur(22px) saturate(1.75) !important;
+  }
+}
+
 .home-nav--scrolled .home-nav__link--active {
-  background: rgba(255, 255, 255, 0.16) !important;
-  box-shadow: inset 0 0 0 1px rgba(0, 200, 240, 0.38);
+  background: rgba(8, 14, 22, 0.55) !important;
+  border-color: rgba(0, 210, 240, 0.42) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -2px 10px rgba(0, 180, 220, 0.12),
+    0 0 30px rgba(0, 200, 240, 0.26),
+    0 6px 18px rgba(0, 0, 0, 0.42);
 }
 
 .home-nav .btn-plain.home-nav__auth-btn,
@@ -367,6 +457,12 @@
 
 .home-page .home-intro__orb--violet {
   background: rgba(168, 85, 247, 0.22);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-nav__link--active::before {
+    animation: none;
+  }
 }
 
 @media (max-width: 1023px) {
