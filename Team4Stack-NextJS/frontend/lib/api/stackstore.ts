@@ -29,8 +29,13 @@ export const stackstoreApi = {
   },
 
   // Categories
-  getCategories: async () => {
-    return apiClient.get('/stackstore/categories');
+  getCategories: async (filters?: { active?: boolean; includeInactive?: boolean }) => {
+    const params = new URLSearchParams();
+    if (filters?.active !== undefined) params.append('active', String(filters.active));
+    if (filters?.includeInactive) params.append('includeInactive', 'true');
+
+    const query = params.toString();
+    return apiClient.get(`/stackstore/categories${query ? `?${query}` : ''}`);
   },
 
   createCategory: async (category: any) => {
@@ -65,8 +70,13 @@ export const stackstoreApi = {
   },
 
   // Sellers
-  getSellers: async () => {
-    return apiClient.get('/stackstore/sellers');
+  getSellers: async (filters?: { active?: boolean; includeInactive?: boolean }) => {
+    const params = new URLSearchParams();
+    if (filters?.active !== undefined) params.append('active', String(filters.active));
+    if (filters?.includeInactive) params.append('includeInactive', 'true');
+
+    const query = params.toString();
+    return apiClient.get(`/stackstore/sellers${query ? `?${query}` : ''}`);
   },
 
   createSeller: async (seller: any) => {
@@ -75,5 +85,9 @@ export const stackstoreApi = {
 
   updateSeller: async (id: string, seller: any) => {
     return apiClient.put(`/stackstore/sellers/${id}`, seller);
+  },
+
+  deleteSeller: async (id: string) => {
+    return apiClient.delete(`/stackstore/sellers/${id}`);
   },
 };

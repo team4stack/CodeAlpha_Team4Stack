@@ -25,20 +25,22 @@ const StackStoreAdminDashboard: React.FC = () => {
        setLoading(true)
 
         // Fetch all stats via API
-        const [productsResult, categoriesResult, ordersResult] = await Promise.all([
+        const [productsResult, categoriesResult, ordersResult, sellersResult] = await Promise.all([
           stackstoreApi.getProducts().catch(() => ({ data: [] as any[] })),
-          stackstoreApi.getCategories().catch(() => ({ data: [] as any[] })),
-          stackstoreApi.getOrders().catch(() => ({ data: [] as any[] }))
+          stackstoreApi.getCategories({ includeInactive: true }).catch(() => ({ data: [] as any[] })),
+          stackstoreApi.getOrders().catch(() => ({ data: [] as any[] })),
+          stackstoreApi.getSellers({ includeInactive: true }).catch(() => ({ data: [] as any[] }))
         ])
 
         const allProducts = Array.isArray(productsResult.data) ? productsResult.data : []
         const allCategories = Array.isArray(categoriesResult.data) ? categoriesResult.data : []
         const allOrders = Array.isArray(ordersResult.data) ? ordersResult.data : []
+        const allSellers = Array.isArray(sellersResult.data) ? sellersResult.data : []
 
         const totalProducts = allProducts.length
         const totalCategories = allCategories.length
         const totalOrders = allOrders.length
-        const totalSellers = 0 // Sellers table might not have API endpoint yet
+        const totalSellers = allSellers.length
         const pendingOrders = allOrders.filter((o: any) => o.status === 'pending').length
         const completedOrders = allOrders.filter((o: any) => o.status === 'completed').length
         const activeProducts = allProducts.filter((p: any) => p.active === true).length

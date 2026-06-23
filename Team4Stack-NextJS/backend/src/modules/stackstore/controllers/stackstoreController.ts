@@ -76,7 +76,11 @@ export class StackStoreController {
   // Categories
   getCategories = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const categories = await stackstoreService.getCategories();
+      const { active, includeInactive } = req.query;
+      const categories = await stackstoreService.getCategories({
+        ...(active !== undefined ? { active: active === 'true' } : {}),
+        includeInactive: includeInactive === 'true'
+      });
       res.json({ success: true, data: categories });
     } catch (error: any) {
       next(error);
@@ -165,7 +169,11 @@ export class StackStoreController {
   // Sellers
   getSellers = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const sellers = await stackstoreService.getSellers();
+      const { active, includeInactive } = req.query;
+      const sellers = await stackstoreService.getSellers({
+        ...(active !== undefined ? { active: active === 'true' } : {}),
+        includeInactive: includeInactive === 'true'
+      });
       res.json({ success: true, data: sellers });
     } catch (error: any) {
       next(error);
@@ -192,6 +200,19 @@ export class StackStoreController {
       const { id } = req.params;
       const seller = await stackstoreService.updateSeller(id, req.body);
       res.json({ success: true, data: seller });
+    } catch (error: any) {
+      next(error);
+    }
+  };
+
+  deleteSeller = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!isStackstoreAdmin(req)) {
+        return res.status(403).json({ success: false, error: 'Stack Store admin access required' });
+      }
+      const { id } = req.params;
+      await stackstoreService.deleteSeller(id);
+      res.json({ success: true, message: 'Seller deleted successfully' });
     } catch (error: any) {
       next(error);
     }

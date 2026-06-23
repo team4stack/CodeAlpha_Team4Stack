@@ -234,7 +234,6 @@ const CoursesPage: React.FC = () => {
   return (
     <div className="min-h-screen transition-colors duration-300">
       <CoursesNavbar />
-
       <CoursesHeroSection
         isDarkMode={isDarkMode}
         isApprovedStudent={isApprovedStudent}

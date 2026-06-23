@@ -1,3 +1,5 @@
+import { validateReviewComment } from './reviewCommentValidation';
+
 function normalizeText(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
@@ -37,8 +39,10 @@ export function parsePublicLandingReviewBody(body: unknown): ParsePublicReviewRe
   if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
     return { ok: false, statusCode: 400, error: 'Rating must be between 1 and 5' };
   }
-  if (!comment || comment.length < 10 || comment.length > 2000) {
-    return { ok: false, statusCode: 400, error: 'Review text must be between 10 and 2000 characters' };
+
+  const commentError = validateReviewComment(comment);
+  if (commentError) {
+    return { ok: false, statusCode: 400, error: commentError };
   }
 
   return { ok: true, value: { name, address, rating, comment } };

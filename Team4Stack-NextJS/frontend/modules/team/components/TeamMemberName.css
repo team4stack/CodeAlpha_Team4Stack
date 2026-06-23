@@ -1,0 +1,48 @@
+.team-member-name--lead {
+  display: inline-flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.team-member-name__start {
+  position: relative;
+  display: inline-block;
+  padding-top: 0.68em;
+}
+
+.team-member-name__crown {
+  position: absolute;
+  color: #ffffff;
+  opacity: 0.96;
+  transform: rotate(-18deg);
+  filter:
+    drop-shadow(0 1px 3px rgba(0, 0, 0, 0.65))
+    drop-shadow(0 0 5px rgba(255, 255, 255, 0.28));
+  pointer-events: none;
+}
+
+/* Card — bigger, more left */
+.team-member-name__crown--card {
+  top: -0.02em;
+  left: -0.42em;
+  width: 1.05em;
+  height: 1.05em;
+}
+
+/* Modal — slightly larger */
+.team-member-name--modal .team-member-name__start {
+  padding-top: 0.75em;
+}
+
+.team-member-name__crown--modal {
+  top: 0;
+  left: -0.48em;
+  width: 1.15em;
+  height: 1.15em;
+}
+
+#our-team .team-pro-card:hover .team-member-name__crown {
+  filter:
+    drop-shadow(0 1px 4px rgba(0, 0, 0, 0.7))
+    drop-shadow(0 0 8px rgba(255, 255, 255, 0.4));
+}

@@ -230,11 +230,15 @@ const Contact: React.FC = () => {
   ];
 
   return (
-    <section id="contact" className="section-padding bg-gradient-to-b from-gray-900 to-black">
-      <div className="container-custom">
+    <section id="contact" className="section-padding relative bg-black overflow-hidden">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 right-1/4 w-48 h-48 md:w-96 md:h-96 rounded-full blur-3xl opacity-15 bg-purple-500" />
+        <div className="absolute bottom-1/4 left-1/4 w-48 h-48 md:w-96 md:h-96 rounded-full blur-3xl opacity-15 bg-orange-500" />
+      </div>
+      <div className="container-custom relative z-10">
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-            Get in <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-600">Touch</span>
+            Get in <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-red-500">Touch</span>
           </h2>
           <p className="text-xl text-gray-300 max-w-3xl mx-auto">
             Ready to start your next MERN stack project? Contact our team leader or send us a message and we'll respond as soon as possible.
@@ -311,7 +315,7 @@ const Contact: React.FC = () => {
                     href={contactSettings.mapSrc}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="google-maps-btn w-full px-4 py-3 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium transition-all flex items-center justify-center gap-2 mt-4"
+                    className="google-maps-btn w-full px-4 py-3 rounded-lg bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-medium transition-all flex items-center justify-center gap-2 mt-4"
                     style={{ color: '#ffffff' }}
                   >
                     <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" style={{ color: '#ffffff' }}><path d="M14 3h7v7h-2V6.414l-9.293 9.293-1.414-1.414L17.586 5H14V3z"/><path d="M5 5h6v2H7v10h10v-4h2v6H5V5z"/></svg>
@@ -325,7 +329,7 @@ const Contact: React.FC = () => {
           </div>
 
           {/* Primary Contact Card */}
-          <div className="card text-white bg-gradient-to-r from-purple-600 to-blue-600 text-center flex flex-col items-center justify-center min-h-[300px] py-6">
+          <div className="card text-white bg-gradient-to-r from-orange-500 to-red-500 text-center flex flex-col items-center justify-center min-h-[300px] py-6">
             <h3 className="text-2xl font-bold mb-4">Primary Contact</h3>
             {(contactSettings.primaryName || contactSettings.primaryTagline || contactSettings.whatsapp) ? (
               <>

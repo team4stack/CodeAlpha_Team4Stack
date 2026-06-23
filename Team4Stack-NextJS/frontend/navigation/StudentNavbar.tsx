@@ -1,33 +1,32 @@
 'use client'
 
-import React, { useState, useEffect } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import { useTheme } from '@/contexts/ThemeContext';
-import { useAuth } from '@/contexts/AuthContext';
-import AuthModal from '@/lib/auth/components/AuthModal';
-import { useApprovedCourseStudent } from '@/lib/courses/useApprovedCourseStudent';
-import StudentCourseNotificationsBell from '@/components/courses/StudentCourseNotificationsBell';
-import CoursesAreaMobileDrawer from '@/navigation/CoursesAreaMobileDrawer';
+import React, { useState, useEffect } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
+import { useAuth } from '@/contexts/AuthContext'
+import AuthModal from '@/lib/auth/components/AuthModal'
+import { useApprovedCourseStudent } from '@/lib/courses/useApprovedCourseStudent'
+import StudentCourseNotificationsBell from '@/components/courses/StudentCourseNotificationsBell'
+import CoursesAreaMobileDrawer from '@/navigation/CoursesAreaMobileDrawer'
+import './HomeNavbar.css'
 
 const StudentNavbar: React.FC = () => {
-  const { isDarkMode } = useTheme();
-  const router = useRouter();
-  const pathname = usePathname();
-  const { user, loading, signOut } = useAuth();
-  const { isApprovedStudent, checking: checkingStudent } = useApprovedCourseStudent(user, loading);
-  const [isAuthOpen, setIsAuthOpen] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const router = useRouter()
+  const pathname = usePathname()
+  const { user, loading, signOut } = useAuth()
+  const { isApprovedStudent, checking: checkingStudent } = useApprovedCourseStudent(user, loading)
+  const [isAuthOpen, setIsAuthOpen] = useState(false)
+  const [isScrolled, setIsScrolled] = useState(false)
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+
+  const isDashboardActive = pathname === '/student'
+  const isMyCoursesActive = pathname?.startsWith('/student/courses')
 
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10);
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+    const handleScroll = () => setIsScrolled(window.scrollY > 0)
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   const mobileDrawerItems = [
     { label: 'Dashboard', onNavigate: () => router.push('/student') },
@@ -36,181 +35,105 @@ const StudentNavbar: React.FC = () => {
     { label: 'Home', onNavigate: () => router.push('/') },
     ...(user
       ? [
-          {
-            label: 'Profile Settings',
-            onNavigate: () => router.push('/settings'),
-          },
+          { label: 'Profile Settings', onNavigate: () => router.push('/settings') },
           {
             label: 'Logout',
             onNavigate: async () => {
-              await signOut();
-              router.push('/courses');
+              await signOut()
+              router.push('/courses')
             },
           },
         ]
-      : [
-          {
-            label: 'Sign In',
-            onNavigate: () => setIsAuthOpen(true),
-          },
-        ]),
-  ];
+      : [{ label: 'Sign In', onNavigate: () => setIsAuthOpen(true) }]),
+  ]
 
   return (
     <>
-      {/* Fixed navbar with transparent when at top, solid when scrolled */}
       <nav
-        className={`navbar-fixed student-nav transition-all duration-300 ${
-          isScrolled
-            ? (isDarkMode
-                ? 'nav-glass scrolled'
-                : 'bg-white/90 scrolled')
-            : 'bg-transparent'
+        className={`navbar-fixed home-nav student-nav transition-all duration-300 ${
+          isScrolled ? 'home-nav--scrolled' : 'home-nav--top'
         }`}
-        style={{
-          willChange: 'auto'
-        }}
         role="navigation"
         aria-label="Student portal navigation"
       >
-        {isScrolled && (
-          <div className="pointer-events-none absolute inset-0 opacity-20 overflow-hidden">
-            <div 
-              className="navbar-grid-animate absolute left-1/2 top-1/2 w-[140%] h-[140%]" 
-              style={{
-                backgroundImage: `repeating-linear-gradient(0deg, rgba(148,163,184,0.25) 0, rgba(148,163,184,0.25) 1px, transparent 1px, transparent 30px),
-                                  repeating-linear-gradient(90deg, rgba(148,163,184,0.22) 0, rgba(148,163,184,0.22) 1px, transparent 1px, transparent 30px)`,
-                maskImage: 'radial-gradient(ellipse 80% 50% at center, rgba(0,0,0,1) 60%, rgba(0,0,0,0) 100%)',
-                WebkitMaskImage: 'radial-gradient(ellipse 80% 50% at center, rgba(0,0,0,1) 60%, rgba(0,0,0,0) 100%)',
-                transition: 'none',
-                willChange: 'transform',
-                animation: 'gridSlide 3s ease-in-out infinite'
-              }} 
-            />
-          </div>
-        )}
-        <div className="container-custom px-4 sm:px-6">
-          <div className="flex items-center justify-between h-14 sm:h-16">
-            {/* Logo / Brand - Left Side */}
+        <div
+          className={`home-nav__blur-layer${isScrolled ? ' home-nav__blur-layer--full' : ''}`}
+          aria-hidden
+        />
+        <div className="container-custom px-4 sm:px-6 relative">
+          <div className="home-nav__bar">
             <button
               type="button"
-              className="btn-plain flex items-center space-x-1 sm:space-x-2 group focus:outline-none rounded-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-95 flex-shrink-0"
+              className="home-nav__logo btn-plain flex items-center gap-2 sm:gap-3 group focus:outline-none rounded-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-95 shrink-0"
               aria-label="Back to main website"
               onClick={() => router.push('/')}
             >
-              <div className="relative w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center flex-shrink-0">
+              <div className="relative w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center shrink-0">
                 <img
-                  src={
-                    isDarkMode
-                      ? `/Team4Stack_Transparant.svg`
-                      : `/Team4StackLogo.svg`
-                  }
+                  src="/Team4Stack_Transparant.svg"
                   alt="Team4Stack Logo"
                   className="w-full h-full object-contain rounded-lg shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md"
                   loading="eager"
                 />
               </div>
-              <span
-                className={`text-lg sm:text-xl font-display font-bold transition-all duration-300 inline ${
-                  isScrolled
-                    ? (isDarkMode ? 'text-white' : 'text-black')
-                    : 'text-white group-hover:text-cyan-300'
-                }`}
-              >
-                Team4Stack
-              </span>
+              <span className="home-nav__brand text-lg sm:text-xl font-bold tracking-tight">Team4Stack</span>
             </button>
 
-            {/* Center Navigation Tabs */}
-            <div className="hidden md:flex items-center justify-center gap-1 sm:gap-2 lg:gap-4 flex-1">
+            <div className="home-nav__dock hidden md:flex">
               <button
                 type="button"
-                className={`btn-plain px-3 sm:px-4 py-2 text-sm sm:text-base font-medium transition-all duration-300 focus:outline-none ${
-                  isScrolled
-                    ? (isDarkMode
-                        ? 'text-white/90 hover:text-white'
-                        : 'text-gray-800 hover:text-cyan-600')
-                    : 'text-white hover:text-cyan-300 font-medium'
-                }`}
+                className={`home-nav__link btn-plain${isDashboardActive ? ' home-nav__link--active' : ''}`}
                 onClick={() => router.push('/student')}
-                aria-current={pathname === '/student' ? 'page' : undefined}
+                aria-current={isDashboardActive ? 'page' : undefined}
               >
                 Dashboard
               </button>
               <button
                 type="button"
-                className={`btn-plain px-3 sm:px-4 py-2 text-sm sm:text-base font-medium transition-all duration-300 focus:outline-none ${
-                  isScrolled
-                    ? (isDarkMode
-                        ? 'text-white/90 hover:text-white'
-                        : 'text-gray-800 hover:text-cyan-600')
-                    : 'text-white hover:text-cyan-300 font-medium'
-                }`}
+                className={`home-nav__link btn-plain${isMyCoursesActive ? ' home-nav__link--active' : ''}`}
                 onClick={() => router.push('/student/courses')}
-                aria-current={pathname.startsWith('/student/courses') ? 'page' : undefined}
+                aria-current={isMyCoursesActive ? 'page' : undefined}
               >
                 My Courses
               </button>
             </div>
 
-            {/* Right-side actions for student area */}
-            <div className={`flex items-center gap-1.5 sm:gap-3 px-1.5 sm:px-2 py-1 rounded-full border transition-colors ${
-              isScrolled
-                ? (isDarkMode ? 'border-white/20 bg-white/5' : 'border-gray-200 bg-white/80')
-                : 'border-white/15 bg-white/5'
-            }`}>
-
+            <div className="home-nav__actions flex items-center gap-2 shrink-0">
               {!loading && user && isApprovedStudent && !checkingStudent && user.email && (
                 <StudentCourseNotificationsBell
                   email={user.email}
                   isScrolled={isScrolled}
-                  isDarkMode={isDarkMode}
+                  isDarkMode={true}
                 />
               )}
 
-              <div className={`h-5 w-px ${isScrolled ? (isDarkMode ? 'bg-white/20' : 'bg-gray-300') : 'bg-white/20'}`} />
-
-              {!loading && (
-                user ? (
+              {!loading &&
+                (user ? (
                   <div className="relative hidden md:block">
-                    <button 
+                    <button
                       type="button"
                       onClick={(e) => {
                         e.preventDefault()
                         e.stopPropagation()
-                        setIsUserMenuOpen(prev => !prev)
+                        setIsUserMenuOpen((prev) => !prev)
                       }}
-                      className={`flex items-center gap-2 px-2 sm:px-3 py-1.5 rounded-full transition-all cursor-pointer ${
-                        isScrolled
-                          ? (isDarkMode
-                              ? 'bg-white/10 border border-white/20 hover:bg-white/15'
-                              : 'bg-gray-100/90 border border-gray-200 hover:bg-gray-200')
-                          : 'bg-white/10 border border-white/20 hover:bg-white/15'
-                      }`}
+                      className="home-nav__profile-btn flex items-center gap-2 cursor-pointer btn-plain"
                     >
-                      <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center overflow-hidden flex-shrink-0">
+                      <div className="home-nav__profile-avatar">
                         {user.avatar_url ? (
                           <img src={user.avatar_url} alt="avatar" className="w-full h-full object-cover" />
                         ) : (
-                          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                           </svg>
                         )}
                       </div>
                       <div className="hidden sm:flex flex-col items-start min-w-0 max-w-[120px]">
-                        <span className={`text-xs sm:text-sm font-medium leading-tight truncate w-full ${
-                          isScrolled
-                            ? (isDarkMode ? 'text-white' : 'text-gray-800')
-                            : 'text-white'
-                        }`}>
+                        <span className="text-sm font-medium text-white leading-tight truncate w-full">
                           {user.name || 'User'}
                         </span>
                         {user.username && (
-                          <span className={`text-xs leading-tight truncate w-full ${
-                            isScrolled
-                              ? (isDarkMode ? 'text-white/70' : 'text-gray-600')
-                              : 'text-white/70'
-                          }`}>
+                          <span className="text-xs text-white/70 leading-tight truncate w-full">
                             @{user.username}
                           </span>
                         )}
@@ -218,36 +141,13 @@ const StudentNavbar: React.FC = () => {
                     </button>
                     {isUserMenuOpen && (
                       <>
-                        <div 
-                          className="fixed inset-0 z-[10000]"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setIsUserMenuOpen(false)
-                          }}
-                        />
-                        <div 
-                          className={`absolute right-0 mt-2 w-48 rounded-lg shadow-xl z-[10001] ${
-                            isDarkMode 
-                              ? 'bg-gray-800 border border-gray-700' 
-                              : 'bg-white border border-gray-200'
-                          }`}
-                          onClick={(e) => e.stopPropagation()}
-                        >
+                        <div className="fixed inset-0 z-10000" onClick={() => setIsUserMenuOpen(false)} />
+                        <div className="absolute right-0 mt-2 w-48 rounded-lg shadow-xl z-10001 bg-gray-800 border border-gray-700">
                           <div className="p-2">
-                            <div className={`px-3 py-2 rounded-md ${
-                              isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'
-                            }`}>
-                              <p className={`text-sm font-medium ${
-                                isDarkMode ? 'text-white' : 'text-gray-900'
-                              }`}>
-                                {user.name || 'User'}
-                              </p>
+                            <div className="px-3 py-2 rounded-md bg-gray-700/50">
+                              <p className="text-sm font-medium text-white">{user.name || 'User'}</p>
                               {user.email && (
-                                <p className={`text-xs mt-0.5 ${
-                                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                                }`}>
-                                  {user.email}
-                                </p>
+                                <p className="text-xs mt-0.5 text-gray-400">{user.email}</p>
                               )}
                             </div>
                             <div className="mt-1 space-y-1">
@@ -256,16 +156,8 @@ const StudentNavbar: React.FC = () => {
                                   setIsUserMenuOpen(false)
                                   router.push('/settings')
                                 }}
-                                className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center gap-2 ${
-                                  isDarkMode
-                                    ? 'text-gray-300 hover:bg-gray-700'
-                                    : 'text-gray-700 hover:bg-gray-100'
-                                }`}
+                                className="w-full text-left px-3 py-2 text-sm rounded-md text-gray-300 hover:bg-gray-700"
                               >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
                                 Settings
                               </button>
                               <button
@@ -274,15 +166,8 @@ const StudentNavbar: React.FC = () => {
                                   await signOut()
                                   router.push('/courses')
                                 }}
-                                className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center gap-2 ${
-                                  isDarkMode
-                                    ? 'text-red-400 hover:bg-gray-700'
-                                    : 'text-red-600 hover:bg-gray-100'
-                                }`}
+                                className="w-full text-left px-3 py-2 text-sm rounded-md text-red-400 hover:bg-gray-700"
                               >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                                </svg>
                                 Logout
                               </button>
                             </div>
@@ -295,56 +180,23 @@ const StudentNavbar: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setIsAuthOpen(true)}
-                    className={`hidden md:flex w-8 h-8 sm:w-10 sm:h-10 rounded-full transition-all hover:scale-110 items-center justify-center focus:outline-none flex-shrink-0 ${
-                      isScrolled
-                        ? (isDarkMode
-                            ? 'bg-gradient-to-br from-cyan-500 via-blue-500 to-purple-500 text-white shadow-[0_10px_30px_rgba(56,189,248,0.35)] hover:shadow-[0_12px_36px_rgba(99,102,241,0.45)]'
-                            : 'bg-gradient-to-br from-cyan-500 via-blue-500 to-purple-500 text-white shadow-[0_10px_30px_rgba(56,189,248,0.35)] hover:shadow-[0_12px_36px_rgba(99,102,241,0.45)]')
-                        : 'bg-gradient-to-br from-cyan-500 via-blue-500 to-purple-500 text-white shadow-[0_10px_30px_rgba(56,189,248,0.35)] hover:shadow-[0_12px_36px_rgba(99,102,241,0.45)]'
-                    }`}
+                    className="btn-plain home-nav__auth-btn hidden md:inline-flex"
                     aria-label="Sign In"
                   >
-                    <svg
-                      className="w-4 h-4 sm:w-5 sm:h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                      />
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
                   </button>
-                )
-              )}
+                ))}
 
               <button
                 type="button"
-                onPointerDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
                 onClick={() => setIsMenuOpen((p) => !p)}
-                className={`md:hidden p-2 relative z-[10002] rounded-lg transition-colors flex items-center justify-center ${
-                  isScrolled
-                    ? isDarkMode
-                      ? 'bg-white/20 backdrop-blur-lg hover:bg-white/30 border border-white/30'
-                      : 'bg-gray-100 hover:bg-gray-200 border border-gray-200'
-                    : 'bg-white/20 backdrop-blur-lg hover:bg-white/30 border border-white/30 text-white'
-                } focus:outline-none focus:ring-0 focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-0`}
+                className="home-nav__menu-btn btn-plain md:hidden p-2"
                 aria-label={isMenuOpen ? 'Close student menu' : 'Open student menu'}
                 aria-expanded={isMenuOpen}
               >
-                <svg
-                  className={`w-6 h-6 ${isScrolled ? (isDarkMode ? 'text-white' : 'text-gray-600') : 'text-white'}`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  aria-hidden
-                >
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   {isMenuOpen ? (
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   ) : (
@@ -355,24 +207,13 @@ const StudentNavbar: React.FC = () => {
             </div>
           </div>
         </div>
-        <div className="pointer-events-none h-[2px] w-full bg-gradient-to-r from-transparent via-cyan-400/80 to-transparent" />
+        <div className="home-nav__glow-line pointer-events-none h-px w-full" />
       </nav>
 
-      <CoursesAreaMobileDrawer
-        isOpen={isMenuOpen}
-        onClose={() => setIsMenuOpen(false)}
-        items={mobileDrawerItems}
-      />
-
-      {/* Auth modal for student area */}
-      <AuthModal
-        isOpen={isAuthOpen}
-        onClose={() => setIsAuthOpen(false)}
-        initialError={null}
-      />
-
+      <CoursesAreaMobileDrawer isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} items={mobileDrawerItems} />
+      <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} initialError={null} />
     </>
-  );
-};
+  )
+}
 
-export default StudentNavbar;
+export default StudentNavbar

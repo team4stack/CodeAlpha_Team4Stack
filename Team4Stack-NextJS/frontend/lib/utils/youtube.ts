@@ -68,6 +68,7 @@ function fallbackProjectData(videoId: string, githubUrl: string, description: st
     title: 'Project Title',
     description,
     thumbnailUrl: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
+    homeThumbnailUrl: '',
     videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
     githubUrl,
   };
@@ -79,8 +80,11 @@ export interface ProjectData {
   title: string;
   description: string;
   thumbnailUrl: string;
+  /** Admin-provided cover image — used on home showcase only */
+  homeThumbnailUrl: string;
   videoUrl: string;
   githubUrl: string;
+  createdAt?: string;
 }
 
 const pickBestYouTubeThumbnail = (thumbnails: YouTubeVideoSnippet['thumbnails'], videoId: string): string => {
@@ -241,6 +245,7 @@ function projectDataFromOkJson(data: unknown, videoId: string, githubUrl: string
       title: 'Project Title',
       description: 'Unable to load project details from YouTube. Ensure the backend has YOUTUBE_API_KEY set.',
       thumbnailUrl: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
+    homeThumbnailUrl: '',
       videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
       githubUrl,
     };
@@ -255,6 +260,7 @@ function projectDataFromOkJson(data: unknown, videoId: string, githubUrl: string
       title: 'Project Title',
       description: 'No video data available for this project',
       thumbnailUrl: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
+    homeThumbnailUrl: '',
       videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
       githubUrl,
     };
@@ -266,6 +272,7 @@ function projectDataFromOkJson(data: unknown, videoId: string, githubUrl: string
     title: video.snippet.title,
     description: video.snippet.description,
     thumbnailUrl: pickBestYouTubeThumbnail(video.snippet.thumbnails, videoId),
+    homeThumbnailUrl: '',
     videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
     githubUrl,
   };
@@ -297,6 +304,7 @@ export const fetchYouTubeVideoData = async (videoId: string, githubUrl: string):
       title: 'Project Title',
       description: 'Unable to load project details. This may be due to a temporary issue or missing configuration.',
       thumbnailUrl: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
+    homeThumbnailUrl: '',
       videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
       githubUrl,
     };

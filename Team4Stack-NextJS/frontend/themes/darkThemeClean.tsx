@@ -69,19 +69,23 @@ export const DarkThemeClean: React.FC = () => {
         transition: background 0.3s ease, color 0.3s ease !important;
       }
 
-      /* Dark Mode Sections */
-      .dark .section-padding {
-        background: var(--gradient-bg) !important;
-        transition: background 0.3s ease !important;
+      .dark body:has(.home-page) {
+        background: #000000 !important;
       }
 
-      .dark #services,
-      .dark #about,
-      .dark #projects,
-      .dark #courses,
-      .dark #contact,
-      .dark #reviews {
-        background: var(--gradient-bg) !important;
+      /* Home page sections: solid black (keep blur orbs / card effects in components) */
+      .dark .home-page,
+      .dark .home-page section,
+      .dark .home-page .section-padding,
+      .dark .home-page #home,
+      .dark .home-page #about,
+      .dark .home-page #services,
+      .dark .home-page #projects,
+      .dark .home-page #contact,
+      .dark .home-page #reviews,
+      .dark .home-page #our-team {
+        background-color: #000000 !important;
+        background-image: none !important;
         transition: background 0.3s ease !important;
       }
 
@@ -443,41 +447,39 @@ export const DarkThemeClean: React.FC = () => {
         transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease !important;
       }
 
-      /* HERO SECTION - Always Dark (Same as Dark Mode) */
-      .dark #home {
-        background: 
-          radial-gradient(900px circle at 15% 10%, rgba(255,45,155,0.28), transparent 60%),
-          radial-gradient(900px circle at 85% 20%, rgba(0,212,255,0.25), transparent 55%),
-          linear-gradient(135deg, #0a0f1f 0%, #0b1030 50%, #120726 100%) !important;
+      /* HERO SECTION on home — solid black base; orbs/effects stay in component markup */
+      .dark .home-page #home {
+        background-color: #000000 !important;
+        background-image: none !important;
         transition: background 0.3s ease !important;
       }
 
-      .dark #home * {
+      .dark .home-page #home * {
         color: white !important;
         transition: color 0.3s ease !important;
       }
 
-      .dark #home h1 {
+      .dark .home-page #home h1 {
         color: white !important;
       }
 
-      .dark #home p {
+      .dark .home-page #home p {
         color: #d1d5db !important;
       }
 
-      .dark #home .text-gray-300 {
+      .dark .home-page #home .text-gray-300 {
         color: #d1d5db !important;
       }
 
-      .dark #home .text-pink-400 {
+      .dark .home-page #home .text-pink-400 {
         color: #f472b6 !important;
       }
 
-      .dark #home .bg-white\\/10 {
+      .dark .home-page #home .bg-white\\/10 {
         background: rgba(255, 255, 255, 0.1) !important;
       }
 
-      .dark #home .border-white\\/20 {
+      .dark .home-page #home .border-white\\/20 {
         border-color: rgba(255, 255, 255, 0.2) !important;
       }
     `;

@@ -27,5 +27,6 @@ router.put('/orders/:id', stackstoreController.updateOrder);
 router.get('/sellers', stackstoreController.getSellers);
 router.post('/sellers', stackstoreController.createSeller);
 router.put('/sellers/:id', stackstoreController.updateSeller);
+router.delete('/sellers/:id', stackstoreController.deleteSeller);
 
 export default router;

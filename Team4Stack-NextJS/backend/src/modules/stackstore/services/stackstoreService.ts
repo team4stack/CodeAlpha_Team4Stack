@@ -45,12 +45,16 @@ export class StackStoreService {
     if (error) throw error;
   }
 
-  async getCategories(): Promise<Category[]> {
-    const { data, error } = await supabaseAdmin
+  async getCategories(filters?: { active?: boolean; includeInactive?: boolean }): Promise<Category[]> {
+    let query = supabaseAdmin
       .from('categories')
-      .select('*')
-      .eq('active', true)
-      .order('created_at', { ascending: false });
+      .select('*');
+    if (filters?.active !== undefined) {
+      query = query.eq('active', filters.active);
+    } else if (!filters?.includeInactive) {
+      query = query.eq('active', true);
+    }
+    const { data, error } = await query.order('created_at', { ascending: false });
     if (error) throw error;
     return data || [];
   }
@@ -101,12 +105,16 @@ export class StackStoreService {
     return row as unknown as Order;
   }
 
-  async getSellers(): Promise<Seller[]> {
-    const { data, error } = await supabaseAdmin
+  async getSellers(filters?: { active?: boolean; includeInactive?: boolean }): Promise<Seller[]> {
+    let query = supabaseAdmin
       .from('sellers')
-      .select('*')
-      .eq('active', true)
-      .order('created_at', { ascending: false });
+      .select('*');
+    if (filters?.active !== undefined) {
+      query = query.eq('active', filters.active);
+    } else if (!filters?.includeInactive) {
+      query = query.eq('active', true);
+    }
+    const { data, error } = await query.order('created_at', { ascending: false });
     if (error) throw error;
     return data || [];
   }
@@ -122,6 +130,11 @@ export class StackStoreService {
     const patch = pickAllowedKeys(seller, SELLER_KEYS);
     const row = await updateByIdWithTimestampRetry('sellers', id, patch, { notFoundMessage: 'Seller not found' });
     return row as unknown as Seller;
+  }
+
+  async deleteSeller(id: string): Promise<void> {
+    const { error } = await supabaseAdmin.from('sellers').delete().eq('id', id);
+    if (error) throw error;
   }
 }
 
