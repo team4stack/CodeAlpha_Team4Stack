@@ -1,3 +1,0 @@
-{
-  "sonarlint.analysisExcludesStandalone": "**/.env,**/.env.*,Team4Stack-NextJS/backend/.env,Team4Stack-NextJS/backend/.env.*,Team4Stack-NextJS/frontend/.env*,Team4Stack-NextJS/**/.env,Team4Stack-NextJS/**/.env.*"
-}
