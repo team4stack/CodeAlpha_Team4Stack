@@ -1,4 +1,5 @@
 import { readPasswordResetTokens } from '@/lib/auth/components/auth-modal/passwordResetTokens'
+import { validateStrongPassword } from '@/lib/auth/utils/passwordPolicy'
 
 type UpdatePasswordActionResult =
   | { ok: false; message: string }
@@ -19,8 +20,9 @@ export const executeUpdatePasswordAction = async ({
   if (newPassword !== confirmNewPassword) {
     return { ok: false, message: 'Passwords do not match' }
   }
-  if (newPassword.length < 6) {
-    return { ok: false, message: 'Password must be at least 6 characters' }
+  const passwordCheck = validateStrongPassword(newPassword)
+  if (!passwordCheck.valid) {
+    return { ok: false, message: passwordCheck.message! }
   }
 
   const { accessToken, refreshToken } = readPasswordResetTokens()

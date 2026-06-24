@@ -1,19 +1,70 @@
 'use client'
 
-import React from 'react'
+import React, { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { developerProfilesApi } from '@/lib/api'
+import { mapApiProfile, TEAM_PAGE_DEVELOPERS } from '../data/teamPageDevelopers'
+import TeamPageDeveloperCard from '../components/TeamPageDeveloperCard'
+import '../styles/team-page.css'
 
-/** Placeholder — team content lives on home (#our-team). Redesign pending. */
 const TeamPage: React.FC = () => {
+  const [developers, setDevelopers] = useState(TEAM_PAGE_DEVELOPERS)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await developerProfilesApi.listPublic()
+        if (!cancelled && res.success && Array.isArray(res.data) && res.data.length > 0) {
+          setDevelopers(res.data.map((row) => mapApiProfile(row as Record<string, unknown>)))
+        }
+      } catch {
+        /* fallback to dummy */
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   return (
-    <div className="min-h-screen bg-black pt-24 md:pt-28">
-      <div className="container-custom px-4 py-24 md:py-32 text-center">
-        <p className="text-gray-500 text-sm md:text-base">This page is being updated. Visit the home page to meet our team.</p>
-        <a
-          href="/#our-team"
-          className="inline-block mt-6 text-sm font-semibold text-orange-400 hover:text-orange-300 transition"
-        >
-          Go to team on home →
-        </a>
+    <div className="team-page">
+      <div className="team-page__glow team-page__glow--purple" aria-hidden />
+      <div className="team-page__glow team-page__glow--orange" aria-hidden />
+
+      <div className="team-page__inner container-custom">
+        <header className="team-page__hero">
+          <span className="team-page__badge">Hire a Developer</span>
+          <h1 className="team-page__title">
+            Pick a developer &amp; <span>start your project</span>
+          </h1>
+          <p className="team-page__subtitle">
+            Browse profiles, open a developer page, and send your project details. Team4Stack
+            manages delivery — you work with one trusted team.
+          </p>
+        </header>
+
+        {loading ? (
+          <p className="team-page__loading">Loading team…</p>
+        ) : (
+          <>
+            <div className="team-page__grid">
+              {developers.map((developer) => (
+                <TeamPageDeveloperCard key={developer.slug} developer={developer} />
+              ))}
+            </div>
+
+            <div className="team-page__apply-cta">
+              <p>Want to join Team4Stack as a developer?</p>
+              <Link href="/courses/apply?type=developer" className="team-page__apply-link">
+                Apply as developer →
+              </Link>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )

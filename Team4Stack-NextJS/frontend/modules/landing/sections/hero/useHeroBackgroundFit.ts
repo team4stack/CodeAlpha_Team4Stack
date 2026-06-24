@@ -22,6 +22,10 @@ type HeroBgFit = {
 }
 
 function getHeroBgFit(viewportWidth: number, viewportHeight: number): HeroBgFit {
+  if (viewportWidth <= 639) {
+    return { posX: '56%', posY: '5%' }
+  }
+
   const aspect = viewportWidth / Math.max(viewportHeight, 1)
 
   if (aspect >= 1.85) {

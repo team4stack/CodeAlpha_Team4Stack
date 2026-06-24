@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '../../../config/supabase';
 import bcrypt from 'bcryptjs';
+import { validateStrongPassword } from '../../../shared/utils/passwordPolicy';
 import {
   pickAllowedKeys,
   updateByIdWithTimestampRetry,
@@ -477,8 +478,9 @@ export class CourseService {
       err.status = 400;
       throw err;
     }
-    if (args.newPassword.length < 6) {
-      const err: Error & { status?: number } = new Error('Password must be at least 6 characters');
+    const passwordCheck = validateStrongPassword(args.newPassword);
+    if (!passwordCheck.valid) {
+      const err: Error & { status?: number } = new Error(passwordCheck.error || 'Invalid password');
       err.status = 400;
       throw err;
     }

@@ -50,7 +50,7 @@ const HomeTeam: React.FC = () => {
   )
 
   return (
-    <section id="our-team" className="py-12 sm:py-16 md:py-20 lg:py-24 relative bg-black overflow-hidden">
+    <section id="our-team" className="py-8 sm:py-16 md:py-20 lg:py-24 relative bg-black overflow-hidden">
       {teamSchema ? (
         <script
           type="application/ld+json"
@@ -63,17 +63,17 @@ const HomeTeam: React.FC = () => {
       </div>
 
       <div className="container-custom px-4 relative z-10">
-        <div className="text-center mb-10 sm:mb-14 max-w-3xl mx-auto">
-          <span className={`inline-block text-xs uppercase tracking-widest px-3 py-1 rounded-full mb-4 ${courseBadge(true)}`}>
+        <div className="text-center mb-7 sm:mb-14 max-w-3xl mx-auto">
+          <span className={`inline-block text-xs uppercase tracking-widest px-3 py-1 rounded-full mb-3 sm:mb-4 ${courseBadge(true)}`}>
             Our Team
           </span>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4">
+          <h2 className="text-2xl sm:text-4xl md:text-5xl font-bold text-white mb-3 sm:mb-4">
             We have come to solve your{' '}
             <span className={`text-transparent bg-clip-text bg-gradient-to-r ${COURSE_ACCENT_GRADIENT_SHORT}`}>
               business
             </span>
           </h2>
-          <p className="text-base md:text-lg text-gray-300">
+          <p className="text-sm sm:text-base md:text-lg text-gray-300 leading-relaxed">
             Four passionate MERN Stack developers building exceptional web apps and delivering cutting-edge solutions.
           </p>
         </div>
@@ -85,7 +85,7 @@ const HomeTeam: React.FC = () => {
         )}
 
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 sm:gap-6 lg:gap-7 max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5 sm:gap-6 lg:gap-7 max-w-6xl mx-auto">
             {Array.from({ length: 4 }).map((_, i) => (
               <div
                 key={i}
@@ -95,7 +95,7 @@ const HomeTeam: React.FC = () => {
             ))}
           </div>
         ) : teamMembers.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 sm:gap-6 lg:gap-7 max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5 sm:gap-6 lg:gap-7 max-w-6xl mx-auto">
             {teamMembers.map((member, index) => (
               <TeamProfileCard
                 key={`${member.name}-${index}`}

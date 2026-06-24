@@ -3,17 +3,13 @@
 import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useTheme } from '@/contexts/ThemeContext'
+import { useAuth } from '@/contexts/AuthContext'
 import { stackstoreApi } from '@/lib/api'
 import { landingApi } from '@/lib/api'
-
-type Product = {
-  id: string
-  name: string
-  description?: string
-  price?: number
-  image_url?: string
-  category_id?: string
-}
+import type { StoreProduct } from '../types'
+import ProductCard from '../components/ProductCard'
+import ProductCardSkeleton from '../components/ProductCardSkeleton'
+import '../stackstore.css'
 
 type Category = {
   id: string
@@ -30,11 +26,12 @@ type StoreSettings = {
 
 const StackStorePage: React.FC = () => {
   const { isDarkMode } = useTheme()
-  const [products, setProducts] = useState<Product[]>([])
+  const { user } = useAuth()
+  const [products, setProducts] = useState<StoreProduct[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [settings, setSettings] = useState<StoreSettings>({
     heroTitle: 'StackStore',
-    heroSubtitle: 'A marketplace where students showcase and sell their projects.',
+    heroSubtitle: 'Buy verified pre-made stack projects. Team4Stack handles payment & connects you with sellers.',
     launchStatus: 'live',
     contactEmail: '',
     publicEnabled: true,
@@ -64,18 +61,25 @@ const StackStorePage: React.FC = () => {
           })
         }
 
-        setSettings({
+        const nextSettings = {
           heroTitle: map.stackstore_hero_title || 'StackStore',
           heroSubtitle:
             map.stackstore_hero_subtitle ||
-            'A marketplace where students showcase and sell their projects.',
+            'Buy verified pre-made stack projects. Team4Stack handles payment & connects you with sellers.',
           launchStatus: map.stackstore_launch_status || 'live',
           contactEmail: map.stackstore_contact_email || '',
           publicEnabled: map.stackstore_public_enabled !== 'false',
-        })
+        }
+        setSettings(nextSettings)
+
+        if (!nextSettings.publicEnabled) {
+          setProducts([])
+          setCategories([])
+          return
+        }
 
         const [productsRes, categoriesRes] = await Promise.all([
-          stackstoreApi.getProducts({ active: true }),
+          stackstoreApi.getProducts({ storefront: true }),
           stackstoreApi.getCategories({ active: true }),
         ])
 
@@ -97,6 +101,20 @@ const StackStorePage: React.FC = () => {
 
   const isBeta = settings.launchStatus === 'beta' || settings.launchStatus === 'coming_soon'
 
+  if (!settings.publicEnabled && !loading) {
+    return (
+      <div className={`min-h-screen pt-28 pb-20 ${isDarkMode ? 'bg-slate-950 text-slate-300' : 'bg-slate-50 text-slate-600'}`}>
+        <div className="container-custom max-w-xl text-center">
+          <h1 className="text-2xl font-bold text-white mb-3">StackStore is not public yet</h1>
+          <p className="mb-6">The marketplace is currently disabled by admin.</p>
+          <Link href="/" className="stackstore-btn inline-flex">
+            Back to home
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className={`min-h-screen transition-colors duration-300 ${isDarkMode ? 'bg-slate-950' : 'bg-slate-50'}`}>
       <section className="pt-24 md:pt-28 pb-12">
@@ -107,7 +125,7 @@ const StackStorePage: React.FC = () => {
                 isDarkMode ? 'bg-purple-500/15 text-purple-300' : 'bg-purple-100 text-purple-700'
               }`}
             >
-              {isBeta ? 'Beta Marketplace' : 'Marketplace'}
+              {isBeta ? 'Beta Marketplace' : 'Verified Projects'}
             </span>
             <h1 className={`text-3xl sm:text-4xl md:text-5xl font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-cyan-400">
@@ -117,6 +135,22 @@ const StackStorePage: React.FC = () => {
             <p className={`mt-4 text-base md:text-lg ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
               {settings.heroSubtitle}
             </p>
+
+            <div className="flex flex-wrap justify-center gap-3 mt-8">
+              <Link href="/stackstore/seller/apply" className="stackstore-btn">
+                Sell your stack project
+              </Link>
+              {user ? (
+                <>
+                  <Link href="/stackstore/seller" className="stackstore-btn stackstore-btn--ghost">
+                    Seller dashboard
+                  </Link>
+                  <Link href="/stackstore/orders" className="stackstore-btn stackstore-btn--ghost">
+                    My orders
+                  </Link>
+                </>
+              ) : null}
+            </div>
           </div>
         </div>
       </section>
@@ -129,7 +163,6 @@ const StackStorePage: React.FC = () => {
             </div>
           )}
 
-          {/* Category filter */}
           {categories.length > 0 && (
             <div className="flex flex-wrap gap-2 justify-center mb-8">
               <button
@@ -165,70 +198,20 @@ const StackStorePage: React.FC = () => {
           )}
 
           {loading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-7">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div
-                  key={i}
-                  className={`h-72 rounded-2xl animate-pulse ${isDarkMode ? 'bg-slate-800' : 'bg-slate-200'}`}
-                />
+                <ProductCardSkeleton key={i} isDarkMode={isDarkMode} />
               ))}
             </div>
           ) : filtered.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-7">
               {filtered.map((product) => (
-                <article
+                <ProductCard
                   key={product.id}
-                  className={`flex flex-col rounded-2xl border overflow-hidden transition hover:shadow-lg ${
-                    isDarkMode ? 'bg-slate-900/60 border-slate-700/60' : 'bg-white border-slate-200'
-                  }`}
-                >
-                  <div className={`h-44 flex items-center justify-center ${isDarkMode ? 'bg-slate-800' : 'bg-slate-100'}`}>
-                    {product.image_url ? (
-                      <img
-                        src={product.image_url}
-                        alt={product.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-4xl">📦</span>
-                    )}
-                  </div>
-                  <div className="p-5 flex flex-col flex-1">
-                    {product.category_id && categoryMap[product.category_id] && (
-                      <span className={`text-xs uppercase tracking-wide ${isDarkMode ? 'text-purple-300' : 'text-purple-600'}`}>
-                        {categoryMap[product.category_id]}
-                      </span>
-                    )}
-                    <h3 className={`text-lg font-semibold mt-1 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                      {product.name}
-                    </h3>
-                    {product.description && (
-                      <p className={`text-sm mt-2 line-clamp-3 flex-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                        {product.description}
-                      </p>
-                    )}
-                    <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-700/30">
-                      <span className={`text-lg font-bold ${isDarkMode ? 'text-cyan-400' : 'text-blue-600'}`}>
-                        {product.price != null ? `Rs. ${product.price.toLocaleString()}` : 'Contact'}
-                      </span>
-                      {settings.contactEmail ? (
-                        <a
-                          href={`mailto:${settings.contactEmail}?subject=Inquiry: ${encodeURIComponent(product.name)}`}
-                          className="text-sm font-medium px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:opacity-90 transition"
-                        >
-                          Inquire
-                        </a>
-                      ) : (
-                        <Link
-                          href="/contact"
-                          className="text-sm font-medium px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:opacity-90 transition"
-                        >
-                          Contact Us
-                        </Link>
-                      )}
-                    </div>
-                  </div>
-                </article>
+                  product={product}
+                  categoryName={product.category_id ? categoryMap[product.category_id] : undefined}
+                  isDarkMode={isDarkMode}
+                />
               ))}
             </div>
           ) : (
@@ -238,16 +221,16 @@ const StackStorePage: React.FC = () => {
               }`}
             >
               <p className={`text-lg font-medium ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                {isBeta ? 'Products coming soon!' : 'No products available yet.'}
+                {isBeta ? 'Verified projects coming soon!' : 'No verified projects yet.'}
               </p>
               <p className={`text-sm mt-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                Check back soon — student projects will be listed here.
+                Sellers can apply and list pre-made stack projects after Team4Stack verification.
               </p>
               <Link
-                href="/courses"
+                href="/stackstore/seller/apply"
                 className="inline-block mt-6 text-sm font-medium px-6 py-3 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:opacity-90 transition"
               >
-                Explore Courses
+                Become a seller
               </Link>
             </div>
           )}

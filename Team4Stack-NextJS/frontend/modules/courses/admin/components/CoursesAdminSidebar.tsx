@@ -112,7 +112,7 @@ const CoursesAdminSidebar: React.FC = () => {
     { to: '/admincourset4s/manage', label: 'Manage Courses', icon: FiBookOpen },
     { to: '/admincourset4s/videos', label: 'Videos', icon: FiVideo },
     { to: '/admincourset4s/progress', label: 'Student Progress', icon: FiBarChart },
-    { to: '/admincourset4s/applications', label: 'Applications', icon: FiFileText },
+    { to: '/admincourset4s/applications', label: 'Student applications', icon: FiFileText },
     { to: '/admincourset4s/support', label: 'Support', icon: FiBell },
     { to: '/admincourset4s/certificates', label: 'Certificates', icon: FiAward },
     { to: '/admincourset4s/notifications', label: 'Student alerts', icon: FiBell },

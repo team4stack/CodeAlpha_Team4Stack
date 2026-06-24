@@ -114,7 +114,7 @@ export class SuperAdminController {
         console.error('[superadmin] Failed to issue admin API token:', e?.message || e);
         res.status(500).json({
           success: false,
-          error: 'Server configuration error: cannot issue admin session'
+          error: 'Unable to sign in right now. Please try again.'
         });
         return;
       }

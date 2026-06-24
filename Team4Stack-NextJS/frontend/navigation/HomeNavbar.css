@@ -441,6 +441,15 @@
   padding-bottom: clamp(1.5rem, 4vh, 2.5rem);
 }
 
+@media (max-width: 639px) {
+  .home-page .home-hero__inner {
+    padding-top: calc(var(--home-nav-h) + 0.35rem);
+    padding-bottom: clamp(3.75rem, 9vh, 5rem);
+    justify-content: flex-start;
+    align-items: stretch;
+  }
+}
+
 .home-page .home-hero__fade {
   position: absolute;
   left: 0;

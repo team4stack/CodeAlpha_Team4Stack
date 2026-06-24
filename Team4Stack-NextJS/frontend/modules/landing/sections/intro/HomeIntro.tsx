@@ -61,7 +61,7 @@ function OfferCard({ item }: { item: (typeof HIGHLIGHTS)[number] }) {
 
 const HomeIntro: React.FC = () => {
   return (
-    <section id="about" className="home-intro py-12 sm:py-16 md:py-20 relative overflow-hidden">
+    <section id="about" className="home-intro py-8 sm:py-16 md:py-20 relative overflow-hidden">
       <div className="home-intro__backdrop" aria-hidden>
         <div className="home-intro__mesh" />
         <div className="home-intro__glow home-intro__glow--left" />
@@ -74,19 +74,19 @@ const HomeIntro: React.FC = () => {
       </div>
 
       <div className="container-custom px-4 relative z-10">
-        <div className="text-center mb-10 sm:mb-12">
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 text-white">
+        <div className="text-center mb-7 sm:mb-12">
+          <h2 className="text-2xl sm:text-4xl md:text-5xl font-bold mb-3 sm:mb-4 text-white">
             What We{' '}
             <span className={`text-transparent bg-clip-text bg-gradient-to-r ${COURSE_ACCENT_GRADIENT_SHORT}`}>
               Offer
             </span>
           </h2>
-          <p className="text-base sm:text-lg max-w-2xl mx-auto text-gray-300">
+          <p className="text-sm sm:text-lg max-w-2xl mx-auto text-gray-300 leading-relaxed">
             Training, development services, and a student marketplace — everything in one place.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 max-w-5xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-6 max-w-5xl mx-auto">
           {HIGHLIGHTS.map((item) => (
             <OfferCard key={item.key} item={item} />
           ))}

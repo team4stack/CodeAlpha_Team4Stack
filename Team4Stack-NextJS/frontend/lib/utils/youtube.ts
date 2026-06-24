@@ -152,7 +152,7 @@ function handleStringErrorField(
   return fallbackProjectData(
     videoId,
     githubUrl,
-    'Video metadata is unavailable until the server YouTube API key is configured.'
+    'Video details are temporarily unavailable. Please try again later.'
   );
 }
 
@@ -164,7 +164,7 @@ function handleGoogleStyleErrorInBody(parsed: YouTubeApiError, videoId: string, 
     return fallbackProjectData(
       videoId,
       githubUrl,
-      'Unable to load project details. API key restrictions may be preventing access. Site administrator should check YouTube API configuration.'
+      'Unable to load project details right now. Please try again later.'
     );
   }
 
@@ -172,7 +172,7 @@ function handleGoogleStyleErrorInBody(parsed: YouTubeApiError, videoId: string, 
     return fallbackProjectData(
       videoId,
       githubUrl,
-      'API key is invalid. Please check the YouTube API key configuration.'
+      'Unable to load project details right now. Please try again later.'
     );
   }
 
@@ -302,7 +302,7 @@ export const fetchYouTubeVideoData = async (videoId: string, githubUrl: string):
     return {
       id: videoId,
       title: 'Project Title',
-      description: 'Unable to load project details. This may be due to a temporary issue or missing configuration.',
+      description: 'Unable to load project details right now. Please try again later.',
       thumbnailUrl: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
     homeThumbnailUrl: '',
       videoUrl: `https://www.youtube.com/watch?v=${videoId}`,

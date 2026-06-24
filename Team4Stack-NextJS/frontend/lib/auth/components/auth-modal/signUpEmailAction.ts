@@ -1,5 +1,6 @@
 import { generateSixDigitOtp, sendVerificationOtpEmail } from '@/lib/auth/components/auth-modal/otpEmail'
 import { saveOtpPayload } from '@/lib/auth/components/auth-modal/otpStorage'
+import { validateStrongPassword } from '@/lib/auth/utils/passwordPolicy'
 
 type SignUpEmailActionResult =
   | { ok: false; message: string }
@@ -24,8 +25,9 @@ export const executeSignUpEmailAction = async ({
   if (password !== confirmPassword) {
     return { ok: false, message: 'Passwords do not match' }
   }
-  if (password.length < 6) {
-    return { ok: false, message: 'Password must be at least 6 characters' }
+  const passwordCheck = validateStrongPassword(password)
+  if (!passwordCheck.valid) {
+    return { ok: false, message: passwordCheck.message! }
   }
   if (!username) {
     return { ok: false, message: 'Username is required' }
@@ -64,7 +66,7 @@ export const executeSignUpEmailAction = async ({
   if (!emailSent) {
     return {
       ok: false,
-      message: 'Failed to send verification code. Please check your EmailJS configuration and try again.'
+      message: 'We could not send the verification code. Please try again in a few minutes.',
     }
   }
 

@@ -250,11 +250,11 @@ const Contact: React.FC = () => {
         </header>
 
         {/* Location + Primary Contact Cards */}
-        <div className="mb-16 grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="mb-0 sm:mb-16 grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-8">
           {/* Physical Location Card (WE Connect) */}
           <div className="home-contact__card">
             <h3 className="home-contact__card-title">WE Connect – Physical Location</h3>
-            <p className="text-white/80 mb-4">Visit us for on-site MERN physical training and project discussions.</p>
+            <p className="text-white/80 mb-3 sm:mb-4 text-sm sm:text-base leading-relaxed">Visit us for on-site MERN physical training and project discussions.</p>
             {(contactSettings.mapSrc || contactSettings.address || contactSettings.website || contactSettings.phone) ? (
               <>
                 <div className="home-contact__map-frame">
@@ -265,7 +265,7 @@ const Contact: React.FC = () => {
                       
                       if (!embedUrl) {
                         return (
-                          <div className="w-full h-64 flex flex-col items-center justify-center text-white/70 gap-3 p-4">
+                          <div className="w-full h-44 sm:h-64 flex flex-col items-center justify-center text-white/70 gap-3 p-4">
                             {isShortUrl ? (
                               <>
                                 <svg className="w-12 h-12 text-yellow-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -289,7 +289,7 @@ const Contact: React.FC = () => {
                         <iframe
                           title="WE Connect Location"
                           src={embedUrl}
-                          className="w-full h-64"
+                          className="w-full h-44 sm:h-64"
                           loading="lazy"
                           referrerPolicy="no-referrer-when-downgrade"
                           allowFullScreen
@@ -301,12 +301,12 @@ const Contact: React.FC = () => {
                       );
                     })()
                   ) : mapError ? (
-                    <div className="w-full h-64 flex flex-col items-center justify-center text-white/70 gap-2">
+                    <div className="w-full h-44 sm:h-64 flex flex-col items-center justify-center text-white/70 gap-2">
                       <p>Map could not be loaded</p>
                       <p className="text-xs text-white/50">Please check the map URL in admin panel</p>
                     </div>
                   ) : (
-                    <div className="w-full h-64 flex items-center justify-center text-white/70">No map available</div>
+                    <div className="w-full h-44 sm:h-64 flex items-center justify-center text-white/70">No map available</div>
                   )}
                 </div>
                 <div className="home-contact__meta space-y-1">

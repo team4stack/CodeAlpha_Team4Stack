@@ -22,14 +22,15 @@ export default function MainLayout({ children }: MainLayoutProps) {
     pathname === '/student/courses' ||
     pathname === '/courses';
   const isLandingPage = pathname === '/';
+  const isLoginPage = pathname === '/login' || pathname === '/signup';
 
   return (
     <>
-      {!isCoursesPage && <MainNavbar />}
-      <main className={`responsive-main ${isStudentCourseViewPage ? 'min-h-0!' : ''} ${isCoursesPage ? 't4s-courses-glass' : ''}`}>
+      {!isCoursesPage && !isLoginPage && <MainNavbar />}
+      <main className={`responsive-main ${isStudentCourseViewPage ? 'min-h-0!' : ''} ${isCoursesPage ? 't4s-courses-glass' : ''} ${isLoginPage ? 't4s-login-main' : ''}`}>
         {children}
       </main>
-      <MainFooter />
+      {!isLoginPage && <MainFooter />}
       {isLandingPage && <WhatsAppButton />}
       {showCoursesChatBot && <CoursesChatBot />}
       <PWAInstallPrompt />

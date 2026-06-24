@@ -42,7 +42,7 @@ const HomeProjects: React.FC = () => {
   }, [latestProjects])
 
   return (
-    <section id="projects" className="home-projects py-12 sm:py-16 md:py-20 lg:py-24 relative">
+    <section id="projects" className="home-projects py-8 sm:py-16 md:py-20 lg:py-24 relative">
       {schema ? (
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
       ) : null}

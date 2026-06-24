@@ -8,4 +8,5 @@ export { default as OrdersManagementPage } from './OrdersManagementPage';
 export { default as CategoriesManagementPage } from './CategoriesManagementPage';
 export { default as SellersManagementPage } from './SellersManagementPage';
 export { default as StackStoreSettingsPage } from './StackStoreSettingsPage';
+export { default as SellerApplicationsAdminPage } from './SellerApplicationsAdminPage';
 

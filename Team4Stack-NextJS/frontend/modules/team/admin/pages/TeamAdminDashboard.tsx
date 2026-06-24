@@ -23,14 +23,34 @@ const TeamAdminDashboard: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <Link
+          href="/adminteamt4s/projects"
+          className="block rounded-xl border border-cyan-400/20 bg-cyan-500/10 p-5 text-white transition hover:bg-cyan-500/15 hover:border-cyan-400/40"
+        >
+          <div className="text-2xl mb-2">📋</div>
+          <div className="font-bold text-lg mb-1">Client projects</div>
+          <p className="text-sm text-white/75">
+            Create projects, assign team, tasks, and client communication.
+          </p>
+        </Link>
+        <Link
+          href="/adminteamt4s/developers"
+          className="block rounded-xl border border-orange-400/25 bg-orange-500/10 p-5 text-white transition hover:bg-orange-500/15 hover:border-orange-400/40"
+        >
+          <div className="text-2xl mb-2">💻</div>
+          <div className="font-bold text-lg mb-1">Developer applications</div>
+          <p className="text-sm text-white/75">
+            Review Apply as Developer from /courses/apply — approve or assign profiles.
+          </p>
+        </Link>
         <Link
           href="/adminlandingt4s/team_members"
           className="block rounded-xl border border-white/10 bg-white/5 p-5 text-white transition hover:bg-white/10 hover:border-cyan-400/30"
         >
           <div className="text-2xl mb-2">👤</div>
-          <div className="font-bold text-lg mb-1">Team members</div>
-          <p className="text-sm text-white/75">Edit in Landing admin (requires landing admin access).</p>
+          <div className="font-bold text-lg mb-1">Team members (site)</div>
+          <p className="text-sm text-white/75">Home page team cards — Landing admin.</p>
         </Link>
         <Link
           href="/adminlandingt4s/mentor_profiles"
@@ -42,11 +62,11 @@ const TeamAdminDashboard: React.FC = () => {
         </Link>
       </div>
 
-      <div className="rounded-xl border border-orange-200/40 bg-orange-950/20 p-5 text-sm text-orange-50/95">
-        <p className="font-medium text-orange-100 mb-1">Team admin vs landing admin</p>
-        <p className="text-orange-100/85">
-          <strong>Team admin</strong> stays for its own scope (for example settings on this route). It does not
-          grant or replace <strong>landing admin</strong> permissions for site team or mentor content.
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-950/20 p-5 text-sm text-cyan-50/95">
+        <p className="font-medium text-cyan-100 mb-1">Developer applications</p>
+        <p className="text-cyan-100/85">
+          Users apply as developers at <strong>/courses/apply?type=developer</strong>. Review and approve
+          submissions under Developer applications.
         </p>
       </div>
 

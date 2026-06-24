@@ -1,6 +1,7 @@
 import { autoSignInAfterVerification } from '@/lib/auth/components/auth-modal/autoSignInAfterVerification'
 import { deleteOtpPayload, readOtpPayload } from '@/lib/auth/components/auth-modal/otpStorage'
 import type { AuthResultData, OtpPayload } from '@/lib/auth/components/auth-modal/types'
+import { validateStrongPassword } from '@/lib/auth/utils/passwordPolicy'
 
 type VerifyEmailCodeActionResult =
   | { ok: false; message: string }
@@ -34,7 +35,8 @@ const validateOtpPayload = (
     return { valid: false, message: 'Email mismatch. Please use the same email you signed up with.' }
   }
 
-  if (!otpData.password || typeof otpData.password !== 'string' || otpData.password.trim().length < 6) {
+  const passwordCheck = validateStrongPassword(otpData.password)
+  if (!passwordCheck.valid) {
     return { valid: false, message: 'Password is invalid. Please sign up again.' }
   }
 

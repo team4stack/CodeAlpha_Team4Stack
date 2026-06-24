@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import authService from '../services/authService';
+import { validateStrongPassword } from '../../../utils/passwordPolicy';
 
 export class AuthController {
   signIn = async (req: Request, res: Response, next: NextFunction) => {
@@ -45,10 +46,11 @@ export class AuthController {
         });
       }
 
-      if (password.length < 6) {
+      const passwordCheck = validateStrongPassword(password);
+      if (!passwordCheck.valid) {
         return res.status(400).json({
           success: false,
-          error: 'Password must be at least 6 characters',
+          error: passwordCheck.error,
         });
       }
 
@@ -116,10 +118,11 @@ export class AuthController {
         });
       }
 
-      if (newPassword.length < 6) {
+      const passwordCheck = validateStrongPassword(newPassword);
+      if (!passwordCheck.valid) {
         return res.status(400).json({
           success: false,
-          error: 'Password must be at least 6 characters',
+          error: passwordCheck.error,
         });
       }
 

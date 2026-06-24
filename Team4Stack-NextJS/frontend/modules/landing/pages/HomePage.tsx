@@ -6,6 +6,7 @@ import HomeIntro from '../sections/intro/HomeIntro'
 import HomeTeam from '../sections/team/HomeTeam'
 import { services, projects, reviews, contact } from '../sections'
 import '@/navigation/HomeNavbar.css'
+import '../landing-mobile.css'
 
 const SectionLoader = () => (
   <div className="h-64 flex items-center justify-center">
