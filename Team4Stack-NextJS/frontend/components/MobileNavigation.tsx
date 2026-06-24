@@ -30,8 +30,8 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({ isOpen, onClose, on
     { name: 'Home', href: '#home' },
     { name: 'Team', href: '/team' },
     { name: 'Services', href: '#services' },
-    { name: 'Projects', href: '#projects' },
-    { name: 'Courses', href: '#courses' },
+    { name: 'Projects', href: '/projects' },
+    { name: 'Courses', href: '/courses' },
     { name: 'Contact', href: '#contact' }
   ]);
 
@@ -122,15 +122,16 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({ isOpen, onClose, on
             const parsed = JSON.parse(data.value);
             if (Array.isArray(parsed) && parsed.length > 0) {
               // Normalize "Team" link even if DB config contains wrong href.
-              const normalized = parsed.map((l: any) => {
+              const normalized = parsed.map((l: NavbarLink) => {
                 const name = String(l?.name ?? '').trim();
                 const href = String(l?.href ?? '').trim();
                 const lower = name.toLowerCase();
                 const looksLikeTeam = lower === 'team' || lower.includes('team');
-                const safeHref = looksLikeTeam ? '/team' : href;
+                const looksLikeProjects = lower === 'projects' || lower.includes('project');
+                const safeHref = looksLikeTeam ? '/team' : looksLikeProjects ? '/projects' : href;
                 return {
-                  name: name || 'Team',
-                  href: safeHref || '/team',
+                  name: name || (looksLikeTeam ? 'Team' : looksLikeProjects ? 'Projects' : name),
+                  href: safeHref || (looksLikeTeam ? '/team' : looksLikeProjects ? '/projects' : href),
                 };
               });
               setNavbarLinks(normalized);
@@ -243,23 +244,21 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({ isOpen, onClose, on
           {/* Navigation Items */}
           <div className="overflow-y-auto py-4 max-h-[calc(100vh-7rem)]">
             <div className="flex flex-col space-y-2 px-4">
-              {/* StackStore (Coming soon) - COMMENTED OUT */}
-              {/* <button
+              <button
                 onClick={() => {
                   onClose();
-                  setTimeout(() => onOpenStackStore && onOpenStackStore(), 200);
+                  setTimeout(() => router.push('/stackstore'), 200);
                 }}
-                className={`text-left px-4 py-3 rounded-lg transition-all duration-200 ${
-                  isDarkMode ? 'text-white hover:bg-white/10' : 'text-gray-800 hover:bg-gray-100'
+                className={`text-left px-4 py-3 rounded-xl transition-colors duration-200 border border-transparent ${
+                  isDarkMode
+                    ? 'text-white hover:bg-white/10 hover:border-white/15'
+                    : 'text-gray-800 hover:bg-gray-100 hover:border-gray-200'
                 } focus:outline-none focus:ring-2 focus:ring-purple-500`}
-                aria-label="Open StackStore (Coming soon)"
+                aria-label="Open StackStore"
                 role="menuitem"
               >
-                <span className="flex items-center justify-between">
-                  <span className="font-medium">StackStore</span>
-                  <span className={`text-[10px] uppercase tracking-wide ${isDarkMode ? 'opacity-70' : 'opacity-60 text-gray-600'}`}>Coming soon</span>
-                </span>
-              </button> */}
+                <span className="font-medium">StackStore</span>
+              </button>
               {/* Navigation items from database */}
               {navbarLinks.map((link) => {
                 // Skip Home if it's a hash link, handle it specially
@@ -410,7 +409,7 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({ isOpen, onClose, on
                     )}
                     {user.role === 'admin' && (
                       <a
-                        href="/adminsami"
+                        href="/adminlandingt4s"
                         onClick={() => {
                           setIsUserMenuOpen(false);
                           onClose();

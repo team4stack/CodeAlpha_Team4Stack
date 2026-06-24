@@ -491,6 +491,31 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
       return
     }
     if (editingId) {
+    if (isProjects) {
+      const imageUrl = String(form.image_url || '').trim()
+      const githubUrl = String((form as any).github_url || '').trim()
+      const videoId = String((form as any).video_id || '').trim()
+      if (!form.title?.trim()) {
+        toast.error('Project title is required')
+        return setError('Project title is required')
+      }
+      if (!imageUrl) {
+        toast.error('Project thumbnail image URL is required (GitHub or direct image link)')
+        return setError('Project thumbnail image URL is required')
+      }
+      if (!/^https?:\/\//i.test(imageUrl)) {
+        toast.error('Image URL must start with http:// or https://')
+        return setError('Invalid image URL')
+      }
+      if (!editingId && !githubUrl) {
+        toast.error('GitHub URL is required')
+        return setError('GitHub URL is required')
+      }
+      if (!editingId && !videoId) {
+        toast.error('YouTube video ID or URL is required')
+        return setError('YouTube video is required')
+      }
+    }
     const payload = buildContentRecordPayload({
       form: form as ContentEditorRow & Record<string, any>,
       isTeamLike,
@@ -526,6 +551,32 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
     
     // No conflict check needed - dropdown only shows available orders
     
+    if (isProjects) {
+      const imageUrl = String(form.image_url || '').trim()
+      const githubUrl = String((form as any).github_url || '').trim()
+      const videoId = String((form as any).video_id || '').trim()
+      if (!form.title?.trim()) {
+        toast.error('Project title is required')
+        return setError('Project title is required')
+      }
+      if (!imageUrl) {
+        toast.error('Project thumbnail image URL is required (GitHub or direct image link)')
+        return setError('Project thumbnail image URL is required')
+      }
+      if (!/^https?:\/\//i.test(imageUrl)) {
+        toast.error('Image URL must start with http:// or https://')
+        return setError('Invalid image URL')
+      }
+      if (!githubUrl) {
+        toast.error('GitHub URL is required')
+        return setError('GitHub URL is required')
+      }
+      if (!videoId) {
+        toast.error('YouTube video ID or URL is required')
+        return setError('YouTube video is required')
+      }
+    }
+
     const result = await createContentTableRecord(table, payload)
     if (result.error) {
       toast.error(result.error)
@@ -761,8 +812,8 @@ const ContentPage: React.FC<ContentPageProps> = ({ contentType: propContentType 
                     <option value="">No available orders (all taken)</option>
                   )}
                 </select>
-                <input className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-600 md:col-span-2" placeholder="GitHub URL (View Code)" value={(form as any)['github_url'] || ''} onChange={(e) => setForm(s => ({ ...s, github_url: e.target.value }))} />
-                <input className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-600 md:col-span-2" placeholder="Image URL (optional)" value={form.image_url || ''} onChange={(e) => setForm(s => ({ ...s, image_url: e.target.value }))} />
+                <input className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-600 md:col-span-2" placeholder="GitHub URL (View Code) *" value={(form as any)['github_url'] || ''} onChange={(e) => setForm(s => ({ ...s, github_url: e.target.value }))} required />
+                <input className="px-4 py-3 rounded-lg bg-white/90 dark:bg-gray-700/90 border-2 border-gray-200 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-600 md:col-span-2" placeholder="Thumbnail Image URL (GitHub raw / direct link) *" value={form.image_url || ''} onChange={(e) => setForm(s => ({ ...s, image_url: e.target.value }))} required />
               </>
             )}
             {isCourses && (

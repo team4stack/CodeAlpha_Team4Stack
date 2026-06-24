@@ -45,7 +45,12 @@ const STEP_META: Array<{ step: AdmissionStep; title: string; subtitle: string }>
   { step: 3, title: 'Attach & Submit', subtitle: 'Final step' }
 ]
 
-const AdmissionForm: React.FC = () => {
+type AdmissionFormProps = {
+  /** When true, only the form card is rendered (used inside unified /courses/apply page). */
+  embedded?: boolean
+}
+
+const AdmissionForm: React.FC<AdmissionFormProps> = ({ embedded = false }) => {
   useAdmissionFormAnimationStyles()
   const { user, loading: authLoading } = useAuth()
   const [currentStep, setCurrentStep] = useState<AdmissionStep>(1)
@@ -570,29 +575,8 @@ const AdmissionForm: React.FC = () => {
 
   const stepProgressPercent = ((currentStep - 1) / (TOTAL_STEPS - 1)) * 100
 
-  return (
-    <div className="relative w-full min-h-0 flex-1 overflow-hidden bg-gradient-to-br from-[#0a0f1f] via-[#0b1226] to-[#060b18] pt-16 sm:pt-20 md:pt-28 pb-10 px-3 sm:px-4">
-      <AdmissionFormAnimatedBackground />
-
-      <div className="container-custom max-w-7xl mx-auto relative z-10 px-3 sm:px-6 lg:px-8">
-        <div className="text-center mb-8 md:mb-12">
-          <h1 className="text-3xl sm:text-4xl md:text-6xl font-extrabold text-white mb-3 sm:mb-4 leading-tight">
-            Admission <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500">Form</span>
-          </h1>
-          <p className="text-sm sm:text-lg text-gray-300 max-w-2xl mx-auto leading-relaxed">
-            Complete your application in three clear steps, then submit.
-          </p>
-          <div className="mt-4 max-w-3xl mx-auto rounded-xl border border-white/10 bg-white/5 px-3 sm:px-4 py-3 text-left">
-            <p className="text-xs sm:text-sm text-white/90">
-              Before submitting, please ensure your name, phone number, email, CNIC/B-Form number, and selected course are correct.
-            </p>
-            <p className="mt-2 text-[11px] sm:text-xs text-gray-300">
-              Helpful tips: keep your payment screenshot ready (JPG/PNG/WebP), use an active contact number, and review each step carefully to avoid delays in processing.
-            </p>
-          </div>
-        </div>
-
-        <div className="relative backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl shadow-2xl p-4 sm:p-6 md:p-8 lg:p-10 overflow-hidden w-full">
+  const formCard = (
+    <div className="relative backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl shadow-2xl p-4 sm:p-6 md:p-8 lg:p-10 overflow-hidden w-full">
           <div className="relative z-10">
             <div className="mb-6 sm:mb-8">
               <div className="mx-auto w-full max-w-4xl">
@@ -826,6 +810,40 @@ const AdmissionForm: React.FC = () => {
             </form>
           </div>
         </div>
+  )
+
+  if (embedded) {
+    return (
+      <>
+        {formCard}
+        <AdmissionFormSignInRequiredPopup show={showSignInPrompt} />
+      </>
+    )
+  }
+
+  return (
+    <div className="relative w-full min-h-0 flex-1 overflow-hidden bg-gradient-to-br from-[#0a0f1f] via-[#0b1226] to-[#060b18] pt-16 sm:pt-20 md:pt-28 pb-10 px-3 sm:px-4">
+      <AdmissionFormAnimatedBackground />
+
+      <div className="container-custom max-w-7xl mx-auto relative z-10 px-3 sm:px-6 lg:px-8">
+        <div className="text-center mb-8 md:mb-12">
+          <h1 className="text-3xl sm:text-4xl md:text-6xl font-extrabold text-white mb-3 sm:mb-4 leading-tight">
+            Admission <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500">Form</span>
+          </h1>
+          <p className="text-sm sm:text-lg text-gray-300 max-w-2xl mx-auto leading-relaxed">
+            Complete your application in three clear steps, then submit.
+          </p>
+          <div className="mt-4 max-w-3xl mx-auto rounded-xl border border-white/10 bg-white/5 px-3 sm:px-4 py-3 text-left">
+            <p className="text-xs sm:text-sm text-white/90">
+              Before submitting, please ensure your name, phone number, email, CNIC/B-Form number, and selected course are correct.
+            </p>
+            <p className="mt-2 text-[11px] sm:text-xs text-gray-300">
+              Helpful tips: keep your payment screenshot ready (JPG/PNG/WebP), use an active contact number, and review each step carefully to avoid delays in processing.
+            </p>
+          </div>
+        </div>
+
+        {formCard}
       </div>
 
       <AdmissionFormSignInRequiredPopup show={showSignInPrompt} />

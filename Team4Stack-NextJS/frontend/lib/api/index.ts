@@ -4,6 +4,8 @@ export { coursesApi } from './courses';
 export { landingApi } from './landing';
 export { stackstoreApi } from './stackstore';
 export { teamApi } from './team';
+export { workspaceApi } from './workspace';
+export { developerProfilesApi } from './developerProfiles';
 export { superadminApi } from './superadmin';
 export { usersApi } from './users';
 export { authApi } from './auth';

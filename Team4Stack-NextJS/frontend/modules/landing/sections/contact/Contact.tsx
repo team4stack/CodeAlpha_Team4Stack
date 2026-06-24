@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { CONTACT_PHONE_NUMBERS, getWhatsAppUrl } from '@/lib/utils/constants';
+import './Contact.css';
 
 // Social Icon Link Component with error handling
 const SocialIconLink: React.FC<{ href: string; name?: string; iconUrl: string; slug?: string }> = ({ href, name, iconUrl, slug }) => {
@@ -14,7 +15,7 @@ const SocialIconLink: React.FC<{ href: string; name?: string; iconUrl: string; s
       rel="noopener noreferrer"
       aria-label={name}
       title={name}
-      className="w-10 h-10 rounded-lg bg-white/15 border border-white/25 hover:bg-white/25 flex items-center justify-center transition-all duration-300 hover:scale-110 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-white/20"
+      className="home-contact__social-link"
     >
       {slug && !imageError ? (
         <img 
@@ -230,26 +231,33 @@ const Contact: React.FC = () => {
   ];
 
   return (
-    <section id="contact" className="section-padding bg-gradient-to-b from-gray-900 to-black">
-      <div className="container-custom">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-            Get in <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-600">Touch</span>
+    <section id="contact" className="home-contact section-padding relative overflow-hidden">
+      <div className="home-contact__backdrop" aria-hidden>
+        <div className="home-contact__mesh" />
+        <div className="home-contact__glow home-contact__glow--left" />
+        <div className="home-contact__glow home-contact__glow--right" />
+        <div className="home-contact__grid" />
+      </div>
+
+      <div className="container-custom relative z-10">
+        <header className="home-contact__header">
+          <h2 className="home-contact__title">
+            Get in <span className="home-contact__title-accent">Touch</span>
           </h2>
-          <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-            Ready to start your next MERN stack project? Contact our team leader or send us a message and we'll respond as soon as possible.
+          <p className="home-contact__subtitle">
+            Ready to start your next MERN stack project? Contact our team leader or send us a message and we&apos;ll respond as soon as possible.
           </p>
-        </div>
+        </header>
 
         {/* Location + Primary Contact Cards */}
-        <div className="mb-16 grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="mb-0 sm:mb-16 grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-8">
           {/* Physical Location Card (WE Connect) */}
-          <div className="card text-white">
-            <h3 className="text-2xl font-bold mb-4">WE Connect – Physical Location</h3>
-            <p className="text-white/80 mb-4">Visit us for on-site MERN physical training and project discussions.</p>
+          <div className="home-contact__card">
+            <h3 className="home-contact__card-title">WE Connect – Physical Location</h3>
+            <p className="text-white/80 mb-3 sm:mb-4 text-sm sm:text-base leading-relaxed">Visit us for on-site MERN physical training and project discussions.</p>
             {(contactSettings.mapSrc || contactSettings.address || contactSettings.website || contactSettings.phone) ? (
               <>
-                <div className="rounded-xl overflow-hidden border border-white/10">
+                <div className="home-contact__map-frame">
                   {contactSettings.mapSrc && !mapError ? (
                     (() => {
                       const embedUrl = getEmbedUrl(contactSettings.mapSrc);
@@ -257,7 +265,7 @@ const Contact: React.FC = () => {
                       
                       if (!embedUrl) {
                         return (
-                          <div className="w-full h-64 flex flex-col items-center justify-center text-white/70 gap-3 p-4">
+                          <div className="w-full h-44 sm:h-64 flex flex-col items-center justify-center text-white/70 gap-3 p-4">
                             {isShortUrl ? (
                               <>
                                 <svg className="w-12 h-12 text-yellow-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -281,7 +289,7 @@ const Contact: React.FC = () => {
                         <iframe
                           title="WE Connect Location"
                           src={embedUrl}
-                          className="w-full h-64"
+                          className="w-full h-44 sm:h-64"
                           loading="lazy"
                           referrerPolicy="no-referrer-when-downgrade"
                           allowFullScreen
@@ -293,45 +301,44 @@ const Contact: React.FC = () => {
                       );
                     })()
                   ) : mapError ? (
-                    <div className="w-full h-64 flex flex-col items-center justify-center text-white/70 gap-2">
+                    <div className="w-full h-44 sm:h-64 flex flex-col items-center justify-center text-white/70 gap-2">
                       <p>Map could not be loaded</p>
                       <p className="text-xs text-white/50">Please check the map URL in admin panel</p>
                     </div>
                   ) : (
-                    <div className="w-full h-64 flex items-center justify-center text-white/70">No map available</div>
+                    <div className="w-full h-44 sm:h-64 flex items-center justify-center text-white/70">No map available</div>
                   )}
                 </div>
-                <div className="mt-4 space-y-1 text-sm text-white/80">
+                <div className="home-contact__meta space-y-1">
                   <p><span className="font-semibold text-white">Address:</span> {contactSettings.address || 'No data available'}</p>
-                  <p><span className="font-semibold text-white">Website:</span> {contactSettings.website ? (<a href={contactSettings.website} target="_blank" rel="noopener noreferrer" className="text-blue-300 hover:underline">{(contactSettings.website || '').replace(/^https?:\/\//,'')}</a>) : 'No data available'}</p>
-                  <p><span className="font-semibold text-white">Phone:</span> {contactSettings.phone ? (<a href={`tel:${contactSettings.phone}`} className="hover:underline text-blue-300">{contactSettings.phone}</a>) : 'No data available'}</p>
+                  <p><span className="font-semibold text-white">Website:</span> {contactSettings.website ? (<a href={contactSettings.website} target="_blank" rel="noopener noreferrer">{(contactSettings.website || '').replace(/^https?:\/\//,'')}</a>) : 'No data available'}</p>
+                  <p><span className="font-semibold text-white">Phone:</span> {contactSettings.phone ? (<a href={`tel:${contactSettings.phone}`}>{contactSettings.phone}</a>) : 'No data available'}</p>
                 </div>
                 {contactSettings.mapSrc && (
                   <a
                     href={contactSettings.mapSrc}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="google-maps-btn w-full px-4 py-3 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium transition-all flex items-center justify-center gap-2 mt-4"
-                    style={{ color: '#ffffff' }}
+                    className="home-contact__btn-primary"
                   >
-                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" style={{ color: '#ffffff' }}><path d="M14 3h7v7h-2V6.414l-9.293 9.293-1.414-1.414L17.586 5H14V3z"/><path d="M5 5h6v2H7v10h10v-4h2v6H5V5z"/></svg>
-                    <span style={{ color: '#ffffff' }}>Open in Google Maps</span>
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M14 3h7v7h-2V6.414l-9.293 9.293-1.414-1.414L17.586 5H14V3z"/><path d="M5 5h6v2H7v10h10v-4h2v6H5V5z"/></svg>
+                    <span>Open in Google Maps</span>
                   </a>
                 )}
               </>
             ) : (
-              <div className="rounded-xl border border-white/10 p-6 text-center text-white/70">No data available</div>
+              <div className="home-contact__empty">No data available</div>
             )}
           </div>
 
           {/* Primary Contact Card */}
-          <div className="card text-white bg-gradient-to-r from-purple-600 to-blue-600 text-center flex flex-col items-center justify-center min-h-[300px] py-6">
-            <h3 className="text-2xl font-bold mb-4">Primary Contact</h3>
+          <div className="home-contact__card home-contact__card--highlight">
+            <h3 className="home-contact__card-title">Primary Contact</h3>
             {(contactSettings.primaryName || contactSettings.primaryTagline || contactSettings.whatsapp) ? (
               <>
-                <div className="flex items-center justify-center space-x-4 mb-6">
-                  <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
-                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                <div className="flex items-center justify-center gap-4 mb-6">
+                  <div className="home-contact__avatar">
+                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24" aria-hidden><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
                   </div>
                   <div className="text-left">
                     <h4 className="text-xl font-semibold">{contactSettings.primaryName || 'No data available'}</h4>
@@ -339,8 +346,12 @@ const Contact: React.FC = () => {
                   </div>
                 </div>
                 {contactSettings.whatsapp ? (
-                  <button onClick={openWhatsApp} className="bg-green-500 hover:bg-green-600 text-white font-semibold px-8 py-3 rounded-lg transition-colors flex items-center space-x-2 mx-auto">
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347"/>
+                  <button
+                    type="button"
+                    onClick={openWhatsApp}
+                    className="home-contact__btn-whatsapp"
+                  >
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347"/>
                                 <path d="M12.004 22.785h-.005A9.87 9.87 0 016.968 21.41l-.361-.214-3.741.982.998-3.648-.235-.374A9.86 9.86 0 011.12 12C1.121 6.55 5.555 2.116 11.007 2.116a9.88 9.88 0 019.885 9.888c-.003 5.45-4.437 9.884-9.888 9.884z"/>
                               </svg>
                     <span>Chat on WhatsApp</span>
@@ -354,8 +365,8 @@ const Contact: React.FC = () => {
             )}
             {contactSettings.socials && contactSettings.socials.length > 0 && (
               <>
-                <p className="mt-6 text-white/80 text-sm">Connect with us on social media</p>
-                <div className="mt-3 flex flex-wrap items-center justify-center gap-3">
+                <p className="home-contact__social-label">Connect with us on social media</p>
+                <div className="home-contact__socials">
                   {contactSettings.socials.map((s, idx) => {
                     const slugMap: Record<string,string> = {
                       'Facebook': 'facebook', 'Instagram': 'instagram', 'Twitter/X': 'x', 'LinkedIn': 'linkedin', 'YouTube': 'youtube', 'GitHub': 'github',

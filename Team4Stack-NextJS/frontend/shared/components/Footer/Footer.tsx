@@ -227,6 +227,13 @@ const Footer: React.FC = () => {
       onMouseEnter={handleFooterMouseEnter}
       onMouseLeave={handleFooterMouseLeave}
     >
+      {/* Ambient background orbs — matches home page sections */}
+      <div className="footer-bg-effects" aria-hidden>
+        <div className="footer-bg-orb footer-bg-orb-purple" />
+        <div className="footer-bg-orb footer-bg-orb-orange" />
+        <div className="footer-bg-orb footer-bg-orb-cyan" />
+        <div className="footer-bg-mesh" />
+      </div>
       <div className="footer-cursor-dots" aria-hidden>
         {Array.from({ length: 9 }).map((_, index) => (
           <span

@@ -11,7 +11,8 @@ import {
   FiShoppingCart,
   FiUser,
   FiSettings,
-  FiLogOut
+  FiLogOut,
+  FiClipboard
 } from 'react-icons/fi'
 import SidebarPinButton from '@/components/admin/shared/SidebarPinButton'
 import NotificationBadge from '@/components/admin/shared/NotificationBadge'
@@ -94,6 +95,7 @@ const StackStoreAdminSidebar: React.FC = () => {
     { to: '/adminstackt4s/products', label: 'Products', icon: FiPackage },
     { to: '/adminstackt4s/categories', label: 'Categories', icon: FiTag },
     { to: '/adminstackt4s/orders', label: 'Orders', icon: FiShoppingCart },
+    { to: '/adminstackt4s/applications', label: 'Seller Apps', icon: FiClipboard },
     { to: '/adminstackt4s/sellers', label: 'Sellers', icon: FiUser },
     { to: '/adminstackt4s/settings', label: 'Settings', icon: FiSettings },
   ]

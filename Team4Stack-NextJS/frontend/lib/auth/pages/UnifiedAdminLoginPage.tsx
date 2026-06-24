@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { getUserFriendlyMessage } from '@/lib/utils/errorHandler'
 const UnifiedAdminLoginPage: React.FC = () => {
   const router = useRouter()
   const [email, setEmail] = useState('')
@@ -95,7 +96,7 @@ const UnifiedAdminLoginPage: React.FC = () => {
           console.error('Admin users query error:', adminCheckResult.error)
         }
         // More user-friendly error message
-        setError(adminCheckResult.error || 'Database connection error. Please try again.')
+        setError(getUserFriendlyMessage(adminCheckResult.error, 'Unable to sign in right now. Please try again.'))
         setLoading(false)
         return
       }

@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import React, { useEffect, useState, useCallback } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import StatCard from '@/components/admin/shared/StatCard'
 
@@ -300,7 +301,7 @@ const CoursesAdminDashboard: React.FC = () => {
           ]}
         />
         <StatCard
-          title="Applications"
+          title="Student applications"
           value={stats.totalApplications}
           icon="APP"
           onClick={() => router.push('/admincourset4s/applications')}

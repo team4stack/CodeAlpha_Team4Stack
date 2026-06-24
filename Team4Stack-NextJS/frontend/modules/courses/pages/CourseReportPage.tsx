@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import StudentNavbar from '@/navigation/StudentNavbar';
 import { useAuth } from '@/contexts/AuthContext';
+import StudentNavbar from '@/navigation/StudentNavbar';
 import { useTheme } from '@/contexts/ThemeContext';
 import { coursesApi } from '@/lib/api';
 import toast from 'react-hot-toast';

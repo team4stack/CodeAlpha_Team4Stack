@@ -124,6 +124,9 @@ export class LandingController {
       const project = await landingService.createProject(req.body);
       res.status(201).json({ success: true, data: project });
     } catch (error: any) {
+      if (error?.status === 400) {
+        return res.status(400).json({ success: false, error: error.message || 'Invalid project data' });
+      }
       next(error);
     }
   };
@@ -140,6 +143,9 @@ export class LandingController {
       const project = await landingService.updateProject(id, req.body);
       res.json({ success: true, data: project });
     } catch (error: any) {
+      if (error?.status === 400) {
+        return res.status(400).json({ success: false, error: error.message || 'Invalid project data' });
+      }
       if (error?.status === 404) {
         return res.status(404).json({ success: false, error: error.message || 'Project not found' });
       }

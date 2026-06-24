@@ -1,0 +1,109 @@
+/* Shared glass blur — matches team cards / profile modal */
+
+:root {
+  --t4s-glass-blur: blur(72px) saturate(240%) brightness(0.94);
+  --t4s-glass-blur-light: blur(20px) saturate(180%);
+  --t4s-glass-bg: rgba(8, 10, 18, 0.42);
+  --t4s-glass-bg-hover: rgba(12, 16, 24, 0.55);
+  --t4s-glass-bg-scrolled: rgba(4, 6, 10, 0.92);
+  --t4s-glass-border: rgba(255, 255, 255, 0.14);
+  --t4s-glass-border-hover: rgba(0, 200, 240, 0.32);
+  --t4s-glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  --t4s-glass-shadow: 0 10px 32px rgba(0, 0, 0, 0.42);
+}
+
+/* Full-width navbar blur layer (home + inner pages) */
+.t4s-nav {
+  position: relative;
+  background: transparent !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  transition:
+    border-color 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.t4s-nav__blur-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  transition:
+    background 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+    backdrop-filter 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+    -webkit-backdrop-filter 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.t4s-nav--top .t4s-nav__blur-layer {
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.22) 0%,
+    rgba(0, 0, 0, 0.08) 70%,
+    transparent 100%
+  );
+  backdrop-filter: blur(10px) saturate(150%);
+  -webkit-backdrop-filter: blur(10px) saturate(150%);
+}
+
+.t4s-nav--scrolled {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  backdrop-filter: var(--t4s-glass-blur);
+  -webkit-backdrop-filter: var(--t4s-glass-blur);
+}
+
+.t4s-nav--scrolled .t4s-nav__blur-layer {
+  background: var(--t4s-glass-bg-scrolled);
+  backdrop-filter: var(--t4s-glass-blur);
+  -webkit-backdrop-filter: var(--t4s-glass-blur);
+}
+
+.t4s-nav > .container-custom,
+.t4s-nav > div:not(.t4s-nav__blur-layer):not(.pointer-events-none) {
+  position: relative;
+  z-index: 1;
+}
+
+/* Reusable glass surface (hero ghost buttons, chips) */
+.t4s-glass-surface {
+  position: relative;
+  isolation: isolate;
+  background: var(--t4s-glass-bg);
+  border: 1px solid var(--t4s-glass-border);
+  backdrop-filter: var(--t4s-glass-blur-light);
+  -webkit-backdrop-filter: var(--t4s-glass-blur-light);
+  box-shadow: var(--t4s-glass-shadow), var(--t4s-glass-highlight);
+  transition:
+    background 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.25s ease,
+    transform 0.25s ease,
+    color 0.25s ease;
+}
+
+.t4s-glass-surface:hover {
+  background: var(--t4s-glass-bg-hover);
+  border-color: var(--t4s-glass-border-hover);
+  box-shadow:
+    var(--t4s-glass-shadow),
+    0 0 22px rgba(0, 200, 240, 0.18),
+    var(--t4s-glass-highlight);
+}
+
+/* Legacy nav-glass — align with team-style blur */
+.nav-glass {
+  background: var(--t4s-glass-bg-scrolled) !important;
+  backdrop-filter: var(--t4s-glass-blur) !important;
+  -webkit-backdrop-filter: var(--t4s-glass-blur) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.38) !important;
+}
+
+.student-nav.nav-glass,
+.student-nav.t4s-nav--scrolled {
+  border-bottom: 0 !important;
+}
+
+.student-nav.scrolled,
+.student-nav.t4s-nav--scrolled {
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35) !important;
+}

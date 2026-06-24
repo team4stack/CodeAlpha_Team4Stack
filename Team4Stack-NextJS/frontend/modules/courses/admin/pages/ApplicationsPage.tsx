@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
+import { getUserFriendlyMessage } from '@/lib/utils/errorHandler'
 import { loadApplicationsData } from './applications-page/loadApplicationsData'
 import { getApplicationRowBackgroundClass, getApplicationStatusBadge } from './applications-page/applicationRowViewState'
 import type { ApplicationFilter, ApplicationRow } from './applications-page/types'
@@ -20,7 +21,8 @@ const ApplicationsPage: React.FC = () => {
 
       const result = await loadApplicationsData(filter)
       if (result.error) {
-        setError(result.error)
+        const errorMsg = getUserFriendlyMessage(result.error, 'Failed to load applications.')
+        setError(errorMsg)
         setRows([])
         setLoading(false)
         return
@@ -30,7 +32,7 @@ const ApplicationsPage: React.FC = () => {
       if (process.env.NODE_ENV === 'development') {
         console.error('Error loading applications:', err)
       }
-      const errorMsg = err instanceof Error ? err.message : 'Failed to load applications'
+      const errorMsg = getUserFriendlyMessage(err, 'Failed to load applications.')
       setError(errorMsg)
       toast.error(errorMsg)
     } finally {
@@ -59,8 +61,10 @@ const ApplicationsPage: React.FC = () => {
         <div className="absolute inset-0 bg-black/5"></div>
         <div className="relative z-10 flex flex-col gap-3 sm:gap-4">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold mb-1">Course Applications</h1>
-            <p className="text-white/90 text-xs sm:text-sm">Review and manage student admission applications</p>
+            <h1 className="text-xl sm:text-2xl font-bold mb-1">Student applications</h1>
+            <p className="text-white/90 text-xs sm:text-sm">
+              Review course admission forms submitted via Apply as Student on /courses/apply
+            </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button

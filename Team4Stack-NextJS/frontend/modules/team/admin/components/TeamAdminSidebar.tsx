@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { FiUsers, FiSettings, FiLogOut } from 'react-icons/fi'
+import { FiUsers, FiSettings, FiLogOut, FiBriefcase, FiUserCheck } from 'react-icons/fi'
 import SidebarPinButton from '@/components/admin/shared/SidebarPinButton'
 
 const TeamAdminSidebar: React.FC = () => {
@@ -15,6 +15,8 @@ const TeamAdminSidebar: React.FC = () => {
 
   const links = [
     { to: '/adminteamt4s', label: 'Dashboard', icon: FiUsers },
+    { to: '/adminteamt4s/projects', label: 'Client Projects', icon: FiBriefcase },
+    { to: '/adminteamt4s/developers', label: 'Developer applications', icon: FiUserCheck },
     { to: '/adminteamt4s/settings', label: 'Settings', icon: FiSettings }
   ]
 

@@ -68,6 +68,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     '/courses',
     '/courses/apply',
     '/team',
+    '/projects',
     '/contact',
     '/help',
     '/privacy',
@@ -87,8 +88,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const { courseIds, projectIds } = await fetchDynamicIds();
 
   const dynamicCourseRoutes = courseIds.map((id) => `/courses/detail/${id}`);
-  // Projects currently render on landing section; keep crawlable anchors by query hint.
-  const dynamicProjectRoutes = projectIds.map((id) => `/?project=${id}#projects`);
+  const dynamicProjectRoutes = projectIds.map((id) => `/projects?highlight=${id}`);
 
   const allRoutes = [...staticRoutes, ...dynamicCourseRoutes, ...dynamicProjectRoutes];
 

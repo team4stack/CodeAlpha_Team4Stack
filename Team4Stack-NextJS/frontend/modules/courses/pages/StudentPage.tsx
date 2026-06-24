@@ -41,9 +41,7 @@ const StudentPage: React.FC = () => {
 
   return (
     <div className="min-h-screen transition-colors duration-300">
-      {/* Navbar integrated into hero section */}
       <StudentNavbar />
-      
       <StudentHeroSection
         isDarkMode={isDarkMode}
         enrolledCourses={enrolledCourses}

@@ -1,11 +1,28 @@
-/* Dark Mode Sections */
-.dark #services,
-.dark #about,
-.dark #projects,
-.dark #courses,
-.dark #contact,
-.dark #reviews {
-  background: var(--gradient-bg) !important;
+/* Home page: solid black — must override legacy gradient injection (darkThemeClean) */
+.dark .home-page,
+.dark .home-page section,
+.dark .home-page .section-padding,
+.dark .home-page #home,
+.dark .home-page #about,
+.dark .home-page #services,
+.dark .home-page #projects,
+.dark .home-page #contact,
+.dark .home-page #reviews,
+.dark .home-page #our-team {
+  background-color: #000000 !important;
+  background-image: none !important;
+}
+
+.dark body:has(.home-page),
+.dark main.responsive-main:has(.home-page) {
+  background: #000000 !important;
+  background-color: #000000 !important;
+}
+
+.dark footer.footer,
+.dark .footer {
+  background-color: #000000 !important;
+  background-image: none !important;
 }
 
 /* Dark Mode Cards */

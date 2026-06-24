@@ -12,5 +12,3 @@ const AdmissionPage: React.FC = () => {
 };
 
 export default AdmissionPage;
-
-

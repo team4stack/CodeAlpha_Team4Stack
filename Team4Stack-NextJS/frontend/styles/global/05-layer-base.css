@@ -165,21 +165,20 @@ nav .navbar-grid-animate[class*="animate-spin"],
   button:not(.absolute):not(.fixed):not(.sticky) {
     position: relative;
   }
-  
-  /* Default button hover effects - apply to all buttons unless overridden */
-  button:not(.btn-plain):not([disabled]):not(.absolute):not(.fixed):not(.sticky):hover {
+
+  /* Global button lift/glow — courses pages only (liquid glass scope) */
+  .t4s-courses-glass button:not(.btn-plain):not([disabled]):not(.absolute):not(.fixed):not(.sticky):hover {
     transform: translateY(-2px) scale(1.02);
     filter: brightness(1.15);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2), 0 0 15px rgba(139, 92, 246, 0.3);
   }
-  
-  button:not(.btn-plain):not([disabled]):not(.absolute):not(.fixed):not(.sticky):active {
+
+  .t4s-courses-glass button:not(.btn-plain):not([disabled]):not(.absolute):not(.fixed):not(.sticky):active {
     transform: translateY(0) scale(0.98);
     filter: brightness(0.95);
   }
-  
-  /* Ensure all buttons have smooth transitions */
-  button:not(.btn-plain) {
+
+  .t4s-courses-glass button:not(.btn-plain) {
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), filter 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
     will-change: transform, filter, box-shadow;
   }

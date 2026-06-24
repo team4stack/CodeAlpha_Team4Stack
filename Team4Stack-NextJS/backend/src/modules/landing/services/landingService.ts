@@ -5,6 +5,7 @@ import {
   pickAllowedKeys
 } from '../../../shared/utils/supabaseAdminWrite';
 import { Review, Project, Service, SiteSetting, SupportRequest } from '../types';
+import { validateProjectWrite } from '../utils/projectValidation';
 
 const PROJECT_WRITE_KEYS = ['title', 'description', 'video_id', 'github_url', 'image_url', 'order_index'] as const;
 const REVIEW_WRITE_KEYS = ['name', 'address', 'rating', 'comment', 'status', 'order_index'] as const;
@@ -83,7 +84,13 @@ export class LandingService {
   }
 
   async createProject(project: Partial<Project>): Promise<Project> {
-    const insert = pickProjectPatch(project)
+    const validated = validateProjectWrite(project, 'create');
+    if (!validated.ok) {
+      const err = new Error(validated.error) as Error & { status?: number };
+      err.status = validated.statusCode;
+      throw err;
+    }
+    const insert = pickProjectPatch({ ...project, ...validated.patch })
     const { data, error } = await supabaseAdmin
       .from('projects')
       .insert(insert)
@@ -104,7 +111,13 @@ export class LandingService {
   }
 
   async updateProject(id: number, project: Partial<Project> | Record<string, unknown>): Promise<Project> {
-    const patch = pickProjectPatch(project);
+    const validated = validateProjectWrite(project, 'update');
+    if (!validated.ok) {
+      const err = new Error(validated.error) as Error & { status?: number };
+      err.status = validated.statusCode;
+      throw err;
+    }
+    const patch = pickProjectPatch({ ...project, ...validated.patch });
     const row = await updateByIdWithTimestampRetry('projects', id, patch, { notFoundMessage: 'Project not found' });
     return row as unknown as Project;
   }

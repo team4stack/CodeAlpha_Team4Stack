@@ -9,6 +9,8 @@ import { usersApi, landingApi, coursesApi } from '@/lib/api';
 import emailjs from '@emailjs/browser';
 import ProfileImageCropDialog from './user-settings/ProfileImageCropDialog';
 import { getCroppedImageBlob } from './user-settings/imageCropUtils';
+import { getUserFriendlyMessage } from '@/lib/utils/errorHandler';
+import { checkPasswordStrength } from '@/lib/auth/utils/passwordPolicy';
 
 
 
@@ -79,10 +81,8 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose, 
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const normalizedUsername = formData.username.trim().toLowerCase();
-  const passwordHasLetter = /[a-zA-Z]/.test(passwordData.newPassword);
-  const passwordHasNumber = /\d/.test(passwordData.newPassword);
-  const passwordHasSpecial = /[^a-zA-Z0-9]/.test(passwordData.newPassword);
-  const passwordStrong = passwordData.newPassword.length >= 8 && passwordHasLetter && passwordHasNumber && passwordHasSpecial;
+  const passwordStrength = checkPasswordStrength(passwordData.newPassword);
+  const passwordStrong = passwordStrength.isStrong;
   const themedSurfaceClass = isDarkMode
     ? 'border-white/10 bg-slate-900/85 shadow-[0_24px_80px_rgba(0,0,0,0.45)]'
     : 'border-gray-200 bg-white shadow-sm';
@@ -333,7 +333,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose, 
       setCropImageSrc('');
       if (profileImageInputRef.current) profileImageInputRef.current.value = '';
     } catch (error: any) {
-      setMessage({ type: 'error', text: error?.message || 'Failed to crop image.' });
+      setMessage({ type: 'error', text: getUserFriendlyMessage(error, 'Failed to crop image.') });
     } finally {
       setCropApplying(false);
     }
@@ -428,7 +428,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose, 
       const updateResult = await usersApi.updateUser(user.id, updateData);
 
       if (updateResult.error) {
-        setMessage({ type: 'error', text: updateResult.error || 'Failed to update profile. Please try again.' });
+        setMessage({ type: 'error', text: getUserFriendlyMessage(updateResult.error, 'Failed to update profile. Please try again.') });
       } else {
         setMessage({ type: 'success', text: 'Profile updated successfully!' });
         // Wait a bit for database to commit, then refresh
@@ -453,7 +453,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose, 
         }, 1500);
       }
     } catch (error: any) {
-      setMessage({ type: 'error', text: error.message || 'Failed to update profile' });
+      setMessage({ type: 'error', text: getUserFriendlyMessage(error, 'Failed to update profile.') });
     } finally {
       setLoading(false);
       setImageUploading(false);
@@ -478,7 +478,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose, 
           templateId.trim() === '' || 
           publicKey.trim() === '') {
         // No sensitive info in logs
-        alert('EmailJS not configured. Please check your configuration.');
+        alert('We could not send the verification code right now. Please try again in a few minutes.');
         return true;
       }
 
@@ -592,7 +592,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose, 
 
       const stored = persistClientAuthSessionFromSignInData(fresh.data as any);
       if (!stored.ok) {
-        setMessage({ type: 'error', text: stored.error || 'Failed to save new session.' });
+        setMessage({ type: 'error', text: getUserFriendlyMessage(stored.error, 'Failed to save new session.') });
         setPasswordLoading(false);
         return;
       }
@@ -607,7 +607,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose, 
       });
       await refresh();
     } catch (error: any) {
-      setMessage({ type: 'error', text: error.message || 'Failed to update password' });
+      setMessage({ type: 'error', text: getUserFriendlyMessage(error, 'Failed to update password.') });
     } finally {
       setPasswordLoading(false);
     }
@@ -656,7 +656,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose, 
       const updateResult = await usersApi.updateUser(user.id, { user_settings: updatedSettings });
 
       if (updateResult.error) {
-        setMessage({ type: 'error', text: updateResult.error || 'Failed to save settings.' });
+        setMessage({ type: 'error', text: getUserFriendlyMessage(updateResult.error, 'Failed to save settings.') });
       } else {
         const typeNames = {
           preferences: 'Preferences',
@@ -666,7 +666,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose, 
       }
     } catch (error: any) {
       // No sensitive info in logs
-      setMessage({ type: 'error', text: error.message || 'Failed to save settings.' });
+      setMessage({ type: 'error', text: getUserFriendlyMessage(error, 'Failed to save settings.') });
     } finally {
       setLoading(false);
     }
@@ -749,7 +749,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose, 
           setMessage({ type: 'error', text: 'Failed to send verification code. Please try again.' });
         }
       } catch (error: any) {
-        setMessage({ type: 'error', text: error.message || 'Failed to verify password.' });
+        setMessage({ type: 'error', text: getUserFriendlyMessage(error, 'Failed to verify password.') });
       } finally {
         setDeleteLoading(false);
       }
@@ -851,7 +851,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose, 
         // If update doesn't work, we might need a delete endpoint
         // For now, sign out the user
         if (deleteResult.error) {
-          setMessage({ type: 'error', text: deleteResult.error || 'Failed to delete account. Please contact support.' });
+          setMessage({ type: 'error', text: getUserFriendlyMessage(deleteResult.error, 'Failed to delete account. Please contact support.') });
           setDeleteLoading(false);
           return;
         }
@@ -869,7 +869,7 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose, 
           window.location.href = '/';
         }, 2000);
       } catch (error: any) {
-        setMessage({ type: 'error', text: error.message || 'Failed to delete account' });
+        setMessage({ type: 'error', text: getUserFriendlyMessage(error, 'Failed to delete account.') });
         setDeleteLoading(false);
       }
     }
@@ -1250,17 +1250,17 @@ const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ isOpen, onClose, 
                       )}
                     </div>
                     <div className="mt-2 space-y-1 text-xs">
-                      <p className={passwordHasLetter ? 'text-emerald-500' : themedMutedTextClass}>
-                        {passwordHasLetter ? '✓' : '•'} Contains letters
+                      <p className={passwordStrength.hasLetter ? 'text-emerald-500' : themedMutedTextClass}>
+                        {passwordStrength.hasLetter ? '✓' : '•'} Contains letters
                       </p>
-                      <p className={passwordHasNumber ? 'text-emerald-500' : themedMutedTextClass}>
-                        {passwordHasNumber ? '✓' : '•'} Contains numbers
+                      <p className={passwordStrength.hasNumber ? 'text-emerald-500' : themedMutedTextClass}>
+                        {passwordStrength.hasNumber ? '✓' : '•'} Contains numbers
                       </p>
-                      <p className={passwordHasSpecial ? 'text-emerald-500' : themedMutedTextClass}>
-                        {passwordHasSpecial ? '✓' : '•'} Contains special character
+                      <p className={passwordStrength.hasSpecial ? 'text-emerald-500' : themedMutedTextClass}>
+                        {passwordStrength.hasSpecial ? '✓' : '•'} Contains special character
                       </p>
-                      <p className={passwordData.newPassword.length >= 8 ? 'text-emerald-500' : themedMutedTextClass}>
-                        {passwordData.newPassword.length >= 8 ? '✓' : '•'} Minimum 8 characters
+                      <p className={passwordStrength.hasMinLength ? 'text-emerald-500' : themedMutedTextClass}>
+                        {passwordStrength.hasMinLength ? '✓' : '•'} Minimum 8 characters
                       </p>
                     </div>
                   </div>

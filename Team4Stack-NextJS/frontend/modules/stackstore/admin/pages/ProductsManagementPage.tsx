@@ -14,6 +14,10 @@ type Product = {
   image_url?: string
   active: boolean
   stock?: number
+  platform?: string
+  github_url?: string
+  verification_status?: string
+  team4stack_verified?: boolean
   created_at?: string
   updated_at?: string
 }
@@ -146,6 +150,19 @@ const ProductsManagementPage: React.FC = () => {
       stock: product.stock?.toString() || ''
     })
     setShowAddForm(true)
+  }
+
+  const handleVerifyProduct = async (product: Product, decision: 'approved' | 'rejected') => {
+    try {
+      setError(null)
+      const res = await stackstoreApi.verifyProduct(product.id, decision)
+      if (!res.success) throw new Error(res.error || 'Verification failed')
+      setSuccess(decision === 'approved' ? 'Product verified and published.' : 'Product rejected.')
+      await loadData()
+    } catch (err: unknown) {
+      const { getUserFriendlyMessage } = await import('@/lib/utils/errorHandler')
+      setError(getUserFriendlyMessage(err, 'Verification failed.'))
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -524,9 +541,32 @@ const ProductsManagementPage: React.FC = () => {
                       >
                         {product.active ? 'Active' : 'Inactive'}
                       </span>
+                      {product.verification_status ? (
+                        <div className="text-[10px] mt-1 text-gray-500 dark:text-gray-400 uppercase">
+                          {product.verification_status}
+                        </div>
+                      ) : null}
                     </td>
                     <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right text-xs sm:text-sm font-medium">
                       <div className="flex justify-end gap-1 sm:gap-2 flex-wrap">
+                        {product.verification_status === 'pending' ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleVerifyProduct(product, 'approved')}
+                              className="px-2 py-1 rounded-lg bg-emerald-600 text-white text-xs"
+                            >
+                              Verify
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleVerifyProduct(product, 'rejected')}
+                              className="px-2 py-1 rounded-lg bg-red-600/80 text-white text-xs"
+                            >
+                              Reject
+                            </button>
+                          </>
+                        ) : null}
                         <button
                           onClick={() => handleToggleActive(product)}
                           className={`px-2 sm:px-3 py-1 rounded-lg transition-colors text-xs ${

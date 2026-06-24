@@ -1,11 +1,13 @@
 'use client'
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import AuthModal from '@/lib/auth/components/AuthModal';
+import { getUserFriendlyMessage } from '@/lib/utils/errorHandler';
 import MobileNavigation from '@/components/MobileNavigation';
+import './HomeNavbar.css';
 
 type NavbarLink = {
   name: string;
@@ -24,22 +26,18 @@ const Navbar: React.FC = () => {
   const [logoKey, setLogoKey] = useState(0);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [oauthError, setOauthError] = useState<string | null>(null);
-  const [activeHash, setActiveHash] = useState<string>('#home');
-  const lastActiveHashRef = useRef<string>('#home');
+  const [activeHash, setActiveHash] = useState<string>('');
+  const lastActiveHashRef = useRef<string>('');
   const [navbarLinks, setNavbarLinks] = useState<NavbarLink[]>([
     { name: 'Services', href: '#services' },
-    { name: 'Projects', href: '#projects' },
+    { name: 'Projects', href: '/projects' },
     { name: 'Courses', href: '/courses' },
     { name: 'Contact', href: '#contact' }
   ]);
-  const hashLinks = useMemo(() => {
-    const links = navbarLinks.filter((l) => l.href.startsWith('#')).map((l) => l.href);
-    return links.includes('#home') ? links : ['#home', ...links];
-  }, [navbarLinks]);
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10);
+      setIsScrolled(window.scrollY > 0);
     };
 
     window.addEventListener('scroll', handleScroll);
@@ -69,6 +67,17 @@ const Navbar: React.FC = () => {
               const filtered = parsed.filter((link: NavbarLink) => {
                 const name = link?.name?.toLowerCase?.() || '';
                 return name !== 'home' && name !== 'start' && name !== 'main';
+              }).map((link: NavbarLink) => {
+                const name = String(link?.name ?? '').trim();
+                const href = String(link?.href ?? '').trim();
+                const lower = name.toLowerCase();
+                if (lower === 'team' || lower.includes('team')) {
+                  return { name: name || 'Team', href: '/team' };
+                }
+                if (lower === 'projects' || lower.includes('project')) {
+                  return { name: name || 'Projects', href: '/projects' };
+                }
+                return { name, href };
               });
               if (filtered.length > 0) {
                 setNavbarLinks(filtered);
@@ -104,21 +113,17 @@ const Navbar: React.FC = () => {
       const errorDescription = urlParams.get('error_description');
       
       if (error) {
-        // Decode error description if present
-        let errorMsg = 'Authentication failed. Please try again.';
+        let errorMsg = 'Sign in failed. Please try again.';
         if (errorDescription) {
           try {
             const decoded = decodeURIComponent(errorDescription);
-            // Check for specific error types
-            if (decoded.includes('Unable to exchange external code')) {
-              errorMsg = 'OAuth configuration error. Please check your Google OAuth settings in Supabase dashboard.';
-            } else if (decoded.includes('access_denied')) {
+            if (decoded.includes('access_denied')) {
               errorMsg = 'Access denied. Please grant the required permissions.';
             } else {
-              errorMsg = decoded;
+              errorMsg = getUserFriendlyMessage(decoded, errorMsg);
             }
           } catch {
-            errorMsg = errorDescription;
+            errorMsg = 'Sign in failed. Please try again.';
           }
         }
         
@@ -254,146 +259,83 @@ const Navbar: React.FC = () => {
   };
 
   useEffect(() => {
-    if (pathname !== '/') return;
-
-    const resolveActiveHash = () => {
-      const offset = 120;
-      const scrollY = window.scrollY;
-      const viewportBottom = scrollY + window.innerHeight;
-      const docHeight = document.documentElement.scrollHeight;
-
-      if (viewportBottom >= docHeight - 2) {
-        if (hashLinks.includes('#contact')) {
-          setActiveHash('#contact');
-          lastActiveHashRef.current = '#contact';
-        }
-        return;
-      }
-
-      let nextActive: string | null = null;
-      for (const hash of hashLinks) {
-        const el = document.querySelector(hash) as HTMLElement | null;
-        if (!el) continue;
-        const rect = el.getBoundingClientRect();
-        if (rect.top <= offset && rect.bottom >= offset) {
-          nextActive = hash;
-          break;
-        }
-      }
-
-      if (nextActive) {
-        setActiveHash(nextActive);
-        lastActiveHashRef.current = nextActive;
-      } else {
-        setActiveHash(lastActiveHashRef.current);
-      }
-    };
-
-    resolveActiveHash();
-    window.addEventListener('scroll', resolveActiveHash, { passive: true });
-    window.addEventListener('resize', resolveActiveHash);
-    return () => {
-      window.removeEventListener('scroll', resolveActiveHash);
-      window.removeEventListener('resize', resolveActiveHash);
-    };
-  }, [pathname, hashLinks]);
+    if (pathname !== '/') {
+      setActiveHash('');
+      lastActiveHashRef.current = '';
+    }
+  }, [pathname]);
 
   // no-op: liquid effect removed per new glass btn styling
+
 
   return (
     <>
       {/* Fixed navbar with proper positioning (mix with hero at top, solid on scroll) */}
       <nav
-        className={`navbar-fixed transition-all duration-300 ${
-          isScrolled
-            ? (isDarkMode
-                ? 'nav-glass shadow-lg scrolled'
-                : 'bg-white/90 shadow-lg border-b border-gray-200 scrolled')
-            : 'bg-transparent'
+        className={`navbar-fixed home-nav transition-all duration-300 ${
+          isScrolled ? 'home-nav--scrolled' : 'home-nav--top'
         }`}
       style={{
         willChange: 'auto'
       }}
       role="navigation" aria-label="Main navigation">
-        {isScrolled && (
-          <div className="pointer-events-none absolute inset-0 opacity-20 overflow-hidden">
-            <div 
-              className="navbar-grid-animate absolute left-1/2 top-1/2 w-[140%] h-[140%]" 
-              style={{
-                backgroundImage: `repeating-linear-gradient(0deg, rgba(148,163,184,0.25) 0, rgba(148,163,184,0.25) 1px, transparent 1px, transparent 30px),
-                                  repeating-linear-gradient(90deg, rgba(148,163,184,0.22) 0, rgba(148,163,184,0.22) 1px, transparent 1px, transparent 30px)`,
-                maskImage: 'radial-gradient(ellipse 80% 50% at center, rgba(0,0,0,1) 60%, rgba(0,0,0,0) 100%)',
-                WebkitMaskImage: 'radial-gradient(ellipse 80% 50% at center, rgba(0,0,0,1) 60%, rgba(0,0,0,0) 100%)',
-                transition: 'none',
-                willChange: 'transform',
-                animation: 'gridSlide 3s ease-in-out infinite'
-              }} 
-            />
-          </div>
-        )}
-        <div className="container-custom px-4 sm:px-6">
-          <div className="flex items-center justify-between h-14 sm:h-16">
-            {/* Logo – admin style, size thora chota */}
+        <div
+          className={`home-nav__blur-layer${isScrolled ? ' home-nav__blur-layer--full' : ''}`}
+          aria-hidden
+        />
+        <div className="container-custom px-4 sm:px-6 relative">
+          <div className="home-nav__bar">
+            {/* Logo */}
             <a 
-              href="#home" 
-              className={`flex items-center gap-2 sm:gap-3 group focus:outline-none rounded-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-95 shrink-0 ${
-                'opacity-100'
-              }`}
+              href="/" 
+              className="home-nav__logo flex items-center gap-2 sm:gap-3 group focus:outline-none rounded-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-95 shrink-0 opacity-100"
               aria-label="Team4Stack Home"
-              onClick={(e) => handleLinkClick(e, '#home')}
+              onClick={(e) => {
+                e.preventDefault()
+                setActiveHash('')
+                lastActiveHashRef.current = ''
+                if (pathname === '/') {
+                  window.scrollTo({ top: 0, behavior: 'smooth' })
+                } else {
+                  router.push('/')
+                }
+              }}
             >
               <div className="relative w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center shrink-0">
                 <img
-                  src={
-                    !isScrolled
-                      ? `/Team4Stack_Transparant.svg?t=${logoKey}`
-                      : (isDarkMode
-                          ? `/Team4Stack_Transparant.svg?t=${logoKey}`
-                          : `/Team4StackLogo.svg?t=${logoKey}`)
-                  }
+                  src={`/Team4Stack_Transparant.svg?t=${logoKey}`}
                   alt="Team4Stack Logo"
                   className={`w-full h-full object-contain rounded-lg shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md ${logoLoaded ? 'opacity-100' : 'opacity-0'}`}
                   loading="eager"
                   onLoad={() => setLogoLoaded(true)}
                   onError={() => setLogoLoaded(true)}
-                  key={`logo-${isDarkMode ? 'dark' : 'light'}-${logoKey}`}
+                  key={`logo-${logoKey}`}
                 />
               </div>
-              <span 
-                className={`text-lg sm:text-xl font-bold tracking-tight transition-all duration-300 ${
-                  isScrolled
-                    ? (isDarkMode ? 'gradient-text' : 'text-black')
-                    : 'text-white'
-                } group-hover:text-cyan-300 group-active:scale-95`}
-              >
+              <span className="home-nav__brand text-lg sm:text-xl font-bold tracking-tight transition-all duration-300 group-hover:opacity-90 group-active:scale-95">
                 Team4Stack
               </span>
             </a>
 
-            {/* Desktop Navigation (center) */}
-            <div className="hidden md:flex items-center space-x-1 lg:space-x-2">
+            {/* Desktop Navigation */}
+            <div className="home-nav__dock hidden md:flex">
               {/* Team as regular nav item - moved to first position */}
               {(() => {
                 const isTeamActive = pathname?.startsWith('/team');
-                const teamUnderline = isTeamActive
-                  ? 'left-0 w-full'
-                  : 'left-1/2 w-0 group-hover:left-0 group-hover:w-full';
                 return (
               <a
                 href="/team"
-                className={`${isScrolled
-                  ? (isDarkMode ? 'text-white/90 hover:text-white transition-colors px-3 py-2' : 'text-gray-800 hover:text-blue-600 transition-colors px-3 py-2')
-                  : 'text-white hover:text-blue-300 font-medium px-4 py-2 transition-all duration-300'
-                } relative focus:outline-none group inline-block`}
+                className={`home-nav__link focus:outline-none group inline-block${isTeamActive ? ' home-nav__link--active' : ''}`}
                 aria-label="Team"
                 title="Team — Meet Our Team"
                 onClick={(e) => {
                   e.preventDefault()
+                  setActiveHash('')
+                  lastActiveHashRef.current = ''
                   router.push('/team')
                 }}
               >
                 Team
-                <span className={`pointer-events-none absolute -bottom-0.5 h-0.5 bg-linear-to-r from-blue-400 to-cyan-500 rounded-full transition-all duration-300 ${teamUnderline}`}></span>
               </a>
                 );
               })()}
@@ -403,36 +345,57 @@ const Navbar: React.FC = () => {
                 const isCoursesLink =
                   link.href === '/courses' ||
                   link.name?.toLowerCase?.() === 'courses';
+                const isProjectsLink =
+                  link.href === '/projects' ||
+                  link.href === '#projects' ||
+                  link.name?.toLowerCase?.() === 'projects';
                 const isHashLink = link.href.startsWith('#');
                 const isActive = isHashLink
-                  ? pathname === '/' && activeHash === link.href
-                  : (link.href === '/courses' ? pathname?.startsWith('/courses') : false);
-                const underlineClass = isActive
-                  ? 'left-0 w-full'
-                  : 'left-1/2 w-0 group-hover:left-0 group-hover:w-full';
+                  ? pathname === '/' && activeHash !== '' && activeHash === link.href
+                  : link.href === '/courses'
+                    ? pathname?.startsWith('/courses')
+                    : isProjectsLink
+                      ? pathname?.startsWith('/projects')
+                      : false;
 
-                // Base style for normal nav links (with hover effects)
-                const baseClasses = isScrolled
-                  ? (isDarkMode
-                      ? 'text-white/90 hover:text-white transition-colors px-3 py-2'
-                      : 'text-gray-800 hover:text-purple-600 transition-colors px-3 py-2')
-                  : 'text-white hover:text-purple-300 font-medium px-4 py-2 transition-all duration-300';
+                const baseClasses = `home-nav__link focus:outline-none relative group inline-block${isActive ? ' home-nav__link--active' : ''}`;
 
-                // Courses tab: simple link (dropdown removed)
                 if (isCoursesLink) {
+                  const coursesActive = pathname?.startsWith('/courses');
                   return (
                     <a
                       key={link.href}
                       href="/courses"
-                      className={`${baseClasses} focus:outline-none relative group inline-block`}
+                      className={`home-nav__link focus:outline-none relative group inline-block${coursesActive ? ' home-nav__link--active' : ''}`}
                       aria-label={link.name}
                       onClick={(e) => {
                         e.preventDefault();
+                        setActiveHash('');
+                        lastActiveHashRef.current = '';
                         router.push('/courses');
                       }}
                     >
                       {link.name}
-                      <span className={`pointer-events-none absolute -bottom-0.5 h-px bg-linear-to-r from-cyan-400 to-purple-500 rounded-full transition-all duration-300 ${underlineClass}`}></span>
+                    </a>
+                  );
+                }
+
+                if (isProjectsLink) {
+                  const projectsActive = pathname?.startsWith('/projects');
+                  return (
+                    <a
+                      key={link.href}
+                      href="/projects"
+                      className={`home-nav__link focus:outline-none relative group inline-block${projectsActive ? ' home-nav__link--active' : ''}`}
+                      aria-label={link.name}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setActiveHash('');
+                        lastActiveHashRef.current = '';
+                        router.push('/projects');
+                      }}
+                    >
+                      {link.name}
                     </a>
                   );
                 }
@@ -441,36 +404,32 @@ const Navbar: React.FC = () => {
                   <a
                     key={link.href}
                     href={link.href}
-                    className={`${baseClasses} focus:outline-none relative group inline-block`}
+                    className={baseClasses}
                     aria-label={link.name}
                     onClick={(e) => handleLinkClick(e, link.href)}
                   >
                     {link.name}
-                    <span className={`pointer-events-none absolute -bottom-0.5 h-px bg-linear-to-r from-cyan-400 to-purple-500 rounded-full transition-all duration-300 ${underlineClass}`}></span>
                   </a>
                 );
               })}
-              {/* StackStore as regular nav item - COMMENTED OUT */}
-              {/* <a
+              <a
                 href="/stackstore"
-                className={`${isScrolled
-                  ? (isDarkMode ? 'text-white/90 hover:text-white transition-colors px-3 py-2' : 'text-gray-800 hover:text-purple-600 transition-colors px-3 py-2')
-                  : 'text-white hover:text-purple-300 font-medium px-4 py-2 transition-all duration-300'
-                } relative focus:outline-none group inline-block`}
+                className={`home-nav__link relative focus:outline-none group inline-block${pathname?.startsWith('/stackstore') ? ' home-nav__link--active' : ''}`}
                 aria-label="StackStore Marketplace"
                 title="StackStore — Marketplace"
                 onClick={(e) => {
                   e.preventDefault()
+                  setActiveHash('')
+                  lastActiveHashRef.current = ''
                   router.push('/stackstore')
                 }}
               >
                 StackStore
-                <span className="pointer-events-none absolute left-1/2 -bottom-0.5 w-0 h-0.5 bg-linear-to-r from-cyan-400 to-purple-500 rounded-full transition-all duration-300 group-hover:left-0 group-hover:w-full"></span>
-              </a> */}
+              </a>
             </div>
 
-            {/* Right-side actions: Dark Mode + Auth */}
-            <div className="hidden md:flex items-center gap-2">
+            {/* Right-side actions */}
+            <div className="home-nav__actions hidden md:flex items-center gap-2 shrink-0">
               {/* Auth button/avatar */}
               {!loading && (
                 user ? (
@@ -482,9 +441,9 @@ const Navbar: React.FC = () => {
                         e.stopPropagation()
                         setIsUserMenuOpen(prev => !prev)
                       }}
-                      className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 hover:bg-white/15 transition-all cursor-pointer"
+                      className="home-nav__profile-btn flex items-center gap-2 cursor-pointer btn-plain"
                     >
-                      <div className="w-8 h-8 rounded-full bg-linear-to-br from-purple-500 to-pink-500 flex items-center justify-center overflow-hidden">
+                      <div className="home-nav__profile-avatar">
                         {user.avatar_url ? (
                           <img src={user.avatar_url} alt="avatar" className="w-full h-full object-cover" />
                         ) : (
@@ -535,6 +494,22 @@ const Navbar: React.FC = () => {
                               )}
                             </div>
                             <div className="mt-1 space-y-1">
+                              <button 
+                                onClick={() => {
+                                  router.push('/workspace');
+                                  setIsUserMenuOpen(false);
+                                }}
+                                className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center gap-2 ${
+                                  isDarkMode
+                                    ? 'text-gray-300 hover:bg-gray-700'
+                                    : 'text-gray-700 hover:bg-gray-100'
+                                }`}
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                </svg>
+                                My Projects
+                              </button>
                               <button 
                                 onClick={() => {
                                   router.push('/settings');
@@ -594,7 +569,7 @@ const Navbar: React.FC = () => {
                 ) : (
                   <button
                     onClick={() => setIsAuthOpen(true)}
-                    className="w-10 h-10 rounded-full bg-linear-to-br from-purple-500 via-pink-500 to-indigo-500 text-white shadow-[0_10px_30px_rgba(168,85,247,0.35)] hover:shadow-[0_12px_36px_rgba(99,102,241,0.45)] transition-all hover:scale-110 flex items-center justify-center"
+                    className="btn-plain home-nav__auth-btn"
                     aria-label="Sign In"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -612,11 +587,11 @@ const Navbar: React.FC = () => {
               {!loading && user && (
                 <div className="flex items-center gap-2 mr-2 max-w-[120px] sm:max-w-[150px]">
                   <div className="flex flex-col items-start min-w-0 w-full">
-                    <span className={`text-sm font-medium leading-tight truncate w-full ${isScrolled ? (isDarkMode ? 'text-white' : 'text-gray-800') : 'text-white'}`}>
+                    <span className="text-sm font-medium text-white leading-tight truncate w-full">
                       {user.name || 'User'}
                     </span>
                     {user.username && (
-                      <span className={`text-xs leading-tight truncate w-full ${isScrolled ? (isDarkMode ? 'text-white/70' : 'text-gray-600') : 'text-white/70'}`}>
+                      <span className="text-xs text-white/70 leading-tight truncate w-full">
                         @{user.username}
                       </span>
                     )}
@@ -627,13 +602,7 @@ const Navbar: React.FC = () => {
               {!loading && !user && (
                 <button
                   onClick={() => setIsAuthOpen(true)}
-                  className={`p-2 rounded-lg transition-all flex items-center justify-center ${
-                    isScrolled
-                      ? (isDarkMode 
-                          ? 'bg-linear-to-br from-purple-500 via-pink-500 to-indigo-500 hover:from-purple-600 hover:via-pink-600 hover:to-indigo-600 text-white shadow-lg' 
-                          : 'bg-linear-to-br from-purple-500 via-pink-500 to-indigo-500 hover:from-purple-600 hover:via-pink-600 hover:to-indigo-600 text-white shadow-lg')
-                      : 'bg-linear-to-br from-purple-500 via-pink-500 to-indigo-500 hover:from-purple-600 hover:via-pink-600 hover:to-indigo-600 text-white shadow-lg'
-                  } focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2`}
+                  className="home-nav__auth-btn p-2 rounded-lg transition-all flex items-center justify-center btn-plain focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
                   aria-label="Sign In"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -653,18 +622,12 @@ const Navbar: React.FC = () => {
                   // Fallback for browsers that don't reliably fire pointer events.
                   setIsMenuOpen((prev) => !prev);
                 }}
-                className={`p-2 relative z-10002 rounded-lg transition-colors flex items-center justify-center ${
-                  isScrolled
-                    ? (isDarkMode 
-                        ? 'bg-white/20 backdrop-blur-lg hover:bg-white/30 border border-white/30' 
-                        : 'bg-gray-100 hover:bg-gray-200 border border-gray-200')
-                    : 'bg-white/20 backdrop-blur-lg hover:bg-white/30 border border-white/30 text-white'
-                } focus:outline-none focus:ring-0 focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-0`}
+                className="home-nav__menu-btn btn-plain p-2 relative z-10002 rounded-lg transition-colors flex items-center justify-center focus:outline-none focus:ring-0 focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-0"
                 aria-label={isMenuOpen ? "Close mobile menu" : "Open mobile menu"}
                 aria-expanded={isMenuOpen}
               >
                 <svg
-                  className={`w-6 h-6 ${isScrolled ? (isDarkMode ? 'text-white' : 'text-gray-600') : 'text-white'}`}
+                  className="w-6 h-6 text-white"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -680,7 +643,7 @@ const Navbar: React.FC = () => {
             </div>
           </div>
         </div>
-        <div className="pointer-events-none h-[2px] w-full bg-linear-to-r from-transparent via-cyan-400/80 to-transparent" />
+        <div className="home-nav__glow-line pointer-events-none h-px w-full" />
       </nav>
       <AuthModal 
         isOpen={isAuthOpen} 

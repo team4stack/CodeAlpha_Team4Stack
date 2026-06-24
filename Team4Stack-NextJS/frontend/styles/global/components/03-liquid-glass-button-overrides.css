@@ -1,44 +1,29 @@
-/* Liquid Glass Button Effect (applied to all buttons by default) */
-.btn-primary,
-.btn-secondary,
-.btn-ghost,
-button:not(.btn-plain) {
-  border-radius: 9999px; /* pill look aligns with glass effect */
-  backdrop-filter: blur(8px) saturate(120%);
-  -webkit-backdrop-filter: blur(8px) saturate(120%);
-  overflow: hidden;
-  isolation: isolate;
-  will-change: transform, filter, box-shadow;
-}
+/* --------------------------------------------------------------------------
+ * Liquid Glass Button Effect — COURSES PAGES ONLY (.t4s-courses-glass)
+ * Globally disabled everywhere else (home, landing, team, stackstore, admin, etc.)
+ * -------------------------------------------------------------------------- */
 
-/* Ensure pseudo-elements position correctly for buttons that don't already define a positioning mode. */
-.btn-primary,
-.btn-secondary,
-.btn-ghost,
-button:not(.btn-plain):not(.absolute):not(.fixed):not(.sticky) {
-  position: relative;
-}
-
+/* Global reset: no liquid-glass on any button outside courses scope */
+button:not(.btn-plain)::after,
 .btn-primary::after,
 .btn-secondary::after,
-.btn-ghost::after,
-button:not(.btn-plain)::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(180deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.18) 50%, rgba(255,255,255,0.08) 100%);
-  mix-blend-mode: screen;
-  pointer-events: none;
-  filter: url(#turbulence-displacement);
-  opacity: 0.8;
-  transition: opacity 0.3s ease;
-  z-index: 1;
+.btn-ghost::after {
+  content: none !important;
+  filter: none !important;
+  opacity: 0 !important;
+  display: none !important;
 }
 
-/* Utility class to disable global glass effect on specific buttons (e.g. navbar Courses menu) */
+button:not(.btn-plain),
+.btn-primary,
+.btn-secondary,
+.btn-ghost {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Opt-out utilities (unchanged — work everywhere) */
 .btn-plain {
-  /* Avoid position: static — it overrides Tailwind absolute/fixed (same specificity, CSS order). */
   isolation: auto;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
@@ -49,7 +34,6 @@ button:not(.btn-plain)::after {
   content: none !important;
 }
 
-/* Explicit wins over any base-layer or order quirks: edge toggles (sidebar pin, etc.) */
 button.btn-plain.absolute {
   position: absolute;
 }
@@ -62,7 +46,6 @@ button.btn-plain.sticky {
   position: sticky;
 }
 
-/* Opt-out from the liquid-glass effect without changing positioning/layout. */
 .btn-no-glass {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
@@ -79,22 +62,6 @@ button.btn-plain.sticky {
   filter: none !important;
 }
 
-/* Remove liquid-glass effect for all buttons inside course sidebar panels. */
-.course-sidebar-no-glass button {
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  overflow: visible !important;
-  isolation: auto !important;
-}
-
-.course-sidebar-no-glass button::after {
-  content: none !important;
-  filter: none !important;
-  opacity: 0 !important;
-}
-
-/* Disable the global liquid-glass ::after overlay only.
-   Useful when we want to keep the element's own Tailwind styling (background/backdrop-blur) */
 .btn-no-liquid::after {
   content: none !important;
   filter: none !important;
@@ -106,16 +73,70 @@ button.btn-plain.sticky {
   filter: none !important;
 }
 
-.btn-primary:hover::after,
-.btn-secondary:hover::after,
-.btn-ghost:hover::after,
-button:not(.btn-plain):hover::after {
+/* --------------------------------------------------------------------------
+ * Courses scope: enable liquid glass (public /courses, /student/*, etc.)
+ * -------------------------------------------------------------------------- */
+.t4s-courses-glass .btn-primary,
+.t4s-courses-glass .btn-secondary,
+.t4s-courses-glass .btn-ghost,
+.t4s-courses-glass button:not(.btn-plain):not(.btn-no-glass) {
+  border-radius: 9999px;
+  backdrop-filter: blur(8px) saturate(120%);
+  -webkit-backdrop-filter: blur(8px) saturate(120%);
+  overflow: hidden;
+  isolation: isolate;
+  will-change: transform, filter, box-shadow;
+}
+
+.t4s-courses-glass .btn-primary,
+.t4s-courses-glass .btn-secondary,
+.t4s-courses-glass .btn-ghost,
+.t4s-courses-glass button:not(.btn-plain):not(.btn-no-glass):not(.absolute):not(.fixed):not(.sticky) {
+  position: relative;
+}
+
+.t4s-courses-glass .btn-primary::after,
+.t4s-courses-glass .btn-secondary::after,
+.t4s-courses-glass .btn-ghost::after,
+.t4s-courses-glass button:not(.btn-plain):not(.btn-no-glass)::after {
+  content: "" !important;
+  display: block !important;
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.18) 50%, rgba(255,255,255,0.08) 100%);
+  mix-blend-mode: screen;
+  pointer-events: none;
+  filter: url(#turbulence-displacement);
+  opacity: 0.8;
+  transition: opacity 0.3s ease;
+  z-index: 1;
+}
+
+/* Sidebar panels inside courses: keep glass disabled */
+.t4s-courses-glass .course-sidebar-no-glass button {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  overflow: visible !important;
+  isolation: auto !important;
+}
+
+.t4s-courses-glass .course-sidebar-no-glass button::after {
+  content: none !important;
+  filter: none !important;
+  opacity: 0 !important;
+}
+
+.t4s-courses-glass .btn-primary:hover::after,
+.t4s-courses-glass .btn-secondary:hover::after,
+.t4s-courses-glass .btn-ghost:hover::after,
+.t4s-courses-glass button:not(.btn-plain):not(.btn-no-glass):hover::after {
   filter: url(#turbulence-displacement);
 }
 
-.btn-primary:active,
-.btn-secondary:active,
-.btn-ghost:active,
-button:not(.absolute):not(.fixed):not(.sticky):active {
+.t4s-courses-glass .btn-primary:active,
+.t4s-courses-glass .btn-secondary:active,
+.t4s-courses-glass .btn-ghost:active,
+.t4s-courses-glass button:not(.absolute):not(.fixed):not(.sticky):active {
   transform: translateY(0) scale(0.99);
 }
