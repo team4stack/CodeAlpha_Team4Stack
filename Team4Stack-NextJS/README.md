@@ -2,7 +2,7 @@
 
 ## 🎉 Migration Complete!
 
-This is the Next.js version of Team4Stack, migrated from Vite + React Router to Next.js 16 App Router.
+This is the Next.js version of Team4Stack, migrated from Vite + React Router to Next.js 16 App Routerr.
 
 ## 📁 Project Structure
 
@@ -35,6 +35,7 @@ cp .env.local.example .env.local
 ```
 
 Edit `.env.local` with your values:
+
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - Other environment variables
