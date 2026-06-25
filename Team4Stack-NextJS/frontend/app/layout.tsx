@@ -213,6 +213,13 @@ export default function RootLayout({
 
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{if(!('serviceWorker'in navigator))return;navigator.serviceWorker.getRegistrations().then(function(r){r.forEach(function(x){var u=(x.active&&x.active.scriptURL)||'';if(!u.endsWith('/sw.js'))x.unregister();});});if('caches'in window){caches.keys().then(function(k){k.forEach(function(n){if(/workbox|vite|pwa|precache/i.test(n))caches.delete(n);});});}}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body className={`${inter.variable} antialiased`} suppressHydrationWarning>
         <script
           type="application/ld+json"

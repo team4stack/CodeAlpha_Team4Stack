@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clear cache — Team4Stack</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #0a0a0b;
+      color: #fafafa;
+      display: grid;
+      place-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 1.5rem;
+      text-align: center;
+    }
+    .card {
+      max-width: 28rem;
+      padding: 2rem;
+      border-radius: 1rem;
+      background: #18181b;
+      border: 1px solid #3f3f46;
+    }
+    a {
+      color: #22d3ee;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Clearing old cache…</h1>
+    <p id="status">Removing legacy Vite service worker…</p>
+    <p><a id="home" href="/" style="display:none">Continue to Team4Stack →</a></p>
+  </div>
+  <script>
+    (async function () {
+      var status = document.getElementById('status');
+      var home = document.getElementById('home');
+      try {
+        if ('serviceWorker' in navigator) {
+          var regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map(function (r) { return r.unregister(); }));
+        }
+        if ('caches' in window) {
+          var keys = await caches.keys();
+          await Promise.all(keys.map(function (k) { return caches.delete(k); }));
+        }
+        status.textContent = 'Done! Old Vite cache removed. Opening site…';
+        home.style.display = 'inline';
+        setTimeout(function () { window.location.replace('/'); }, 1200);
+      } catch (e) {
+        status.textContent = 'Could not auto-clear. Use DevTools → Application → Clear site data.';
+        home.style.display = 'inline';
+      }
+    })();
+  </script>
+</body>
+</html>

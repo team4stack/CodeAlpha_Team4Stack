@@ -8,15 +8,19 @@ import ThemeManager from '@/themes/ThemeManager';
 import CookieConsentBanner from '@/components/cookies/CookieConsentBanner';
 import FunctionalPerformanceBootstrap from '@/components/performance/FunctionalPerformanceBootstrap';
 import VisitorTracker from '@/components/performance/VisitorTracker';
+import { cleanupLegacyServiceWorkers } from '@/lib/utils/serviceWorkerCleanup';
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (!('serviceWorker' in navigator)) return;
 
-    navigator.serviceWorker.register('/sw.js').catch(() => {
-      // Silent fail - app still works without SW
-    });
+    void (async () => {
+      await cleanupLegacyServiceWorkers();
+      await navigator.serviceWorker.register('/sw.js').catch(() => {
+        // Silent fail - app still works without SW
+      });
+    })();
   }, []);
 
   return (
