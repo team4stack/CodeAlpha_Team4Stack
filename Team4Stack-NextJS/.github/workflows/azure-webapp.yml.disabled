@@ -1,7 +1,7 @@
 name: Build and deploy Node.js app to Azure Web App - Team4Stack-Collaborators
 
+# DISABLED: rename to azure-webapp.yml when ready for production release.
 # Production API deploy is MANUAL only — daily team pushes must not trigger Azure.
-# When release is ready: GitHub → Actions → this workflow → Run workflow.
 on:
   workflow_dispatch:
 
